@@ -123,8 +123,8 @@ Step 1: Setup the Flutter App
 
 Clone the repository:
 
-git clone [https://github.com/Adityansh-Chand/Chatbot_AI.git](https://github.com/Adityansh-Chand/Chatbot_AI.git)
-cd Chatbot_AI
+git clone [https://github.com/Adityansh-Chand/ADAAS.git](https://github.com/Adityansh-Chand/ADAAS.git)
+cd ADAAS
 
 
 Install dependencies:
