@@ -1,21 +1,27 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose'); // Import Mongoose
+const dotenv = require('dotenv'); // Import dotenv
 const LeaveBalance = require('./models/LeaveBalance'); // Import Model
+
+dotenv.config();
 
 const app = express();
 const port = 3000;
 
-// *** CONNECTION STRING ***
-const mongoURI = "mongodb+srv://admin:mn1AC%402004@cluster1.b2m1phr.mongodb.net/?appName=Cluster1";
+const mongoURI = process.env.MONGODB_URI;
+
+if (!mongoURI) {
+    throw new Error("MONGODB_URI is not defined");
+}
 
 app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
 mongoose.connect(mongoURI)
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
+    .then(() => console.log("MongoDB Connected"))
+    .catch(err => console.log(err));
 
 // --- ENDPOINT: Get Leave Balance ---
 app.get('/leave-balance', async (req, res) => {
