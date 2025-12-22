@@ -185,16 +185,3 @@ Data Parsing: Ensures the app handles API responses (and null values) safely.
 To run the tests:
 
 flutter test
-
-
-👥 Team (Group 20)
-
-Adityansh Chand: BLoC Architecture & Routing Logic
-
-Anurag Sharma: UI/UX Design & Table Widget Implementation
-
-Anushka: Backend API Development (Node.js) & Dio Integration
-
-Divyavardhan Mishra: Data Modeling & Database Migration (MongoDB)
-
-Saloni Singh: Knowledge Base Curation & Quality Assurance
