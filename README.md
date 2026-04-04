@@ -185,3 +185,10 @@ Data Parsing: Ensures the app handles API responses (and null values) safely.
 To run the tests:
 
 flutter test
+
+
+---
+
+# License
+
+MIT License
