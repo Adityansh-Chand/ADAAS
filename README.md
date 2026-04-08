@@ -13,7 +13,7 @@ IntentRouter --> API
 RAG --> Response
 API --> Response
 Response --> UI
-``
+```
 
 ## Workflow
 query → intent routing → RAG or API → structured response
