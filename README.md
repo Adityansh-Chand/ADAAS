@@ -19,9 +19,9 @@ Response --> UI
 query → intent routing → RAG or API → structured response
 
 ### Highlights
-hybrid reasoning architecture
-API routing logic
-real-time data integration
+hybrid reasoning architecture, 
+API routing logic and 
+real-time data integration.
 
 ## License
 MIT
