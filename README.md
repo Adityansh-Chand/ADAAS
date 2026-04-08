@@ -1,5 +1,5 @@
 
-# ADAAS — AI HR Assistant
+# ADAAS — Artificially Driven Assistant for Automated Solutions
 
 Hybrid RAG AI assistant integrating LLM reasoning with real-time enterprise APIs.
 
