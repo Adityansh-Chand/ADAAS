@@ -1,22 +1,27 @@
 
-# Adaas
+# ADAAS â€” AI HR Assistant
 
-AI engineering project demonstrating modular pipeline design, evaluation awareness, and production-style architecture.
+Hybrid RAG AI assistant integrating LLM reasoning with real-time enterprise APIs.
 
-## Key Capabilities
+## Architecture
 
-• config-driven pipelines
-• modular components
-• evaluation scaffold
-• logging enabled
-• test structure
+```mermaid
+flowchart LR
+UserQuery --> IntentRouter
+IntentRouter --> RAG
+IntentRouter --> API
+RAG --> Response
+API --> Response
+Response --> UI
+``
 
-## Engineering Focus
+## Workflow
+query â†’ intent routing â†’ RAG or API â†’ structured response
 
-reproducible pipelines
-structured reasoning
-extensible architecture
+### Highlights
+hybrid reasoning architecture
+API routing logic
+real-time data integration
 
 ## License
-
 MIT
