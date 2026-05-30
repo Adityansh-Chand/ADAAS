@@ -4,7 +4,9 @@ const express = require('express');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const path = require('path');
+const crypto = require('crypto');
 
+const LeaveApplication = require('./models/LeaveApplication');
 const LeaveBalance = require('./models/LeaveBalance');
 
 dotenv.config();
@@ -13,6 +15,14 @@ const app = express();
 const port = process.env.PORT || 3000;
 const mongoURI = process.env.MONGODB_URI;
 let mongoReady = false;
+const startedAt = Date.now();
+const counters = {
+  requests_total: 0,
+  errors_total: 0,
+  chat_requests_total: 0,
+  leave_applications_total: 0,
+};
+const fallbackLeaveApplications = [];
 
 const fallbackLeaveBalances = {
   '1001': {
@@ -24,7 +34,34 @@ const fallbackLeaveBalances = {
 };
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
+
+app.use((req, res, next) => {
+  counters.requests_total += 1;
+  const requestId = req.header('x-request-id') || crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+  next();
+});
+
+function requireApiKey(req, res, next) {
+  const expectedApiKey = process.env.API_KEY;
+  if (!expectedApiKey) {
+    next();
+    return;
+  }
+
+  if (req.header('x-api-key') !== expectedApiKey) {
+    res.status(401).json({ error: 'Invalid or missing API key', request_id: req.requestId });
+    return;
+  }
+
+  next();
+}
+
+function asyncHandler(handler) {
+  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+}
 
 async function connectMongo() {
   if (!mongoURI) {
@@ -127,27 +164,30 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.get('/leave-balance', async (req, res) => {
+app.get('/metrics', (req, res) => {
+  res.json({
+    uptime_seconds: Math.round((Date.now() - startedAt) / 1000),
+    counters,
+    dataSource: mongoReady ? 'mongodb' : 'memory',
+  });
+});
+
+app.get('/leave-balance', requireApiKey, asyncHandler(async (req, res) => {
   const employeeId = req.query.employee_id;
   if (!employeeId) {
     res.status(400).json({ error: 'employee_id is required' });
     return;
   }
 
-  try {
-    const data = await findLeaveBalance(employeeId);
-    if (data) {
-      res.json(data);
-    } else {
-      res.status(404).json({ error: 'Employee not found' });
-    }
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server Error' });
+  const data = await findLeaveBalance(employeeId);
+  if (data) {
+    res.json(data);
+  } else {
+    res.status(404).json({ error: 'Employee not found' });
   }
-});
+}));
 
-app.post('/leave-application', (req, res) => {
+app.post('/leave-application', requireApiKey, asyncHandler(async (req, res) => {
   const employeeId = req.body.employee_id;
   const requestText = req.body.request_text || '';
   if (!employeeId || !requestText) {
@@ -156,29 +196,63 @@ app.post('/leave-application', (req, res) => {
   }
 
   const leaveType = determineLeaveType(requestText);
-  res.json({
+  const referenceId = `LMS-${Date.now().toString().slice(-6)}`;
+  const application = {
     employee_id: employeeId,
     leave_type: leaveType,
-    reference_id: `LMS-${Date.now().toString().slice(-6)}`,
+    reference_id: referenceId,
+    status: 'submitted',
     message: `Success! Your request for **${leaveType}** has been submitted for approval.`,
-  });
-});
+  };
 
-app.post('/chat', async (req, res) => {
+  if (mongoReady && mongoose.connection.readyState === 1) {
+    await LeaveApplication.create({
+      employeeId,
+      leaveType,
+      requestText,
+      referenceId,
+    });
+  } else {
+    fallbackLeaveApplications.push({ ...application, request_text: requestText, created_at: new Date().toISOString() });
+  }
+
+  counters.leave_applications_total += 1;
+  res.json(application);
+}));
+
+app.post('/chat', requireApiKey, asyncHandler(async (req, res) => {
   const message = req.body.message || '';
   if (!message.trim()) {
     res.status(400).json({ error: 'message is required' });
     return;
   }
 
-  try {
-    const retrieval = retrieveContext(message);
-    const answer = await generateAnswer(message, retrieval);
-    res.json({ answer, sources: retrieval.sources });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Chat generation failed' });
+  counters.chat_requests_total += 1;
+  const retrieval = retrieveContext(message);
+  const answer = await generateAnswer(message, retrieval);
+  res.json({ answer, sources: retrieval.sources });
+}));
+
+app.get('/leave-applications', requireApiKey, asyncHandler(async (req, res) => {
+  if (mongoReady && mongoose.connection.readyState === 1) {
+    const applications = await LeaveApplication.find()
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json({ applications });
+    return;
   }
+
+  res.json({ applications: fallbackLeaveApplications.slice(-50).reverse() });
+}));
+
+app.use((err, req, res, next) => {
+  counters.errors_total += 1;
+  console.error(err);
+  res.status(500).json({
+    error: 'Internal server error',
+    request_id: req.requestId,
+  });
 });
 
 if (require.main === module) {

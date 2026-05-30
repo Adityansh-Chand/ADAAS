@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class AppConfig {
   static const String _configuredApiBaseUrl =
       String.fromEnvironment('HR_API_BASE_URL');
+  static const String _configuredApiKey = String.fromEnvironment('HR_API_KEY');
 
   static String get hrApiBaseUrl {
     final configured = _configuredApiBaseUrl.trim();
@@ -19,5 +20,14 @@ class AppConfig {
 
   static String _withoutTrailingSlash(String value) {
     return value.endsWith('/') ? value.substring(0, value.length - 1) : value;
+  }
+
+  static Map<String, String> get authHeaders {
+    final apiKey = _configuredApiKey.trim();
+    if (apiKey.isEmpty) {
+      return const {};
+    }
+
+    return {'X-API-Key': apiKey};
   }
 }

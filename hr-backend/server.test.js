@@ -52,6 +52,25 @@ test('leave application identifies leave type', async () => {
   });
 });
 
+test('leave application is persisted in fallback store', async () => {
+  await withServer(async (baseUrl) => {
+    await fetch(`${baseUrl}/leave-application`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employee_id: '1001',
+        request_text: 'I want annual leave',
+      }),
+    });
+
+    const response = await fetch(`${baseUrl}/leave-applications`);
+    const data = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.ok(data.applications.length > 0);
+  });
+});
+
 test('chat answers from the HR knowledge base', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/chat`, {
@@ -66,5 +85,31 @@ test('chat answers from the HR knowledge base', async () => {
     assert.equal(response.status, 200);
     assert.match(data.answer, /Remote work/i);
     assert.ok(data.sources.length > 0);
+  });
+});
+
+test('protected routes require API key when configured', async () => {
+  process.env.API_KEY = 'test-key';
+
+  await withServer(async (baseUrl) => {
+    const unauthorized = await fetch(`${baseUrl}/leave-balance?employee_id=1001`);
+    assert.equal(unauthorized.status, 401);
+
+    const authorized = await fetch(`${baseUrl}/leave-balance?employee_id=1001`, {
+      headers: { 'X-API-Key': 'test-key' },
+    });
+    assert.equal(authorized.status, 200);
+  });
+
+  delete process.env.API_KEY;
+});
+
+test('metrics exposes request counters', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/metrics`);
+    const data = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.ok(data.counters.requests_total >= 1);
   });
 });
