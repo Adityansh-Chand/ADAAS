@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'package:flutter/services.dart'; // For rootBundle (to load JSON)
-import 'package:adaas/Model/chat_message_model.dart'; // This has all models
-import 'package:adaas/utils/constants.dart'; // For our apiKey
+import 'package:adaas/Model/chat_message_model.dart';
+import 'package:adaas/services/app_config.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 class ChatRepo {
   static List<Map<String, dynamic>> _knowledgeBase = [];
@@ -27,7 +27,7 @@ class ChatRepo {
       for (var entry in kb) {
         List<String> keywords = (entry['keywords'] as List).cast<String>();
         for (var keyword in keywords) {
-          if (userMessage.toLowerCase().contains(keyword)) {
+          if (userMessage.toLowerCase().contains(keyword.toLowerCase())) {
             context += "Source: ${entry['source']}\n";
             context += "Policy Details: ${entry['answer']}\n\n";
             break;
@@ -43,98 +43,43 @@ class ChatRepo {
 
   static Future<String> chatTextGenerationRepo(
       List<AppMessageModel> previousMessages) async {
+    final userMessage = previousMessages.last.text ?? "";
+    final context = retrieveContext(userMessage, _knowledgeBase);
+
     try {
-      final userMessage = previousMessages.last.text ?? "";
-      String context = retrieveContext(userMessage, _knowledgeBase);
-
-      List<GeminiRequestMessage> apiMessages = previousMessages
-          .where((msg) => msg.type == MessageType.text)
-          .map((msg) => GeminiRequestMessage(
-                role: msg.role,
-                parts: [GeminiRequestPart(text: msg.text ?? "")],
-              ))
-          .toList();
-
-      GeminiRequestMessage originalUserMessage = apiMessages.removeLast();
-      String augmentedPrompt = """
-      You are "ADAAS," a corporate HR assistant.
-      Based ONLY on the following context, answer the user's question.
-      IMPORTANT: You must cite the 'Source' provided in the context at the end of your answer.
-      Do not make up information. If the context is not relevant, say you cannot help.
-
-      ---CONTEXT---
-      $context
-      ---END CONTEXT---
-
-      User's Question: "${originalUserMessage.parts.first.text}"
-      """;
-
-      apiMessages.add(GeminiRequestMessage(
-        role: "user",
-        parts: [GeminiRequestPart(text: augmentedPrompt)],
-      ));
-
-      apiMessages.add(GeminiRequestMessage(
-        role: "model",
-        parts: [
-          GeminiRequestPart(
-              text: "Okay, based on that policy, here is the answer:")
-        ],
-      ));
-
-      Dio dio = Dio();
-      final response = await dio.post(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey',
+      final response = await Dio().post(
+        '${AppConfig.hrApiBaseUrl}/chat',
         data: {
-          "contents": apiMessages.map((e) => e.toMap()).toList(),
-          "generationConfig": {
-            "temperature": 0.9,
-            "topK": 1,
-            "topP": 1,
-            "maxOutputTokens": 2048,
-            "stopSequences": []
-          },
-          "safetySettings": [
-            {
-              "category": "HARM_CATEGORY_HARASSMENT",
-              "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              "category": "HARM_CATEGORY_HATE_SPEECH",
-              "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-              "threshold": "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
+          'message': userMessage,
         },
       );
 
-      log(response.toString());
-
-      if (response.statusCode == 200) {
-        var data = response.data;
-        if (data != null &&
-            data['candidates'] != null &&
-            data['candidates'].isNotEmpty &&
-            data['candidates'][0]['content'] != null &&
-            data['candidates'][0]['content']['parts'] != null &&
-            data['candidates'][0]['content']['parts'].isNotEmpty) {
-          String generatedText =
-              data['candidates'][0]['content']['parts'][0]['text'];
-          return generatedText;
-        }
+      if (response.statusCode == 200 && response.data['answer'] is String) {
+        return response.data['answer'] as String;
       }
 
-      return "No response from the model.";
+      return _localAnswer(context);
     } catch (e) {
-      log("Error in chatTextGenerationRepo: $e");
-      return "An error occurred while generating a response.";
+      log("Backend chat unavailable, using local RAG fallback: $e");
+      return _localAnswer(context);
     }
+  }
+
+  static String _localAnswer(String context) {
+    if (context.startsWith("No specific company policy")) {
+      return "I couldn't find a matching company policy for that question.";
+    }
+
+    final firstSource = RegExp(r"Source: (.+)").firstMatch(context)?.group(1);
+    final firstPolicy = RegExp(r"Policy Details: ([\s\S]+?)(?:\n\n|$)")
+        .firstMatch(context)
+        ?.group(1);
+
+    if (firstPolicy == null) {
+      return "I couldn't find a matching company policy for that question.";
+    }
+
+    final citation = firstSource == null ? "" : "\n\nSource: $firstSource";
+    return "$firstPolicy$citation";
   }
 }
