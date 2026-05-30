@@ -4,6 +4,7 @@ import 'package:adaas/Model/leave_balance_model.dart';
 import 'package:adaas/repo/chat_repo.dart';
 import 'package:adaas/repo/leave_api_repo.dart';
 import 'package:adaas/repo/leave_application_repo.dart';
+import 'package:adaas/services/intent_router.dart';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 
@@ -46,22 +47,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await Future.delayed(const Duration(milliseconds: 100));
 
     // --- 4. INTENT ROUTING LOGIC ---
-    String userTextLower = userMessage.toLowerCase();
+    final intent = IntentRouter.route(userMessage);
 
-    // Check for "Leave Balance" intent
-    bool isLeaveBalanceRequest = userTextLower.contains("leave balance") ||
-        userTextLower.contains("my leave") ||
-        userTextLower.contains("leave count");
-
-    // Check for "Apply Leave" intent
-    bool isApplyLeaveRequest = userTextLower.contains("apply sick leave") ||
-        userTextLower.contains("apply casual leave") ||
-        userTextLower.contains("apply annual leave") ||
-        (userTextLower.contains("apply") && userTextLower.contains("leave")) ||
-        (userTextLower.contains("take") && userTextLower.contains("leave")) ||
-        (userTextLower.contains("request") && userTextLower.contains("leave"));
-
-    if (isLeaveBalanceRequest) {
+    if (intent == HRIntent.leaveBalance) {
       // --- ROUTE 1: FETCH LEAVE BALANCE (REST API) ---
       // ignore: avoid_print
       print("BLoC: Matched intent 'Leave Balance'. Calling LeaveApiRepo...");
@@ -80,7 +68,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           text: "Sorry, I couldn't fetch your leave balance right now.",
         ));
       }
-    } else if (isApplyLeaveRequest) {
+    } else if (intent == HRIntent.applyLeave) {
       // --- ROUTE 2: APPLY FOR LEAVE (LMS MOCK) ---
       // ignore: avoid_print
       print(

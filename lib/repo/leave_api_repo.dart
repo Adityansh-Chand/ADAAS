@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-// Import kIsWeb to check if running on Chrome/Web
-import 'package:flutter/foundation.dart' show kIsWeb;
 // Import the file where LeaveBalanceModel is defined
 import 'package:adaas/Model/leave_balance_model.dart';
+import 'package:adaas/services/app_config.dart';
 
 class LeaveApiRepo {
   /// Fetches the user's leave balance from the HR REST API.
@@ -31,17 +30,8 @@ class LeaveApiRepo {
 
       final dio = Dio();
 
-      String apiUrl;
-
-      // Determine the correct URL based on the platform
-      if (kIsWeb) {
-        // Running on Web (Chrome) -> Use localhost directly
-        apiUrl = 'http://localhost:3000/leave-balance?employee_id=$userId';
-      } else {
-        // Running on Mobile (Android Emulator) -> Use 10.0.2.2
-        // NOTE: If using a physical device, change this to your PC's LAN IP (e.g., 192.168.1.x)
-        apiUrl = 'http://10.0.2.2:3000/leave-balance?employee_id=$userId';
-      }
+      final apiUrl =
+          '${AppConfig.hrApiBaseUrl}/leave-balance?employee_id=$userId';
 
       // ignore: avoid_print
       print("Calling Real API: $apiUrl");
