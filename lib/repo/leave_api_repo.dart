@@ -28,7 +28,7 @@ class LeaveApiRepo {
       // OPTION 2: REAL API CALL (Active)
       // ============================================================
 
-      final dio = Dio();
+      final dio = Dio(BaseOptions(headers: AppConfig.authHeaders));
 
       final apiUrl =
           '${AppConfig.hrApiBaseUrl}/leave-balance?employee_id=$userId';

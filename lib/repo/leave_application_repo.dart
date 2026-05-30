@@ -19,7 +19,8 @@ class LeaveApplicationRepo {
     print("Applying for leave for user: $employeeId. Request: $requestText");
 
     try {
-      final response = await Dio().post(
+      final response =
+          await Dio(BaseOptions(headers: AppConfig.authHeaders)).post(
         '${AppConfig.hrApiBaseUrl}/leave-application',
         data: {
           'employee_id': employeeId,

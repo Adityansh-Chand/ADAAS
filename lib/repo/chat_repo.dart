@@ -47,7 +47,8 @@ class ChatRepo {
     final context = retrieveContext(userMessage, _knowledgeBase);
 
     try {
-      final response = await Dio().post(
+      final response =
+          await Dio(BaseOptions(headers: AppConfig.authHeaders)).post(
         '${AppConfig.hrApiBaseUrl}/chat',
         data: {
           'message': userMessage,
