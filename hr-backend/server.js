@@ -246,6 +246,13 @@ app.get('/leave-applications', requireApiKey, asyncHandler(async (req, res) => {
   res.json({ applications: fallbackLeaveApplications.slice(-50).reverse() });
 }));
 
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    request_id: req.requestId,
+  });
+});
+
 app.use((err, req, res, next) => {
   counters.errors_total += 1;
   console.error(err);

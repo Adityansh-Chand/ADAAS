@@ -43,6 +43,12 @@ npm test
 npm start
 ```
 
+With the backend running, use a second terminal:
+
+```bash
+npm run smoke
+```
+
 The backend uses MongoDB when `MONGODB_URI` is configured and falls back to
 seeded in-memory demo data otherwise. `GEMINI_API_KEY` is optional; without it,
 policy chat returns deterministic knowledge-base answers.
@@ -57,6 +63,8 @@ docker compose up --build
 
 Kubernetes manifests live in `hr-backend/k8s/deployment.yaml` and include
 readiness/liveness probes, resource limits, and Secret-backed configuration.
+For multi-replica deployments, configure `MONGODB_URI` so leave applications are
+stored outside individual application pods.
 
 ## Flutter App
 

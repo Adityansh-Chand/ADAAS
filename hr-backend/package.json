@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "smoke": "node scripts/smoke-test.js",
+    "test": "node --test server.test.js"
   },
   "keywords": [],
   "author": "",
