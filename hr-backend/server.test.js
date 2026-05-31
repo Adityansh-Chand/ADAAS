@@ -25,6 +25,17 @@ test('health reports in-memory fallback when Mongo is not configured', async () 
   });
 });
 
+test('request ID header is returned', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/health`, {
+      headers: { 'X-Request-ID': 'req-123' },
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-request-id'), 'req-123');
+  });
+});
+
 test('leave balance returns seeded employee data', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/leave-balance?employee_id=1001`);
@@ -102,6 +113,27 @@ test('protected routes require API key when configured', async () => {
   });
 
   delete process.env.API_KEY;
+});
+
+test('bad requests use safe JSON error shape', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/leave-balance`);
+    const data = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.equal(data.error, 'employee_id is required');
+  });
+});
+
+test('unknown routes use safe JSON error shape', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/missing-route`);
+    const data = await response.json();
+
+    assert.equal(response.status, 404);
+    assert.equal(data.error, 'Not found');
+    assert.ok(data.request_id);
+  });
 });
 
 test('metrics exposes request counters', async () => {
