@@ -1,0 +1,7 @@
+{
+  "employee_id": "1001",
+  "leave_type": "Sick Leave",
+  "reference_id": "LMS-123456",
+  "status": "submitted",
+  "message": "Success! Your request for **Sick Leave** has been submitted for approval."
+}

@@ -32,6 +32,8 @@ Endpoints:
 - `GET /leave-applications`
 - `POST /chat`
 
+See `DEMO.md` for terminal demo steps, curl commands, sample request/response files, and the Flutter walkthrough.
+
 Set `API_KEY` to require `X-API-Key` on HR data and chat endpoints.
 
 Run:

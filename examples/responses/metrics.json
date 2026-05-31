@@ -1,0 +1,10 @@
+{
+  "uptime_seconds": 12,
+  "counters": {
+    "requests_total": 4,
+    "errors_total": 0,
+    "chat_requests_total": 1,
+    "leave_applications_total": 1
+  },
+  "dataSource": "memory"
+}

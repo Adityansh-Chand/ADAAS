@@ -1,0 +1,12 @@
+{
+  "applications": [
+    {
+      "employee_id": "1001",
+      "leave_type": "Sick Leave",
+      "reference_id": "LMS-123456",
+      "status": "submitted",
+      "request_text": "I want to apply for sick leave tomorrow",
+      "created_at": "2026-05-31T10:00:00.000Z"
+    }
+  ]
+}
