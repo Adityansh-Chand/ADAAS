@@ -2,10 +2,11 @@ FROM node:24-slim
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY hr-backend/package*.json ./
 RUN npm ci --omit=dev
 
-COPY . .
+COPY hr-backend/ ./
+COPY assets/ /assets/
 
 ENV PORT=3000
 EXPOSE 3000
