@@ -5,7 +5,8 @@ on:
   pull_request:
 
 jobs:
-  backend:
+  backend-test:
+    name: Backend tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,10 +22,17 @@ jobs:
         run: npm ci
       - name: Run backend tests
         run: npm test
-      - name: Build backend container
-        run: docker build -t adaas-hr-backend:${{ github.sha }} .
 
-  flutter:
+  backend-docker-build:
+    name: Backend Docker image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend service image
+        run: docker build --file hr-backend/Dockerfile --tag adaas-hr-backend:${{ github.sha }} .
+
+  flutter-test:
+    name: Flutter analyze and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
