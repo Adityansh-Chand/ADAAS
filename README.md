@@ -1,4 +1,4 @@
-# ADAAS — Artificially Driven Assistant for Automated Solutions
+# ADAAS - Artificially Driven Assistant for Automated Solutions
 
 AI Flutter-based HR assistant with a Node/Express backend for leave balance, leave
 application, and HR policy chat. The app routes user messages to either HR APIs
@@ -67,6 +67,10 @@ Kubernetes manifests live in `hr-backend/k8s/deployment.yaml` and include
 readiness/liveness probes, resource limits, and Secret-backed configuration.
 For multi-replica deployments, configure `MONGODB_URI` so leave applications are
 stored outside individual application pods.
+
+Dockerfile, Docker Compose, and Kubernetes configuration are validated by static
+inspection/YAML parsing in this workspace. Runtime container and cluster
+validation remains a CI or cloud-environment step.
 
 ## Flutter App
 
