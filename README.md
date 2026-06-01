@@ -72,6 +72,15 @@ Dockerfile, Docker Compose, and Kubernetes configuration are validated by static
 inspection/YAML parsing in this workspace. Runtime container and cluster
 validation remains a CI or cloud-environment step.
 
+## Reviewer Status
+
+- Purpose: Flutter HR assistant with a Node backend for leave workflows and policy chat.
+- Quickstart: run backend tests, start `npm start` in `hr-backend`, then run `npm run smoke`.
+- Demo path: use `DEMO.md` for backend curl examples, sample request/response files, and the Flutter walkthrough.
+- Deployment status: backend tests and smoke tests pass; Flutter analyze/tests pass; backend Docker/Compose/Kubernetes config is present; backend Docker image builds are validated in CI; cloud deployment is pending.
+- Remaining gaps: production HR data integration, identity provider, managed MongoDB, managed secrets, cloud deployment, and policy data governance.
+- Portfolio index: https://github.com/Adityansh-Chand/ai-engineering-portfolio
+
 ## Flutter App
 
 Run:
