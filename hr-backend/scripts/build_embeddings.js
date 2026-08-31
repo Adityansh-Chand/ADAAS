@@ -210,37 +210,56 @@ async function main() {
     );
   }
 
-  // Compare component-wise against the storage granularity, not by cosine.
-  // Cosine is the wrong test here: rounding to STORED_PRECISION leaves a vector
+  // Compare as scaled integers, allowing one unit in the last stored place.
+  //
+  // Two earlier versions of this check were wrong, in opposite directions.
+  //
+  // The first compared by cosine. Rounding to STORED_PRECISION leaves a vector
   // very slightly off unit norm, so cosine(v, v) lands around 0.99998 for
-  // byte-identical vectors and a tight threshold reports drift that does not
-  // exist. The first run of this check did exactly that -- max component delta
-  // 0.00e+0 alongside "1 policy vector drifted".
-  const tolerance = 10 ** -embeddings.STORED_PRECISION;
+  // byte-identical vectors -- it reported drift on identical data.
+  //
+  // The second compared component deltas as floats against exactly
+  // 10**-STORED_PRECISION. That failed CI with "max component drift 1.00e-6" on
+  // all 26 vectors: ONNX genuinely accumulates ~5e-7 differently on a different
+  // CPU, and a raw value sitting near a rounding boundary then rounds one step
+  // either way. One stored unit apart is agreement, not drift -- but
+  // `1.0000000000000002e-6 > 1e-6` is true, so the check rejected it.
+  //
+  // Integers remove the float comparison entirely, and the threshold now says
+  // what it means: agree to the stored precision, give or take one unit. A real
+  // model or settings change moves values orders of magnitude more than this.
+  const scale = 10 ** embeddings.STORED_PRECISION;
+  const maxUnitsApart = 1;
   let drifted = 0;
-  let maxDelta = 0;
+  let maxUnits = 0;
   for (const [id, vector] of Object.entries(built.policies)) {
     const other = committed.policies[id];
     if (!other) { problems.push(`missing committed vector for ${id}`); continue; }
     let worst = 0;
     for (let i = 0; i < vector.length; i += 1) {
-      const delta = Math.abs(vector[i] - other[i]);
-      if (delta > worst) worst = delta;
+      const units = Math.abs(
+        Math.round(vector[i] * scale) - Math.round(other[i] * scale),
+      );
+      if (units > worst) worst = units;
     }
-    if (worst > maxDelta) maxDelta = worst;
-    if (worst > tolerance) drifted += 1;
+    if (worst > maxUnits) maxUnits = worst;
+    if (worst > maxUnitsApart) drifted += 1;
   }
+  const maxDelta = maxUnits / scale;
 
   console.log('\nverify:');
   console.log(`  model              ${built.model}`);
   console.log(`  corpus digest      ${built.corpus_digest}`);
-  console.log(`  max component drift ${maxDelta.toExponential(2)}`);
-  console.log(`  policies drifted   ${drifted} (tolerance ${tolerance})`);
+  console.log(`  max component drift ${maxDelta.toExponential(2)} `
+    + `(${maxUnits} unit(s) of ${1 / scale})`);
+  console.log(`  policies drifted   ${drifted} `
+    + `(allowed: up to ${maxUnitsApart} unit apart)`);
 
   if (drifted > 0) {
     problems.push(
-      `${drifted} policy vector(s) differ beyond rounding -- the model or its `
-      + 'settings changed, or ONNX is producing different values on this CPU',
+      `${drifted} policy vector(s) differ by more than ${maxUnitsApart} unit of `
+      + `the stored precision (worst: ${maxUnits} units) -- the model or its `
+      + 'settings changed. Cross-platform float noise is one unit at most.',
     );
   }
 
