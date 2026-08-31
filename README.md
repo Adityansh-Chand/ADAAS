@@ -837,6 +837,94 @@ files cannot drift. iOS launched on a hardcoded white and now uses
 blue, which appears nowhere in this app; it is now the app's two surface colours
 behind a `prefers-color-scheme` media query.
 
+## What is still open
+
+Ordered by how much each would change what this project can honestly claim, not
+by how hard it is. Every item is a measured gap rather than a wish list, and each
+says what would count as done.
+
+### 1. Relevance judgements written by someone with no stake in the score
+
+`eval/policy_qrels.json` exists now, and the previous "highest-value next step" is
+closed — but it was closed by the person who tuned the retriever, who had already
+seen the printed miss list for several report-half cases. The strict gates,
+the gold-must-be-graded-2 validator and printing both metrics side by side
+constrain that; they do not remove it.
+
+**Done looks like:** a second set of judgements produced by someone who has not
+seen a ranking, with inter-annotator agreement reported. Disagreement between the
+two sets is the interesting output — it puts a number on how much of the current
+score is judgement noise.
+
+### 2. Something that reads, for the last three retrieval errors
+
+Top-1 is 0.8333 and the three misses are all near-duplicate confusions with the
+gold at rank 2 or 3 (paternity vs maternity, confidentiality vs performance,
+chemotherapy vs the exclusions annex). This is not a retrieval gap: every
+bi-encoder measured scores recall@5 1.0000, so the gold is always in the pool, and
+eleven ways of re-weighting the pool changed nothing. Four more cross-encoders were
+tried and five of seven are worse than no reranking at all.
+
+**Done looks like:** a listwise or generative reranker that sees the whole
+candidate set at once and can reason about what distinguishes two documents in the
+same family — measured on the dev half like everything else, and reported even if
+it loses, which on this evidence is likely.
+
+### 3. Answerability, which is what the hard abstention tier actually needs
+
+Three signals have now been tried on the same twelve HR-shaped questions the
+corpus does not answer — document cosine, cross-encoder logit, term-level
+coverage — and all three fail on them, because all three measure similarity and
+the distinction is not one of similarity. 2 of 12 is a measured ceiling for this
+class of approach, not a tuning gap.
+
+**Done looks like:** the generation layer saying "the policy covers paternity leave
+but does not state statutory minimums" rather than retrieval trying to detect it,
+plus a fixture of expected refusals so that behaviour can be gated. That fixture
+does not exist, and without it the improvement would be unmeasurable.
+
+### 4. Error bars, which currently swamp small differences
+
+26 documents, 36 Set B queries, 18 per report half. **One query moves a score by
+5.6 points.** Several findings above — hybrid losing to dense on MRR, one reranker
+beating another — sit inside that. They are reported as measured and should be read
+as directional.
+
+**Done looks like:** a corpus and query set large enough that a single case does not
+move the headline, or bootstrap confidence intervals printed next to every number
+so the noise floor is visible. Set A should also be replaced: it is scored against
+its own answer key and is gated only as a smoke test that the vectors load.
+
+### 5. A fifth held-out intent set, before the next intent change
+
+There are four sets: 1 is burned, 2 is compromised, 3 and 4 are clean and both were
+read this round. `held_out_3` is at 0.9333 and has not returned to the 0.9667 it
+scored before the embedding model changed. The next change to intent needs a set
+written before it, in that order — which is the rule that produced set 4.
+
+### 6. The default retrieval mode is still the weakest one
+
+`lexical`, at 0.1111 on paraphrases, because `@huggingface/transformers` carries
+transitive high-severity advisories (adm-zip, sharp, via onnxruntime-node) with no
+upstream fix, and it is therefore a devDependency kept out of production images.
+`RETRIEVAL_MODE=reranked` reaches 0.8333 on the same deployment, and `/health`
+reports which mode is live and why.
+
+**Done looks like:** either an upstream fix, or moving embedding and reranking into
+a separate service so the advisories are not in the API image's dependency tree at
+all. The second is the real answer and is not built.
+
+### 7. Identity, persistence and delivery
+
+- **No identity provider.** `HR_EMPLOYEE_ID` selects a seeded demo employee. It
+  proves the app can act as different people; it proves nothing about who the user
+  is. Every endpoint that should be authorised per-employee currently is not.
+- **Notifications are in-process without Mongo** and lost on restart. They are a
+  table this service owns, deliberately — no email, no push, no delivery guarantee.
+- **No production HR integration**, managed MongoDB, managed secrets, cloud
+  deployment, or policy data governance. The corpus is a committed JSON file with
+  no owner, no review cycle and no versioning beyond git.
+
 ## Reviewer Status
 
 - **Purpose:** Flutter HR assistant with a Node backend for leave workflows and
@@ -864,19 +952,16 @@ behind a `prefers-color-scheme` media query.
   corpus does not answer (2 of 12) — now a measured limit rather than an asserted
   one, after a third signal was built, tested and rejected. Notifications are a
   table this service owns, not email or push.
-- **Remaining gaps:** the report halves are 18 queries each, so one query moves a
-  score by 5.6 points, and every number here should be read with that in mind. The
-  graded judgements that were the previous "highest-value next step" now exist and
-  showed the strict metric was not the problem; what is still outstanding is
-  judgements written by someone with **no stake in the retriever's score**, since
-  the current ones were written by the person who tuned it. The three residual
-  reranked misses are genuine near-duplicate ranking errors with the gold at rank
-  2 or 3, and closing them needs something that reads rather than scores. No
-  identity provider — `HR_EMPLOYEE_ID` selects a seeded demo employee and
-  proves nothing about who the user is; notifications are
-  in-process and lost on restart when Mongo is not configured; no email or push
-  delivery; production HR data integration, managed MongoDB, managed secrets,
-  cloud deployment, and policy data governance.
+- **Remaining gaps:** enumerated with what would count as done in
+  [What is still open](#what-is-still-open). The short version, in order:
+  relevance judgements written by someone with no stake in the score; a reranker
+  that reads rather than scores, for the last three near-duplicate errors;
+  answerability detection in the generation layer, which is the only thing left
+  that could move the hard abstention tier; error bars, since 18-query report
+  halves mean one case is worth 5.6 points; a fifth held-out intent set before the
+  next intent change; moving the model dependency out of the API image so the
+  default mode need not be the weakest one; and identity, notification delivery and
+  production data governance, none of which exist.
 - **Security posture:** `npm audit --omit=dev` reports zero vulnerabilities. Four
   high-severity advisories remain in devDependencies only (adm-zip and sharp, via
   onnxruntime-node, via the embeddings package) and have no fix available
