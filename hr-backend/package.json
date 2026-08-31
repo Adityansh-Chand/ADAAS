@@ -1,16 +1,18 @@
 {
   "name": "hr-backend",
   "version": "1.0.0",
-  "description": "ADAAS HR backend API",
+  "description": "ADAAS HR backend API: leave workflows and policy retrieval",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "smoke": "node scripts/smoke-test.js",
-    "test": "node --test server.test.js"
+    "test": "node --test server.test.js",
+    "eval": "node scripts/eval_retrieval.js",
+    "eval:gate": "node scripts/eval_retrieval.js --gate"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.5",

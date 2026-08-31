@@ -1,56 +1,62 @@
 import 'dart:async';
-import 'package:dio/dio.dart';
-// Import the file where LeaveBalanceModel is defined
 import 'package:adaas/Model/leave_balance_model.dart';
 import 'package:adaas/services/app_config.dart';
+import 'package:adaas/services/http_client.dart';
+import 'package:dio/dio.dart';
+
+/// Outcome of a leave-balance lookup.
+sealed class LeaveBalanceResult {
+  const LeaveBalanceResult();
+}
+
+class LeaveBalanceLoaded extends LeaveBalanceResult {
+  final LeaveBalanceModel balance;
+
+  const LeaveBalanceLoaded(this.balance);
+}
+
+class LeaveBalanceUnavailable extends LeaveBalanceResult {
+  final String reason;
+
+  const LeaveBalanceUnavailable(this.reason);
+}
 
 class LeaveApiRepo {
-  /// Fetches the user's leave balance from the HR REST API.
-  static Future<LeaveBalanceModel?> fetchLeaveBalance(String userId) async {
-    // ignore: avoid_print
-    print("Attempting to fetch leave balance for user: $userId");
+  static Future<LeaveBalanceResult> fetchLeaveBalance(
+    String employeeId, {
+    Dio? client,
+    String? baseUrl,
+  }) async {
+    final dio = client ?? HrHttpClient.create();
+    final root = baseUrl ?? AppConfig.hrApiBaseUrl;
 
     try {
-      // ============================================================
-      // OPTION 1: MOCK DATA (Commented out for now)
-      // ============================================================
-      /*
-      await Future.delayed(const Duration(seconds: 1));
-      final mockData = {
-        "casual_leave_balance": 5,
-        "sick_leave_balance": 8,
-        "annual_leave_balance": 12
-      };
-      return LeaveBalanceModel.fromJson(mockData);
-      */
+      final response = await dio.get(
+        '$root/leave-balance',
+        queryParameters: {'employee_id': employeeId},
+      );
 
-      // ============================================================
-      // OPTION 2: REAL API CALL (Active)
-      // ============================================================
+      final status = response.statusCode ?? 0;
+      final body = response.data;
 
-      final dio = Dio(BaseOptions(headers: AppConfig.authHeaders));
-
-      final apiUrl =
-          '${AppConfig.hrApiBaseUrl}/leave-balance?employee_id=$userId';
-
-      // ignore: avoid_print
-      print("Calling Real API: $apiUrl");
-
-      final response = await dio.get(apiUrl);
-
-      if (response.statusCode == 200) {
-        // ignore: avoid_print
-        print("API Response: ${response.data}");
-        return LeaveBalanceModel.fromJson(response.data);
-      } else {
-        // ignore: avoid_print
-        print("API Error: ${response.statusCode}");
-        return null;
+      if (status == 200 && body is Map<String, dynamic>) {
+        return LeaveBalanceLoaded(LeaveBalanceModel.fromJson(body));
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print("Leave API Error: $e");
-      return null;
+
+      if (status == 404) {
+        return const LeaveBalanceUnavailable(
+            'HR has no leave record for this employee');
+      }
+
+      if (status == 401 || status == 403) {
+        return const LeaveBalanceUnavailable(
+            'this app is not authorised to read leave balances');
+      }
+
+      return LeaveBalanceUnavailable(
+          'the HR service returned an unexpected response (status $status)');
+    } catch (error) {
+      return LeaveBalanceUnavailable(HrHttpClient.describe(error));
     }
   }
 }

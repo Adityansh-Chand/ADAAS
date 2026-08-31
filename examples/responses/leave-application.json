@@ -1,7 +1,9 @@
 {
   "employee_id": "1001",
-  "leave_type": "Sick Leave",
-  "reference_id": "LMS-123456",
+  "leave_type": "Casual Leave",
+  "days": 1,
+  "reference_id": "LMS-04A15ABC",
   "status": "submitted",
-  "message": "Success! Your request for **Sick Leave** has been submitted for approval."
+  "remaining_after": 2,
+  "message": "Submitted 1 day(s) of Casual Leave for approval. You have 2 day(s) remaining."
 }

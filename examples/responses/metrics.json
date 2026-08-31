@@ -1,10 +1,14 @@
 {
-  "uptime_seconds": 12,
+  "uptime_seconds": 0,
   "counters": {
-    "requests_total": 4,
+    "requests_total": 9,
     "errors_total": 0,
-    "chat_requests_total": 1,
-    "leave_applications_total": 1
+    "chat_requests_total": 2,
+    "chat_no_policy_total": 1,
+    "leave_applications_total": 1,
+    "leave_applications_rejected_total": 1,
+    "llm_fallback_total": 0
   },
-  "dataSource": "memory"
+  "dataSource": "memory",
+  "knowledge_base_entries": 26
 }
