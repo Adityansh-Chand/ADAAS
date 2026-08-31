@@ -1,14 +1,17 @@
 {
   "uptime_seconds": 0,
   "counters": {
-    "requests_total": 9,
+    "requests_total": 11,
     "errors_total": 0,
     "chat_requests_total": 2,
     "chat_no_policy_total": 1,
     "leave_applications_total": 1,
     "leave_applications_rejected_total": 1,
-    "llm_fallback_total": 0
+    "llm_fallback_total": 0,
+    "retrieval_dense_failures_total": 0,
+    "leave_decisions_total": 1
   },
   "dataSource": "memory",
-  "knowledge_base_entries": 26
+  "knowledge_base_entries": 26,
+  "retrieval_mode": "lexical"
 }
