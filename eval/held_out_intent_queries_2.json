@@ -1,0 +1,30 @@
+{
+  "about": "Second held-out intent set. Written AFTER the stemming and first-person fixes in lib/services/intent_router.dart were frozen, and the rules were not modified in response to the result. This exists because held_out_intent_queries.json is now burned: it revealed two general bugs (no plural stemming, first person detected from an enumerated phrase list) and the fixes for those were informed by it, so its score is no longer a clean measurement. This file is the clean one. If it is ever used to tune the rules, it must be retired the same way and a third set written.",
+  "labels": ["leaveBalance", "applyLeave", "policyQuestion"],
+  "cases": [
+    { "q": "roughly how many casual days am I sitting on", "label": "leaveBalance" },
+    { "q": "block out the 21st for me", "label": "applyLeave" },
+    { "q": "do contractors get the same insurance", "label": "policyQuestion" },
+    { "q": "I have a funeral to attend on Monday", "label": "applyLeave" },
+    { "q": "pull up my leave figures", "label": "leaveBalance" },
+    { "q": "at what point does HR involve the ICC", "label": "policyQuestion" },
+    { "q": "not going to make it in tomorrow, food poisoning", "label": "applyLeave" },
+    { "q": "how many holidays remain for me", "label": "leaveBalance" },
+    { "q": "is overtime paid or given back as time", "label": "policyQuestion" },
+    { "q": "reserve three days annual leave in March for me", "label": "applyLeave" },
+    { "q": "my leave tally please", "label": "leaveBalance" },
+    { "q": "what documents do I need for a reimbursement claim", "label": "policyQuestion" },
+    { "q": "taking the afternoon off for a school run", "label": "applyLeave" },
+    { "q": "how many sick days does the company allow in total", "label": "policyQuestion" },
+    { "q": "I want to know what leave I still hold", "label": "leaveBalance" },
+    { "q": "log me as on leave from the 8th to the 9th", "label": "applyLeave" },
+    { "q": "are pre-existing conditions excluded", "label": "policyQuestion" },
+    { "q": "whats my current casual leave position", "label": "leaveBalance" },
+    { "q": "I need the 30th off, no negotiation", "label": "applyLeave" },
+    { "q": "who signs off on a performance improvement plan", "label": "policyQuestion" },
+    { "q": "count up the leave I have spent this year", "label": "leaveBalance" },
+    { "q": "clear my calendar next Tuesday, I am out", "label": "applyLeave" },
+    { "q": "what is the escalation path for a grievance", "label": "policyQuestion" },
+    { "q": "how does the company treat unpaid leave", "label": "policyQuestion" }
+  ]
+}
