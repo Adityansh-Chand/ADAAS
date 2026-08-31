@@ -1,0 +1,194 @@
+{
+  "model": "Xenova/bge-small-en-v1.5",
+  "training_examples": 118,
+  "dev_sets": [
+    {
+      "name": "intent_queries",
+      "n": 48
+    },
+    {
+      "name": "held_out_1",
+      "n": 24
+    }
+  ],
+  "size_effect": [
+    {
+      "rule": "k-NN k=5, s^1 (incumbent)",
+      "set": "intent_queries",
+      "at64": 0.7083333333333334,
+      "at118": 0.6458333333333334,
+      "delta": -0.0625
+    },
+    {
+      "rule": "k-NN k=5, s^1 (incumbent)",
+      "set": "held_out_1",
+      "at64": 0.7916666666666666,
+      "at118": 0.75,
+      "delta": -0.04166666666666663
+    },
+    {
+      "rule": "nearest centroid",
+      "set": "intent_queries",
+      "at64": 0.8333333333333334,
+      "at118": 0.7916666666666666,
+      "delta": -0.04166666666666674
+    },
+    {
+      "rule": "nearest centroid",
+      "set": "held_out_1",
+      "at64": 0.9166666666666666,
+      "at118": 0.9166666666666666,
+      "delta": 0
+    },
+    {
+      "rule": "logistic regression, l2=1e-2",
+      "set": "intent_queries",
+      "at64": 0.8958333333333334,
+      "at118": 0.875,
+      "delta": -0.02083333333333337
+    },
+    {
+      "rule": "logistic regression, l2=1e-2",
+      "set": "held_out_1",
+      "at64": 0.875,
+      "at118": 0.9166666666666666,
+      "delta": 0.04166666666666663
+    }
+  ],
+  "forbidden": [
+    "held_out_intent_queries_2.json",
+    "held_out_intent_queries_3.json",
+    "held_out_intent_queries_4.json"
+  ],
+  "candidates": [
+    {
+      "label": "k-NN k=1",
+      "loo": 0.8983050847457628,
+      "intent_queries": 0.6875,
+      "held_out_1": 0.7916666666666666,
+      "mean": 0.7924905838041431
+    },
+    {
+      "label": "k-NN k=3, weight s^1",
+      "loo": 0.8728813559322034,
+      "intent_queries": 0.7083333333333334,
+      "held_out_1": 0.7916666666666666,
+      "mean": 0.7909604519774011
+    },
+    {
+      "label": "k-NN k=5, weight s^1 (incumbent)",
+      "loo": 0.8898305084745762,
+      "intent_queries": 0.6458333333333334,
+      "held_out_1": 0.75,
+      "mean": 0.7618879472693032
+    },
+    {
+      "label": "k-NN k=7, weight s^1",
+      "loo": 0.8898305084745762,
+      "intent_queries": 0.6875,
+      "held_out_1": 0.75,
+      "mean": 0.775776836158192
+    },
+    {
+      "label": "k-NN k=11, weight s^1",
+      "loo": 0.8813559322033898,
+      "intent_queries": 0.7083333333333334,
+      "held_out_1": 0.7083333333333334,
+      "mean": 0.7660075329566856
+    },
+    {
+      "label": "k-NN k=5, weight s^8",
+      "loo": 0.9067796610169492,
+      "intent_queries": 0.7083333333333334,
+      "held_out_1": 0.7916666666666666,
+      "mean": 0.8022598870056497
+    },
+    {
+      "label": "k-NN k=11, weight s^8",
+      "loo": 0.8983050847457628,
+      "intent_queries": 0.7291666666666666,
+      "held_out_1": 0.7916666666666666,
+      "mean": 0.806379472693032
+    },
+    {
+      "label": "k-NN k=11, weight s^16",
+      "loo": 0.9152542372881356,
+      "intent_queries": 0.7083333333333334,
+      "held_out_1": 0.7916666666666666,
+      "mean": 0.8050847457627119
+    },
+    {
+      "label": "nearest centroid",
+      "loo": 0.923728813559322,
+      "intent_queries": 0.7916666666666666,
+      "held_out_1": 0.9166666666666666,
+      "mean": 0.8773540489642184
+    },
+    {
+      "label": "centroid, k-NN k=11 s^8 breaks ties",
+      "loo": 0.8983050847457628,
+      "intent_queries": 0.7291666666666666,
+      "held_out_1": 0.7916666666666666,
+      "mean": 0.806379472693032
+    },
+    {
+      "label": "logistic regression, l2=1e-4",
+      "loo": 0.9322033898305084,
+      "intent_queries": 0.8541666666666666,
+      "held_out_1": 0.9166666666666666,
+      "mean": 0.9010122410546139
+    },
+    {
+      "label": "logistic regression, l2=1e-3",
+      "loo": 0.9152542372881356,
+      "intent_queries": 0.8541666666666666,
+      "held_out_1": 0.9166666666666666,
+      "mean": 0.8953625235404896
+    },
+    {
+      "label": "logistic regression, l2=1e-2",
+      "loo": 0.9322033898305084,
+      "intent_queries": 0.875,
+      "held_out_1": 0.9166666666666666,
+      "mean": 0.9079566854990583
+    },
+    {
+      "label": "logistic regression, l2=3e-2",
+      "loo": 0.9322033898305084,
+      "intent_queries": 0.875,
+      "held_out_1": 0.9166666666666666,
+      "mean": 0.9079566854990583
+    },
+    {
+      "label": "logistic regression, l2=1e-1",
+      "loo": 0.7203389830508474,
+      "intent_queries": 0.5833333333333334,
+      "held_out_1": 0.5416666666666666,
+      "mean": 0.6151129943502824
+    },
+    {
+      "label": "logistic regression, l2=1e-2, 900 iters",
+      "loo": 0.9322033898305084,
+      "intent_queries": 0.875,
+      "held_out_1": 0.9166666666666666,
+      "mean": 0.9079566854990583
+    }
+  ],
+  "winner": "logistic regression, l2=1e-2",
+  "confidence_calibration": {
+    "in_domain": {
+      "min": 0.23237874603121014,
+      "p5": 0.24141070912477397,
+      "median": 0.41773300362533156,
+      "max": 0.6566192244523813
+    },
+    "out_of_scope": {
+      "min": 0.16608142597638245,
+      "p5": 0.18978882336251218,
+      "median": 0.27984755960590596,
+      "max": 0.45616550897330177
+    },
+    "separable": false,
+    "floor": 0.1
+  }
+}

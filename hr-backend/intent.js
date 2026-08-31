@@ -155,16 +155,89 @@ function routeByRules(input) {
 
 // ---------------------------------------------------------------------------
 // Embedding classifier
+//
+// WHY THIS IS NO LONGER k-NEAREST-NEIGHBOUR
+//
+// It was, at k=5 with similarity-weighted votes, and that rule was never
+// compared against anything -- it was the first thing written and it stayed.
+// `npm run bakeoff:intent` compared it against twelve alternatives on the three
+// sets that are not held out, and it came last but one:
+//
+//   k-NN k=5, weight s^1 (incumbent)     LOO 0.8898  queries 0.6458  held1 0.7500
+//   k-NN k=11, weight s^8                LOO 0.8983  queries 0.7292  held1 0.7917
+//   nearest centroid                     LOO 0.9237  queries 0.7917  held1 0.9167
+//   logistic regression, l2=1e-2         LOO 0.9322  queries 0.8750  held1 0.9167
+//
+// The reason is structural rather than a matter of tuning. k-NN decides using
+// only the distances to k training points, and bge-small puts every sentence in
+// this domain into a narrow high cosine band -- so the 5th neighbour is nearly
+// as loud as the 1st, and a handful of leave-shaped phrasings in the wrong class
+// can outvote the right one. Sharpening the weights (s^8, s^16) recovers some of
+// that, which is the evidence for the diagnosis, but it does not fix it.
+//
+// A linear model uses all 384 dimensions at once, and it is fitted rather than
+// looked up: with three classes and ~118 examples it has enough data to find
+// which directions in the embedding space separate "how many are left" from
+// "book me the 14th", instead of hoping a near neighbour exists.
+//
+// The comparison also settled two things worth recording because they are not
+// what one would guess. The nearest-centroid rule -- three vectors, no
+// hyperparameters -- beats every k-NN variant. And the 54 training examples
+// added at the same time did NOT cause the improvement: they cost the incumbent
+// 0.0625 on intent_queries and were roughly neutral for the linear model
+// (-0.0208 there, +0.0417 on held_out_1). The gain is the classifier, not the
+// data, and the data was kept for coverage rather than for its score.
 // ---------------------------------------------------------------------------
 
-// Neighbours considered. Odd, so a two-way tie cannot happen; small, because the
-// training set is ~64 examples and a large k would wash out the minority classes.
-const DEFAULT_K = 5;
+// Full-batch gradient descent from a zero initialisation. No seed, because there
+// is no randomness: the same examples in the same order always produce the same
+// weights, which is what makes the reported accuracy reproducible without
+// committing a fitted artefact.
+//
+// 300 iterations at lr 4 is where the loss has flattened; the bakeoff measured
+// 900 iterations as identical to 300 on all three dev sets. L2 1e-2 was selected
+// there too, and it matters: 384 features over 118 examples is heavily
+// over-parameterised, and at l2=1e-1 the model underfits hard (mean 0.6151),
+// while 1e-4 through 3e-2 are all within 0.013 of each other. A hyperparameter
+// that flat across two orders of magnitude is one to state and stop tuning.
+const DEFAULT_ITERATIONS = 300;
+const DEFAULT_LEARNING_RATE = 4;
+const DEFAULT_L2 = 1e-2;
 
 // Below this the classifier declines and the caller falls back to the rules.
-// A message unlike anything in training should not be forced into a class on the
-// strength of a weak nearest neighbour.
-const DEFAULT_MIN_CONFIDENCE = 0.18;
+//
+// Recalibrated, because the old 0.18 was on a scale that no longer exists: it
+// applied to a k-NN vote share times a similarity, and this is a softmax
+// probability times a similarity. Carrying the number across would have been
+// arithmetic without meaning.
+//
+// WHAT THE CALIBRATION MEASURED, AND WHAT IT RULED OUT
+//
+// `npm run bakeoff:intent` scores the confidence of every dev query and of all 24
+// out-of-scope probes -- the nearest thing this project has to input that is
+// neither a leave request nor an answerable HR question:
+//
+//   in-domain, n=72      min 0.2324   median 0.4177   max 0.6566
+//   out-of-scope, n=24   min 0.1661   median 0.2798   max 0.4562
+//
+// Those ranges overlap across most of their span, so this threshold cannot be an
+// out-of-domain detector, and it is not set up as one. Two-thirds of the
+// out-of-scope probes score above the weakest genuine query.
+//
+// That is a smaller problem than it looks, because routing is not where scope is
+// decided. A question about Kubernetes routed to policyQuestion then hits
+// retrieval, where the cosine and cross-encoder floors reject it -- so the
+// consequence of a misroute here is an abstention there, not a wrong answer.
+// Meanwhile declining is genuinely expensive: the fallback is the rules, at
+// 0.5667 against the classifier's much higher figure, so a floor tuned to catch
+// out-of-scope input would trade real accuracy for a job another layer already
+// does.
+//
+// 0.10 sits below everything measured, in-domain or out. It is a guard against
+// degenerate input -- a zero or near-orthogonal vector, an embedding failure
+// returning something meaningless -- and it is documented as that rather than
+// dressed up as a confidence gate that works.
+const DEFAULT_MIN_CONFIDENCE = 0.10;
 
 function cosine(a, b) {
   let sum = 0;
@@ -173,14 +246,100 @@ function cosine(a, b) {
 }
 
 /**
+ * Fit multinomial logistic regression on embedding vectors.
+ *
+ * Exported so scripts/bakeoff_intent.js selects hyperparameters using the exact
+ * code that serves requests. A bakeoff with its own copy of the model measures
+ * its own copy.
+ *
+ * Returns `{ predict }`, where `predict(vector)` gives the label and the full
+ * softmax distribution over INTENTS.
+ */
+function fitLogisticRegression(examples, options = {}) {
+  const iterations = options.iterations ?? DEFAULT_ITERATIONS;
+  const learningRate = options.learningRate ?? DEFAULT_LEARNING_RATE;
+  const l2 = options.l2 ?? DEFAULT_L2;
+
+  const dimensions = examples.length ? examples[0].vector.length : 0;
+  const weights = INTENTS.map(() => new Array(dimensions).fill(0));
+  const bias = new Array(INTENTS.length).fill(0);
+  const target = examples.map((e) => INTENTS.indexOf(e.label));
+
+  const scores = (vector) => {
+    const out = new Array(INTENTS.length);
+    for (let c = 0; c < INTENTS.length; c += 1) {
+      let s = bias[c];
+      const w = weights[c];
+      for (let i = 0; i < dimensions; i += 1) s += w[i] * vector[i];
+      out[c] = s;
+    }
+    return out;
+  };
+
+  const softmax = (logits) => {
+    const max = Math.max(...logits);
+    const exp = logits.map((z) => Math.exp(z - max));
+    const sum = exp.reduce((acc, z) => acc + z, 0);
+    return exp.map((z) => z / sum);
+  };
+
+  for (let it = 0; it < iterations && examples.length > 0; it += 1) {
+    const gradW = INTENTS.map(() => new Array(dimensions).fill(0));
+    const gradB = new Array(INTENTS.length).fill(0);
+
+    for (let n = 0; n < examples.length; n += 1) {
+      const x = examples[n].vector;
+      const probabilities = softmax(scores(x));
+      for (let c = 0; c < INTENTS.length; c += 1) {
+        const error = probabilities[c] - (target[n] === c ? 1 : 0);
+        gradB[c] += error;
+        const g = gradW[c];
+        for (let i = 0; i < dimensions; i += 1) g[i] += error * x[i];
+      }
+    }
+
+    for (let c = 0; c < INTENTS.length; c += 1) {
+      bias[c] -= learningRate * (gradB[c] / examples.length);
+      const w = weights[c];
+      const g = gradW[c];
+      for (let i = 0; i < dimensions; i += 1) {
+        // L2 on the weights only. Penalising the bias would pull the decision
+        // towards a uniform prior over three classes for no reason -- the class
+        // balance here is 38/39/41 and the bias has nothing to overfit.
+        w[i] -= learningRate * ((g[i] / examples.length) + l2 * w[i]);
+      }
+    }
+  }
+
+  return {
+    iterations,
+    learningRate,
+    l2,
+    predict(vector) {
+      const probabilities = softmax(scores(vector));
+      let best = 0;
+      for (let c = 1; c < INTENTS.length; c += 1) {
+        if (probabilities[c] > probabilities[best]) best = c;
+      }
+      return {
+        label: INTENTS[best],
+        probability: probabilities[best],
+        probabilities: Object.fromEntries(
+          INTENTS.map((l, i) => [l, probabilities[i]]),
+        ),
+      };
+    },
+  };
+}
+
+/**
  * Build a classifier from labelled examples and their vectors.
  *
- * `vectors` maps example text -> embedding. Examples with no vector are skipped
- * loudly rather than silently, because a partially-embedded training set would
- * quietly degrade the classifier.
+ * `vectors` maps example text -> embedding. Examples with no vector are collected
+ * in `missing` rather than skipped silently, because a partially-embedded
+ * training set would quietly degrade the model and still look fitted.
  */
 function buildClassifier(trainingCases, vectors, options = {}) {
-  const k = options.k || DEFAULT_K;
   const minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
 
   const examples = [];
@@ -191,54 +350,61 @@ function buildClassifier(trainingCases, vectors, options = {}) {
     examples.push({ label: c.label, vector });
   }
 
-  return { k, minConfidence, examples, missing };
+  return {
+    minConfidence,
+    examples,
+    missing,
+    model: examples.length ? fitLogisticRegression(examples, options) : null,
+  };
 }
 
 /**
  * Classify a query vector.
  *
- * Returns `{ intent, confidence, votes }`, or `intent: null` when confidence is
- * below the floor. Confidence is the similarity-weighted vote share of the
- * winning label among the k nearest neighbours, scaled by the best similarity --
- * so a query that is only weakly like anything in training scores low even when
- * its neighbours agree.
+ * Returns `{ intent, confidence, probabilities }`, with `intent: null` when
+ * confidence is below the floor.
+ *
+ * Confidence is the winning class's softmax probability multiplied by the query's
+ * similarity to its nearest training example. Both factors are load-bearing and
+ * measure different failures:
+ *
+ *   the probability      how cleanly the three classes separate for this input.
+ *                        Low when a message is genuinely ambiguous ("do I have
+ *                        enough left to take next Friday" is both a balance
+ *                        question and nearly a request).
+ *
+ *   the top similarity   whether the input resembles the training distribution
+ *                        at all. A linear model extrapolates confidently outside
+ *                        its data -- softmax alone will happily report 0.97 for
+ *                        a sentence about Kubernetes -- so probability by itself
+ *                        cannot detect out-of-domain input, and this is the term
+ *                        that can.
+ *
+ * The product, not either alone: a confident prediction about something unlike
+ * anything in training is exactly the case worth refusing.
  */
 function classify(classifier, queryVector) {
-  if (!queryVector || classifier.examples.length === 0) {
-    return { intent: null, confidence: 0, votes: {} };
+  if (!queryVector || !classifier.model || classifier.examples.length === 0) {
+    return { intent: null, confidence: 0, probabilities: {} };
   }
 
-  const scored = classifier.examples
-    .map((e) => ({ label: e.label, similarity: cosine(queryVector, e.vector) }))
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, classifier.k);
+  const prediction = classifier.model.predict(queryVector);
 
-  const votes = {};
-  let total = 0;
-  for (const { label, similarity } of scored) {
-    const weight = Math.max(0, similarity);
-    votes[label] = (votes[label] || 0) + weight;
-    total += weight;
+  let topSimilarity = -1;
+  for (const e of classifier.examples) {
+    const similarity = cosine(queryVector, e.vector);
+    if (similarity > topSimilarity) topSimilarity = similarity;
   }
 
-  let best = null;
-  let bestWeight = -1;
-  for (const label of INTENTS) {
-    const weight = votes[label] || 0;
-    if (weight > bestWeight) { best = label; bestWeight = weight; }
-  }
-
-  const share = total > 0 ? bestWeight / total : 0;
-  const topSimilarity = scored[0].similarity;
-  const confidence = share * Math.max(0, topSimilarity);
+  const confidence = prediction.probability * Math.max(0, topSimilarity);
 
   return {
-    intent: confidence >= classifier.minConfidence ? best : null,
-    candidate: best,
+    intent: confidence >= classifier.minConfidence ? prediction.label : null,
+    candidate: prediction.label,
     confidence,
-    share,
+    probability: prediction.probability,
+    probabilities: prediction.probabilities,
     topSimilarity,
-    votes,
   };
 }
 
@@ -269,11 +435,14 @@ function route(input, classifier, queryVector) {
 
 module.exports = {
   INTENTS,
-  DEFAULT_K,
+  DEFAULT_ITERATIONS,
+  DEFAULT_LEARNING_RATE,
+  DEFAULT_L2,
   DEFAULT_MIN_CONFIDENCE,
   normalise,
   stemAll,
   routeByRules,
+  fitLogisticRegression,
   buildClassifier,
   classify,
   route,

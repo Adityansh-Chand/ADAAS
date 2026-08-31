@@ -45,18 +45,30 @@ jobs:
       # cross-encoder logits in eval/rerank_scores.json, so this needs no model
       # download and is deterministic.
       #
-      # Eleven gates, and they fire in both directions. Eight are floors, one per
-      # method and eval set. One is a ceiling: lexical retrieval scoring above
-      # 0.90 on paraphrases would mean the eval queries had leaked into the
-      # keyword lists, so failing upward trips the build too. Two cover
-      # abstention -- out-of-scope queries that must return nothing, and the
-      # converse check that the thresholds are not buying that by dropping real
-      # questions.
+      # Thirteen gates, and they fire in both directions. Eight are strict top-1
+      # floors, one per method and eval set. Two are floors on graded nDCG@5 from
+      # eval/policy_qrels.json, kept separate from the strict ones because a
+      # change that lifts nDCG while dropping top-1 has moved relevant-but-wrong
+      # documents up rather than answering more questions. One is a ceiling:
+      # lexical retrieval scoring above 0.90 on paraphrases would mean the eval
+      # queries had leaked into the keyword lists, so failing upward trips the
+      # build too. Two cover abstention -- out-of-scope queries that must return
+      # nothing, and the converse check that the thresholds are not buying that by
+      # dropping real questions.
+      #
+      # This step also validates the graded judgements before scoring on them and
+      # exits non-zero if any original gold label is graded anything other than 2.
+      # That is the guard that stops a graded view from being used to demote an
+      # inconvenient label, and it matters because the judgements were written by
+      # the same person who tuned the retriever.
       - name: Score retrieval
         run: npm run eval:gate
-      # Scores rules against the embedding classifier on four intent sets, and
-      # gates on a direct training/eval overlap check rather than on a
-      # suspiciously high accuracy -- leakage is measurable, so it is measured.
+      # Scores rules against the embedding classifier on five intent sets. Two of
+      # the five are clean -- set 3, written before the classifier existed, and
+      # set 4, written before it was rewritten -- and both are gated. The third
+      # gate is a direct training/eval overlap check rather than a suspiciously
+      # high accuracy: leakage is measurable, so it is measured, and it is what
+      # caught a case in set 4 that was a near-paraphrase of a training example.
       - name: Score intent classification
         run: npm run eval:intent:gate
 

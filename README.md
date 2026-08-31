@@ -2,9 +2,10 @@
 
 A Flutter HR assistant over a Node/Express backend. Employees check leave
 balances, file leave applications, and ask about company policy in plain
-language. A k-NN intent classifier over sentence embeddings decides which of the
-three a message is, with the original rule-based router kept as its fallback and
-its baseline, then routes it to the HR APIs or to policy retrieval.
+language. A multinomial logistic-regression classifier over sentence embeddings
+decides which of the three a message is, with the original rule-based router kept
+as its fallback and its baseline, then routes it to the HR APIs or to policy
+retrieval.
 
 Every external dependency is optional. MongoDB is used when `MONGODB_URI` is
 configured and seeded in-memory data otherwise. An LLM is used when
@@ -50,7 +51,7 @@ Seven commands. All seven should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm test               # 68 backend tests
+npm test               # 72 backend tests
 npm run eval           # lexical, dense, hybrid and reranked on identical splits
 npm run eval:intent    # rules vs the embedding classifier
 npm run embed:verify   # committed embeddings still match the corpus
@@ -107,7 +108,7 @@ Terminal 2 — smoke test against the running service:
 
 ```bash
 cd hr-backend
-npm run smoke     # 20 checks, all on response content
+npm run smoke     # 28 checks, all on response content
 ```
 
 Terminal 2 — or the app:
@@ -180,13 +181,45 @@ chemotherapy vs the exclusions annex.
 
 #### Findings worth as much as the headline
 
-- **Three of the four rerankers made it worse.** Measured on the dev half:
-  mxbai-rerank-xsmall 0.8333, no reranking 0.7778, ms-marco-MiniLM-L-6 0.7222,
-  ms-marco-MiniLM-L-12 0.7222, jina-reranker-v1-tiny 0.6111. The two ms-marco
-  cross-encoders are the usual default recommendation and both lost to doing
-  nothing; they are trained on web-search passages, and short formal policy text
-  is out of domain for them. "We measured four, three hurt, here is the one that
-  did not" is a stronger claim than "we added a reranker and it helped".
+- **Five of the seven rerankers that load made it worse.** Measured on the dev
+  half, all scoring the passage text production actually sends:
+
+  | Reranker | top-1 | MRR | ONNX weights |
+  |---|---|---|---|
+  | **mxbai-rerank-xsmall-v1** | **0.8889** | **0.9444** | 271 MB |
+  | mxbai-rerank-base-v1 | 0.8889 | 0.9352 | 704 MB |
+  | *no reranking* | *0.7778* | *0.8657* | — |
+  | jina-reranker-v1-tiny-en | 0.7778 | 0.8444 | 33 MB |
+  | ms-marco-MiniLM-L-6-v2 | 0.7222 | 0.8426 | 86 MB |
+  | ms-marco-MiniLM-L-12-v2 | 0.6667 | 0.7963 | 127 MB |
+  | bge-reranker-base | 0.6111 | 0.7778 | 1.1 GB |
+  | jina-reranker-v1-turbo-en | 0.5000 | 0.6824 | 148 MB |
+
+  The two ms-marco cross-encoders are the usual default recommendation and both
+  lost to doing nothing — they are trained on web-search passages, and short
+  formal policy text is out of domain for them. `bge-reranker-base` was added
+  specifically because it is the natural partner to a bge retriever, and it is
+  the second worst thing in the table at four times the download of the winner.
+  Neither of those is a result one would guess.
+- **A bug in the selection stage was worth 433 MB of download.** Stage 2 of the
+  bakeoff used to score candidates on *answer-only* passage text, while stage 3's
+  ablation had already shown that question + answer is better and `rerank.js`
+  sends question + answer in production. Measured on answer-only text
+  `mxbai-rerank-base-v1` wins (MRR 0.9352 to 0.9167) and would have been
+  selected, at 704 MB against 271 MB. Measured the way the service runs, the
+  small model wins outright. A selection stage has to score candidates in the
+  configuration they will be deployed in; this one did not, and the fix is a
+  three-line change that avoided a 2.6× step up in download and resident memory
+  for nothing.
+- **Fusing the retriever's score back in buys exactly nothing.** Reranking
+  discards the bi-encoder's opinion entirely, which was a choice nobody had
+  measured. Eleven combinations were then measured — reciprocal rank fusion at
+  k = 60, 10 and 1, and a min-max score blend at six weights from 0.3 to 0.9 —
+  and every one of them scored *identically* to the cross-encoder alone, top-1
+  0.8889 and MRR 0.9444. Both endpoints are in the table (w = 1.0 reproduces
+  production, w = 0.0 reproduces no reranking) so the flatness is visibly a
+  result and not a plumbing error. On this corpus the cross-encoder already knows
+  everything about the ordering that the cosine knew.
 - **The bigger embedding model bought nothing.** `bge-base-en-v1.5` — 768
   dimensions and roughly four times the download — tied on top-1 and scored
   marginally *worse* on MRR than `bge-small`. The small model is not a budget
@@ -239,58 +272,218 @@ probes and 3 in-scope ones** and described as a clean gap. Re-measured on 24 and
 36, the easy-tier gap holds and the hard tier was never tested. The claim was not
 wrong; it was narrower than it sounded.
 
-#### One gold label per query is a known limitation
+**A third signal was built and rejected**, so the limit is now measured rather
+than asserted. `npm run probe:abstention` tests the most plausible remaining
+hypothesis: a hard negative usually turns on one concept the corpus never
+mentions — parking, canteen, dog, sublet, shares — whereas a genuine paraphrase
+turns on concepts the corpus does have words for. A whole-sentence embedding
+averages that one token away, which is exactly why the existing thresholds see
+*"where can I park my car at the office"* as in-domain, so the probe scores
+**words**: every content word in the corpus and in the query is embedded, and a
+query is scored by its *least*-covered word.
 
-Each Set B case names exactly one correct policy and anything else counts as a
-miss. On a corpus with two near-duplicate families that is sometimes unfair.
-*"Can I tell a friend which clients we work with?"* is scored against
-`policy_009` (Confidentiality); `policy_001` (Code of Conduct) states that client
-data must not be disclosed, which answers the question, and is counted wrong.
+The direction is right and the size is not. Both out-of-scope tiers score below
+the in-scope median, and the words the probe picks out are the ones a reader would
+name (`dog` 0.6255, `car` 0.6505, `sublet` 0.6537, `canteen` 0.6581). But the
+highest threshold that keeps all 36 genuine queries is 0.6393, and it rejects
+**1 of 12** hard negatives with 0.0138 of margin — a threshold sitting that close
+below a real query will drop the next real query written. The declared bar was two
+rejections and 0.02 of margin, both set before the numbers were seen, so nothing
+shipped.
 
-The labels have deliberately **not** been widened. Relaxing a metric after seeing
-which cases it fails is how an evaluation stops being able to fail, and the strict
-number stays comparable to every number reported earlier in this project. The
-honest fix is graded relevance judgements written by someone other than the person
-tuning the retriever — recorded here as the next real step rather than
-approximated.
+The overlap has a clean illustration. The weakest genuine query is *"how long do I
+have to hand in my taxi receipts?"* at 0.6393, because the corpus says "local
+transport" and never "taxi" — it scores below eight of the twelve hard negatives.
+And the word `friend` is the weakest word in a hard negative (referral bonus) and
+in a genuine one (telling a friend about clients) at the same score.
 
-### Intent classification, two methods on four sets
+Three signals have now been tried on these twelve questions — document cosine,
+cross-encoder logit, term coverage — and all three fail on them. What they share
+is that they all measure similarity, and the distinction being asked for is not
+one of similarity. Detecting "the corpus discusses this and does not answer it"
+needs something that reads, which is the generation layer.
+
+#### Graded relevance judgements, and the answer they gave
+
+The previous version of this section said the single gold label per query was the
+biggest limitation, named *"Can I tell a friend which clients we work with?"* as a
+case where the retriever is marked wrong for returning a document that answers the
+question, and recorded graded judgements as the next real step. That step has now
+been taken, and **the result contradicts the claim it was meant to support.**
+
+`eval/policy_qrels.json` grades all 26 documents against each of the 36 Set B
+queries: **2** answers it, **1** is useful but incomplete, **0** is irrelevant.
+The strict single-gold metric is untouched and still gated, so nothing written in
+the qrels can move any top-1 number this project has reported. Both scorings are
+printed together:
+
+| Method | strict top-1 | nDCG@5 | top-1 relevant | top-1 answers |
+|---|---|---|---|---|
+| lexical | 0.1111 | 0.1015 | 0.1111 | 0.1111 |
+| dense | 0.7222 | 0.8174 | 0.7778 | 0.7222 |
+| hybrid | 0.7222 | 0.8140 | 0.7778 | 0.7222 |
+| **reranked** | **0.8333** | **0.8747** | **0.8889** | **0.8333** |
+
+**Of the three remaining reranked misses, zero are labelling artefacts.** Every
+one is a genuine ranking error:
+
+- *"My wife is having a baby, what am I entitled to?"* returns Maternity Leave.
+  That is graded **0**, not 1 — maternity leave is an entitlement of the pregnant
+  employee and the asker is not her. Sharing a family with the right answer is not
+  relevance.
+- *"Is chemotherapy for cancer covered by the plan?"* returns the exclusions
+  annex, graded 1: it is where a reader checks whether a treatment is excluded, but
+  it does not answer.
+- *"Can I tell a friend which clients we work with?"* — the case the old README
+  named — returns `policy_007`, **Performance Management**. The Code of Conduct
+  reading was true of an earlier configuration; the current one returns something
+  simply wrong. The previous section's example had gone stale, and the
+  measurement is what caught it.
+
+So the honest conclusion is the opposite of the one that was anticipated: the
+strict metric was not being unfair here, and the reranker's residual errors are
+real. nDCG@5 also comes in *below* the strict MRR of 0.9074 — with more relevant
+documents to place well, there is more to get wrong — so the graded view is not a
+softer grader wearing a different name.
+
+Two things it did surface. `policy_001` and `policy_009` are both graded 2 for the
+client-confidentiality question, and `policy_004` and `policy_008` are both graded
+2 for *"what happens if I use software that is not approved?"* — one forbids the
+install, the other states the consequence. Those overlaps are real properties of
+the corpus and are now recorded rather than argued about.
+
+**The weakness that remains, stated plainly:** the same person who tuned the
+retriever wrote the judgements, and had seen the printed miss list for a handful
+of report-half cases beforehand. Three things constrain that rather than excuse
+it — the strict gates are unchanged, `npm run eval` refuses to run unless every
+original gold label is graded 2 (so a gold cannot be quietly demoted to make a
+ranking look better), and both metrics are printed side by side so label breadth
+is visible as label breadth. Judgements written by someone with no stake in the
+score would still be better, and that is now the outstanding item rather than the
+graded judgements themselves.
+
+### Intent classification, two methods on five sets
 
 `npm run eval:intent` reproduces this.
 
 | Set | rules | embedding | What the set means |
 |---|---|---|---|
-| `intent_queries` | 1.0000 | 0.7083 | the rules were written with these visible |
-| `held_out_1` | 0.8750 | 0.7917 | BURNED — its failures informed rule fixes |
-| `held_out_2` | 0.4583 | 0.9583 | compromised — seen before a later change |
-| **`held_out_3`** | **0.5667** | **0.9000** | **written before the classifier existed** |
+| `intent_queries` | 1.0000 | 0.8750 | the rules were written with these visible |
+| `held_out_1` | 0.8750 | 0.9167 | BURNED — its failures informed rule fixes |
+| `held_out_2` | 0.4583 | 1.0000 | compromised — seen before a later change |
+| **`held_out_3`** | **0.5667** | **0.9333** | **written before the classifier existed** |
+| **`held_out_4`** | **0.3667** | **0.8000** | **written before the classifier was rewritten** |
 
-A k-NN classifier over bge-small embeddings of 64 labelled examples reaches
-**0.9000 on phrasing it has never seen**, against the rules' 0.5667.
+#### k-NN was the wrong classifier, and it had never been compared to anything
 
-**This number went down, and it was not reverted.** `held_out_3` scored 0.9667
-with `all-MiniLM-L6-v2`. The swap to `bge-small-en-v1.5` was made for retrieval,
-where it was worth four cases out of eighteen, and it cost two cases out of thirty
-here. MiniLM could have been kept for intent alone — the reason it was not is
-procedural, not technical: the intent model was chosen on the two sets that are
-*not* held out (the fitted set and the already-compromised `held_out_2`), where
-prefixed bge-small beat MiniLM on average, 0.8333 to 0.8021. Reversing that choice
-on the strength of the `held_out_3` number would consume the only clean set this
-classifier has, which is exactly how `held_out_1` was burned. So the trade is
-recorded rather than optimised away.
+The previous section reported 0.9000 on `held_out_3`, down from 0.9667 before the
+embedding model changed, and explained that reverting the model would burn the only
+clean set the classifier had. It also said what the honest route would be: *"a
+fourth held-out set written before anything is re-picked."*
 
-One sub-finding, because the reasoning was wrong before the measurement corrected
-it: BGE is asymmetric, trained with an instruction prefix on the query side only,
-so the intent utterances were first embedded *without* it — a k-NN vote compares
-two things a person might type, which is symmetric. That argument is tidy and it
-is wrong. Prefixing both sides scored 0.7083 / 0.9583 against 0.6667 / 0.8750
-unprefixed. Both sides being questions is what they have in common, and the prefix
-puts both in the region where the model discriminates most sharply.
+That is what happened, in that order. `eval/held_out_intent_queries_4.json` was
+written **first** — before the classifier was touched, before a single new training
+utterance existed, and before any new score was seen. Then `npm run bakeoff:intent`
+compared thirteen decision rules on the three sets that have nothing left to lose
+(the training set under leave-one-out, `intent_queries`, and the burned
+`held_out_1`). It **refuses to open sets 2, 3 and 4 at all** — not by convention,
+by throwing. Only after the winner was committed were the held-out sets read.
 
-Note the rules win on `intent_queries` — 1.0000 against 0.7292. That set was
+| Decision rule | LOO | `intent_queries` | `held_out_1` | mean |
+|---|---|---|---|---|
+| **logistic regression, L2 = 1e-2** | **0.9322** | **0.8750** | **0.9167** | **0.9080** |
+| nearest centroid | 0.9237 | 0.7917 | 0.9167 | 0.8774 |
+| k-NN k=11, weight s⁸ | 0.8983 | 0.7292 | 0.7917 | 0.8064 |
+| k-NN k=1 | 0.8983 | 0.6875 | 0.7917 | 0.7925 |
+| *k-NN k=5, weight s¹ (incumbent)* | *0.8898* | *0.6458* | *0.7500* | *0.7619* |
+
+The incumbent came **last but one of thirteen**. It was the first rule written and
+it stayed, unmeasured. The reason it loses is structural rather than a matter of
+tuning: k-NN decides from the distances to k points, and a contrastively-trained
+encoder puts every sentence in this domain into a narrow high cosine band, so the
+5th neighbour is nearly as loud as the 1st and a few leave-shaped phrasings in the
+wrong class outvote the right one. Sharpening the vote weights to s⁸ recovers part
+of it, which is the evidence for that diagnosis, but does not fix it. A linear
+model uses all 384 dimensions at once and is fitted rather than looked up.
+
+Worth noting the *nearest centroid* row — three vectors and no
+hyperparameters — beats every k-NN variant by a wide margin. Whatever else is true,
+the incumbent was not a strong baseline.
+
+**Three results that do not flatter the change:**
+
+- **The 54 new training examples did not cause the improvement.** They were written
+  at the same time and are the sort of thing that gets credited for a gain. Measured
+  separately, they *cost* the incumbent k-NN 0.0625 on `intent_queries`, cost the
+  centroid rule 0.0417, and were roughly neutral for the winner (−0.0208 on
+  `intent_queries`, +0.0417 on `held_out_1`). The gain is the classifier. The data
+  was kept for input coverage, not because it scores better, and saying so is the
+  difference between a measurement and a press release.
+- **`held_out_3` recovered to 0.9333, not to 0.9667.** Two-thirds of the loss from
+  the embedding-model swap is back; a third of it is not, and the pre-swap figure
+  has not been reached.
+- **One case in the brand-new set 4 had to be replaced after it was scored.** The
+  leakage check measured *"rules on carrying days into next year"* at 0.9135 cosine
+  against an existing training example — the closest training/eval pair in the
+  project and just under the 0.92 ceiling that fails the build. It was swapped for
+  a distinct phrasing. This happened *after* the set had been read once, which is
+  disclosed rather than glossed: the reason was a leakage measurement and not an
+  accuracy one, and removing a near-paraphrase of a training example can only have
+  made the set harder. Set 4 scored 0.8000 both before and after. Overall leakage
+  dropped from 0.9135 to 0.8708.
+
+Set 4 is the lowest held-out score and that is the point of it. It was written to
+be harder — bare noun phrases (`"leave left?"`), a stated reason with the request
+left implicit (`"moving flat next week, need the Monday"`), and policy questions
+that mention a specific number of days, which is the pattern that most often drags
+a policy question into `applyLeave`. It found six real failures the other sets do
+not contain, including two boundary cases the fixture had flagged in advance as
+deliberately ambiguous.
+
+#### The confidence floor is a guard, not a detector
+
+The old floor of 0.18 applied to a k-NN vote share; the new score is a softmax
+probability times the query's similarity to its nearest training example. Carrying
+the number across would have been arithmetic without meaning, so it was
+re-measured on dev — and the measurement said the threshold cannot do the job it
+looks like it does:
+
+| | n | min | median | max |
+|---|---|---|---|---|
+| in-domain dev queries | 72 | 0.2324 | 0.4177 | 0.6566 |
+| out-of-scope probes | 24 | 0.1661 | 0.2798 | 0.4562 |
+
+Those ranges overlap across most of their span — two-thirds of the out-of-scope
+probes score above the weakest genuine query — so this is **not** an out-of-domain
+detector and is not set up as one. That matters less than it looks: routing is not
+where scope is decided. A question about Kubernetes routed to `policyQuestion` then
+meets retrieval's own two thresholds and is rejected there. Meanwhile declining is
+genuinely expensive, because the fallback is the rules at 0.5667. The floor is set
+at 0.10, below everything measured in either group, and it is documented as a guard
+against degenerate input — a zero or near-orthogonal vector from a failed
+embedding — rather than dressed up as a confidence gate that works.
+
+The model is fitted by full-batch gradient descent from a zero initialisation: no
+seed, no shuffling, no randomness. A test asserts that fitting twice gives
+byte-identical probabilities, because the k-NN it replaced had nothing to fit and
+therefore nothing to be nondeterministic about, and that property was worth not
+losing quietly.
+
+One earlier sub-finding, kept because the reasoning was wrong before the
+measurement corrected it: BGE is asymmetric, trained with an instruction prefix on
+the query side only, so the intent utterances were first embedded *without* it — a
+k-NN vote compares two things a person might type, which is symmetric. That
+argument is tidy and it is wrong. Prefixing both sides scored 0.7083 / 0.9583
+against 0.6667 / 0.8750 unprefixed. Both sides being questions is what they have in
+common, and the prefix puts both in the region where the model discriminates most
+sharply. The vote is gone, the prefix stayed, and it is still applied to both
+sides.
+
+Note the rules still win on `intent_queries` — 1.0000 against 0.8750. That set was
 constructed to exercise rule vocabulary, and several cases are terse or artificial
 (`"leave balance"`, `"APPLY FOR LEAVE"`). It is a fair illustration of what a
-fitted set measures: the rules were built to pass it, and they do.
+fitted set measures: the rules were built to pass it, and they do. It is also the
+classifier's weakest non-training set, which is why the bakeoff selects on it.
 
 The rules are kept rather than deleted. They are the baseline the classifier has
 to beat, and they run when the classifier declines.
@@ -315,8 +508,14 @@ to beat, and they run when the classifier declines.
 - **Model choice happens in a separate script that cannot see the report half.**
   `npm run bakeoff` constructs the dev half and discards the other side, so
   selecting a bi-encoder and a reranker by score could not quietly consume the
-  numbers `npm run eval` reports. Five bi-encoders and four rerankers were scored;
-  the losers are in the tables above.
+  numbers `npm run eval` reports. Five bi-encoders, eight rerankers and eleven
+  score-combination strategies were scored; the losers are in the tables above.
+  `npm run bakeoff:intent` does the same for the intent decision rule and goes one
+  step further — it holds a list of the three held-out set filenames and **throws**
+  if asked to open one, so the discipline is enforced by the code rather than
+  promised in a comment. One reranker (`gte-multilingual-reranker-base`) has no
+  ONNX export transformers.js can load; that is recorded in the results as
+  attempted-and-unavailable rather than silently omitted.
 - **`minScore` must stay above zero in the lexical retriever.** At zero it looked
   like an improvement -- Set B top-1 0.1111 to 0.1667, recall 0.1111 to 0.3333 --
   until the scores showed every policy at exactly 0.000 on a paraphrase, with the
@@ -345,13 +544,27 @@ to beat, and they run when the classifier declines.
   retrieval over 26 documents, and 0.9667 was genuine. The nearest-neighbour
   similarity between every eval query and the training set settled it, and it is
   now the gate, because it tests the thing the ceiling was only a proxy for. It
-  reads 0.8231 against a 0.92 ceiling on the current model.
-- **Held-out sets are retired once used.**
+  reads 0.8708 against a 0.92 ceiling — and it earned its keep: growing the
+  training set pushed it to 0.9135, which located a case in the newly written
+  held-out set 4 that was a near-paraphrase of a training example. That case was
+  replaced. Without this check the set would have looked held out and not been.
+- **Held-out sets are retired once used, and replaced rather than reused.**
   `eval/held_out_intent_queries.json` revealed two general bugs, the fixes were
   informed by it, and it is labelled BURNED and kept only as a regression guard.
-  Set 2 is the clean number. Four words that had been lifted from set 2 after
-  seeing its score were removed again -- they had raised it from 0.4167 to 0.5833,
-  which would have been the set scoring vocabulary copied from itself.
+  Four words that had been lifted from set 2 after seeing its score were removed
+  again -- they had raised it from 0.4167 to 0.5833, which would have been the set
+  scoring vocabulary copied from itself. Set 3 said that if intent accuracy ever
+  became the priority the honest route was a fourth set written before anything was
+  re-picked; when it did, set 4 was written first and the work started afterwards.
+  There are now four sets, of which two are spent and two are clean, and both clean
+  ones are reported whether or not they agree.
+- **Relevance judgements cannot contradict the labels that predate them.**
+  `eval/policy_qrels.json` grades all 26 documents per query, and `npm run eval`
+  validates the fixture before scoring on it: unknown query, unknown policy id,
+  grade outside {1,2}, unjudged query, or an original gold graded anything other
+  than 2 all exit non-zero rather than warn. The last of those is the one that
+  matters -- it is what stops a graded view from being used to quietly demote an
+  inconvenient gold label -- and a test asserts it independently of the eval.
 
 ## Architecture
 
@@ -525,7 +738,7 @@ it drops below AA — see Tests.
 
 ## Tests
 
-**113 total: 68 backend, 45 Flutter.** `flutter analyze` clean.
+**117 total: 72 backend, 45 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
@@ -540,6 +753,25 @@ The ones worth knowing about:
   returned and nothing else, so the service keeps the ability to say it found
   nothing; a reranker scoring all 26 documents would always have a best guess.
   Removing the logit floor fails the suite.
+- **The logit floor decides whether to answer, not which sources to show.** This
+  test previously asserted the opposite, and was changed deliberately rather than
+  worked around: the floor used to delete sub-floor documents from ranks 2-5 as
+  well, which cost recall@5 on queries that were answered anyway (0.9444 instead
+  of 1.0000 on the Set B dev half). Both halves of the new contract are asserted,
+  because fixing one by breaking the other would be easy -- a pool whose best
+  score clears the floor keeps every candidate, and a pool whose best score does
+  not returns nothing at all.
+- **Fitting the classifier twice gives byte-identical probabilities.** The k-NN
+  the linear model replaced had nothing to fit and so nothing to be
+  nondeterministic about, and that property was worth not losing silently. If this
+  fails, every accuracy figure in this README has stopped being reproducible.
+- **The graded judgements cannot contradict the gold labels that predate them.**
+  Every original gold must still be graded 2, every judged id must exist in the
+  corpus, and every grade must be 1 or 2. This is the structural guard on
+  judgements written by the same person who tuned the retriever.
+- **The classifier holds up on the set written before it was rewritten.** Held-out
+  set 4, at 0.8000 against the rules' 0.3667 -- the lowest of the held-out scores,
+  and the only one that was created before the change it measures.
 - The `reranked` mode degrades to `dense`, not to `lexical`, when the model
   package is absent, and `/health` names the reason.
 - An unreachable, stalled, 401-ing, 422-ing and 500-ing backend each produce a
@@ -565,7 +797,8 @@ The ones worth knowing about:
 - The embedding classifier beats the rules on held-out phrasing, asserted in both
   directions so a regression either way is caught.
 - The classifier declines rather than guessing when nothing in training is close.
-- No held-out intent query is a paraphrase of a training example.
+- No held-out intent query is a paraphrase of a training example -- across all
+  four sets, which is what caught the one case in set 4 that was.
 - A decision notifies the applicant and not the approver; a refused application
   notifies nobody, because nothing happened.
 
@@ -616,24 +849,30 @@ behind a `prefers-color-scheme` media query.
   retrieval in four modes with cited sources; abstention on out-of-scope
   questions; honest failure reporting; bounded timeouts; readiness that can report
   unready; a light/dark themed client with contrast gated in CI;
-  Docker/Compose/K8s config; CI covering tests, eleven retrieval quality gates,
+  Docker/Compose/K8s config; CI covering tests, thirteen retrieval quality gates
+  (including two on graded nDCG), three intent gates plus a leakage ceiling,
   embedding and reranker verification, the smoke test, a container that is started
   and queried, and Flutter analyze/tests.
 - **Known weak spots, measured:** the default retrieval mode is lexical, at
   0.1111 on paraphrases, because the better modes need a dependency whose
   transitive advisories have no upstream fix and which is therefore kept out of
   production images. With `RETRIEVAL_MODE=reranked` the same deployment reaches
-  0.8333 retrieval top-1 and 0.9000 intent classification. Abstention works on
-  plainly off-domain questions (12 of 12) and mostly fails on HR-shaped questions
-  the corpus does not answer (2 of 12) — a limit of similarity thresholds, not a
-  tuning gap, and unchanged from the previous model. Every Set B query is scored
-  against a single gold label, which understates the retriever on a corpus with
-  two near-duplicate document families. Notifications are a table this service
-  owns, not email or push.
-- **Remaining gaps:** graded relevance judgements, written by someone other than
-  the person tuning the retriever, are the single highest-value next step — 26
-  documents and 18-query report halves mean one query moves a score by 5 points;
-  no identity provider — `HR_EMPLOYEE_ID` selects a seeded demo employee and
+  0.8333 retrieval top-1 (nDCG@5 0.8747) and 0.9333 / 0.8000 intent accuracy on
+  the two clean held-out sets. Retrieval top-1 did **not** move this round; what
+  moved was intent and the quality of the measurement. Abstention works on plainly
+  off-domain questions (12 of 12) and mostly fails on HR-shaped questions the
+  corpus does not answer (2 of 12) — now a measured limit rather than an asserted
+  one, after a third signal was built, tested and rejected. Notifications are a
+  table this service owns, not email or push.
+- **Remaining gaps:** the report halves are 18 queries each, so one query moves a
+  score by 5.6 points, and every number here should be read with that in mind. The
+  graded judgements that were the previous "highest-value next step" now exist and
+  showed the strict metric was not the problem; what is still outstanding is
+  judgements written by someone with **no stake in the retriever's score**, since
+  the current ones were written by the person who tuned it. The three residual
+  reranked misses are genuine near-duplicate ranking errors with the gold at rank
+  2 or 3, and closing them needs something that reads rather than scores. No
+  identity provider — `HR_EMPLOYEE_ID` selects a seeded demo employee and
   proves nothing about who the user is; notifications are
   in-process and lost on restart when Mongo is not configured; no email or push
   delivery; production HR data integration, managed MongoDB, managed secrets,

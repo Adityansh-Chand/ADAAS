@@ -1,0 +1,46 @@
+{
+  "about": "Fourth held-out intent set. Written BEFORE any of the changes it exists to measure: before the classifier's decision rule was touched, before a single new training utterance was written, and before any score from either was seen. Set 3 said in as many words that this is the honest route if intent accuracy becomes the priority, and it became the priority, so this file was created first and the work started afterwards. It is scored exactly once per change and never used to choose between candidates -- scripts/bakeoff_intent.js refuses to open it.",
+
+  "why_a_fourth": "Set 1 is burned: its failures informed rule fixes. Set 2 was seen before a later change. Set 3 is clean for the classifier, and precisely because it is the only clean set it cannot also be the set a decision is made on -- reading it to pick between two decision rules would spend it, which is the mistake that consumed set 1. Method selection happens on the training set (leave-one-out), on intent_queries, and on set 1, none of which have anything left to lose. Sets 2, 3 and 4 are then read once, together, and reported whether or not they agree.",
+
+  "one_case_was_replaced": "The case originally written as 'rules on carrying days into next year' was removed after the leakage check measured it at 0.9135 cosine against an existing training example ('are there limits on carrying days into next year') -- the closest training/eval pair in the whole project and just under the 0.92 ceiling that fails the build. It was replaced with 'what is the maximum leave that can be taken at a stretch'. This happened after the set had been scored once, which is disclosed rather than glossed: the accuracy was read at 0.8000 with the leaking case present and re-read after the swap. The reason for the change was a leakage measurement and not an accuracy one, and it can only have made the set harder, since a near-paraphrase of a training example is the easiest kind of case a classifier can get. Both numbers are reported in the README.",
+
+  "style_note": "Deliberately not written in the register of the other sets. The existing sets lean on office-neutral phrasing; these are blunter, more elliptical, and include the shapes a real chat box produces -- bare noun phrases with no verb, two clauses jammed together, a stated reason with the request left implicit, and questions about policy that mention a specific number of days (the pattern that most often drags a policy question into applyLeave). Three cases are deliberately near the boundary and are labelled by what the service must actually do: 'do I have enough left to take next Friday' is a balance question because the answer is a number, not a filing.",
+
+  "labels": ["leaveBalance", "applyLeave", "policyQuestion"],
+
+  "cases": [
+    { "q": "leave left?", "label": "leaveBalance" },
+    { "q": "current position on my allowance please", "label": "leaveBalance" },
+    { "q": "do I have enough left to take next Friday", "label": "leaveBalance" },
+    { "q": "I have no idea how much I have used this year", "label": "leaveBalance" },
+    { "q": "pull up the numbers on my time off", "label": "leaveBalance" },
+    { "q": "what does my sick allowance stand at now", "label": "leaveBalance" },
+    { "q": "running total of days I have taken", "label": "leaveBalance" },
+    { "q": "is there anything left in the casual bucket", "label": "leaveBalance" },
+    { "q": "show where I am against my entitlement", "label": "leaveBalance" },
+    { "q": "how far through my leave am I", "label": "leaveBalance" },
+
+    { "q": "dentist Thursday morning, put it through", "label": "applyLeave" },
+    { "q": "block out the 14th and 15th for me", "label": "applyLeave" },
+    { "q": "moving flat next week, need the Monday", "label": "applyLeave" },
+    { "q": "not going to make it in tomorrow, bad back", "label": "applyLeave" },
+    { "q": "three days from the 21st, casual", "label": "applyLeave" },
+    { "q": "my daughter's school thing is on the 8th, I should be there", "label": "applyLeave" },
+    { "q": "get me off the roster for Friday", "label": "applyLeave" },
+    { "q": "half day this afternoon, family matter", "label": "applyLeave" },
+    { "q": "wedding in the family, I will be away the whole of next week", "label": "applyLeave" },
+    { "q": "sort out a day for me on the 3rd", "label": "applyLeave" },
+
+    { "q": "is 3 days of sick leave allowed without a certificate", "label": "policyQuestion" },
+    { "q": "what is the maximum leave that can be taken at a stretch", "label": "policyQuestion" },
+    { "q": "who signs off a 10 day absence", "label": "policyQuestion" },
+    { "q": "does comp off expire", "label": "policyQuestion" },
+    { "q": "notice needed for a planned absence", "label": "policyQuestion" },
+    { "q": "are new joiners given the full entitlement in year one", "label": "policyQuestion" },
+    { "q": "difference between casual and earned leave", "label": "policyQuestion" },
+    { "q": "what the company does about leave during notice period", "label": "policyQuestion" },
+    { "q": "encashment, how does that work", "label": "policyQuestion" },
+    { "q": "is a half day counted as a full one against my allowance", "label": "policyQuestion" }
+  ]
+}

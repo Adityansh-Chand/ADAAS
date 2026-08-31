@@ -1,0 +1,98 @@
+{
+  "model": "Xenova/bge-small-en-v1.5",
+  "corpus_vocabulary": 626,
+  "groups": [
+    {
+      "label": "in-scope (Set B, both halves)",
+      "n": 36,
+      "min": 0.6392872793948565,
+      "p25": 0.7300237338327553,
+      "median": 0.7455278682899124,
+      "max": 0.9999999027392207
+    },
+    {
+      "label": "out-of-scope easy",
+      "n": 12,
+      "min": 0.5486272906364147,
+      "p25": 0.5959293168048813,
+      "median": 0.631824295165784,
+      "max": 0.6820910815643402
+    },
+    {
+      "label": "out-of-scope hard",
+      "n": 12,
+      "min": 0.6254828640199512,
+      "p25": 0.6537094559373797,
+      "median": 0.6728125549561651,
+      "max": 0.7210852907161416
+    }
+  ],
+  "safe_threshold": 0.6392872793948565,
+  "hard_rejected_at_safe_threshold": 1,
+  "margin": 0.013804415374905288,
+  "min_margin_required": 0.02,
+  "min_yield_required": 2,
+  "usable": false,
+  "hard_tier_detail": [
+    {
+      "q": "where can I park my car at the office",
+      "score": 0.6504907871056727,
+      "word": "car"
+    },
+    {
+      "q": "how do I book a meeting room for tomorrow",
+      "score": 0.653263739628496,
+      "word": "book"
+    },
+    {
+      "q": "what is the company's stock ticker symbol",
+      "score": 0.6794565877663377,
+      "word": "stock"
+    },
+    {
+      "q": "can I bring my dog into the office",
+      "score": 0.6254828640199512,
+      "word": "dog"
+    },
+    {
+      "q": "is there a subsidised canteen in the building",
+      "score": 0.6581267352877658,
+      "word": "canteen"
+    },
+    {
+      "q": "what is the policy on office music and headphones",
+      "score": 0.6728125549561651,
+      "word": "headphones"
+    },
+    {
+      "q": "do we get a bonus if we refer a friend for a job",
+      "score": 0.662074288027198,
+      "word": "friend"
+    },
+    {
+      "q": "how many days of paternity leave does the law require",
+      "score": 0.7052345805689301,
+      "word": "many"
+    },
+    {
+      "q": "what is the notice period for a contractor rather than an employee",
+      "score": 0.7210852907161416,
+      "word": "rather"
+    },
+    {
+      "q": "can I sublet my company-provided accommodation",
+      "score": 0.6537094559373797,
+      "word": "sublet"
+    },
+    {
+      "q": "which bank does the company use for payroll",
+      "score": 0.7064120036761392,
+      "word": "bank"
+    },
+    {
+      "q": "what happens to my shares if the company is acquired",
+      "score": 0.6749524520707232,
+      "word": "shares"
+    }
+  ]
+}

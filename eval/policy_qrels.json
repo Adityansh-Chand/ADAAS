@@ -1,0 +1,174 @@
+{
+  "about": "Graded relevance judgements for the Set B queries in eval/policy_queries.json. Every judged document is scored 2 or 1; anything absent is 0. This does NOT replace the single gold label in policy_queries.json -- that stays exactly as it was and stays gated, so every top-1 number reported in this project remains comparable. These labels add a second view, one that can tell the difference between a retriever returning something useless and a retriever returning a different document that also answers the question.",
+
+  "why": "The strict metric counts one document correct and 25 wrong. On a corpus where 12 of 26 documents belong to two near-duplicate families, and where several policies genuinely overlap (Code of Conduct and Confidentiality both forbid disclosing client data; IT Security and Disciplinary between them cover unapproved software and its consequence), that scoring cannot separate a ranking error from a labelling artefact. Graded judgements can. Both are reported side by side and neither replaces the other.",
+
+  "rubric": {
+    "2": "Answers the question. A reader given only this document would have what they asked for.",
+    "1": "Genuinely useful but incomplete: addresses the topic, gives adjacent or partial information, does not contain the specific fact asked for.",
+    "0": "Not relevant. Not stored -- absence from a query's map means 0."
+  },
+
+  "provenance": "Written by reading all 26 policy texts in assets/hr_knowledge_base.json and applying the rubric above, query by query, in fixture order. The honest limitation, stated rather than implied: the same person who tuned the retriever wrote these labels, and had already seen the ranked output for the handful of report-half cases the eval prints as misses. That is precisely the bias graded judgements exist to remove, so three things guard against it. First, the strict single-gold metric is unchanged and still gated, so no label written here can move the number this project has reported all along. Second, `npm run eval` asserts that every original gold is graded 2, so a gold cannot be quietly demoted to flatter a ranking. Third, both metrics are printed together, so a graded score running far ahead of the strict one reads as label breadth rather than as retrieval quality. Judgements written by someone with no stake in the retriever's score would be strictly better and remain the outstanding item.",
+
+  "self_check": "Every key must be a query present in eval/policy_queries.json cases, every judged id must exist in the corpus, and each query's original gold must be graded 2. Enforced by scripts/eval_retrieval.js, which throws rather than scoring on a fixture it cannot validate.",
+
+  "judgements": {
+    "How many days off do I get each year?": {
+      "policy_003_el_sl": 2,
+      "policy_003_cl": 1,
+      "policy_003_other": 1
+    },
+    "Can I work from my house a few days a week?": {
+      "policy_013": 2,
+      "policy_002": 1
+    },
+    "What time am I supposed to start in the morning?": {
+      "policy_002": 2,
+      "policy_013": 1
+    },
+    "My wife is having a baby, what am I entitled to?": {
+      "policy_003_pat": 2,
+      "policy_016_maternity_critical": 1,
+      "policy_016_insurance": 1
+    },
+    "I am pregnant, how long can I be away?": {
+      "policy_003_mat": 2,
+      "policy_016_maternity_critical": 1
+    },
+    "Someone is making inappropriate jokes about me": {
+      "policy_005": 2,
+      "policy_001": 1,
+      "policy_008": 1,
+      "policy_012": 1
+    },
+    "When do I get paid each month?": {
+      "policy_006": 2
+    },
+    "Am I allowed to put company files on my own USB?": {
+      "policy_004": 2,
+      "policy_009": 1,
+      "policy_008": 1
+    },
+    "I am resigning, how much notice must I give?": {
+      "policy_011": 2
+    },
+    "Who do I talk to if I am unhappy about something?": {
+      "policy_012": 2,
+      "policy_005": 1,
+      "policy_016_mental_health": 1
+    },
+    "Does the company pay for my hospital bills?": {
+      "policy_016_insurance": 2,
+      "policy_016_claims": 1,
+      "policy_016_exclusions": 1,
+      "policy_006": 1
+    },
+    "I am burnt out and need someone to talk to": {
+      "policy_016_mental_health": 2,
+      "policy_010": 1,
+      "policy_016_opd_wellness": 1
+    },
+    "How do I get money back after a business trip?": {
+      "policy_015": 2
+    },
+    "Will the company pay for a course I want to do?": {
+      "policy_014": 2,
+      "policy_007": 1
+    },
+    "What happens if I steal from the company?": {
+      "policy_008": 2,
+      "policy_001": 1
+    },
+    "Is a plastic surgery procedure covered?": {
+      "policy_016_exclusions": 2,
+      "policy_016_insurance": 1
+    },
+    "Am I allowed to smoke in the building?": {
+      "policy_010": 2
+    },
+    "Can I tell a friend which clients we work with?": {
+      "policy_009": 2,
+      "policy_001": 2,
+      "policy_004": 1
+    },
+    "What is a PIP and when do I get one?": {
+      "policy_007": 2
+    },
+    "I need two days off for a family errand": {
+      "policy_003_cl": 2,
+      "policy_003_el_sl": 1,
+      "policy_003_other": 1
+    },
+    "Is there a nurse on site if I hurt myself?": {
+      "policy_016_workplace_support": 2,
+      "policy_010": 1
+    },
+    "Do I pay upfront at the hospital or does the insurer?": {
+      "policy_016_claims": 2,
+      "policy_016_insurance": 1
+    },
+    "Are eye tests and dental visits paid for?": {
+      "policy_016_opd_wellness": 2,
+      "policy_016_insurance": 1,
+      "policy_016_exclusions": 1
+    },
+    "Is chemotherapy for cancer covered by the plan?": {
+      "policy_016_maternity_critical": 2,
+      "policy_016_insurance": 2,
+      "policy_016_exclusions": 1
+    },
+    "Can I accept a gift from a supplier?": {
+      "policy_001": 2,
+      "policy_008": 1
+    },
+    "How late can I arrive before it is a problem?": {
+      "policy_002": 2
+    },
+    "Do I have to give back my laptop when I quit?": {
+      "policy_011": 2,
+      "policy_013": 1
+    },
+    "Am I obliged to keep quiet about the project after I leave?": {
+      "policy_009": 2,
+      "policy_001": 1
+    },
+    "What are my targets assessed against at year end?": {
+      "policy_007": 2,
+      "policy_006": 1
+    },
+    "Do I get extra days for adopting a child as the father?": {
+      "policy_003_pat": 2,
+      "policy_003_mat": 1
+    },
+    "Can I get a day back for working on a Sunday?": {
+      "policy_003_other": 2
+    },
+    "Is there money for a professional certification?": {
+      "policy_014": 2,
+      "policy_007": 1
+    },
+    "How long do I have to hand in my taxi receipts?": {
+      "policy_015": 2
+    },
+    "What happens if I use software that is not approved?": {
+      "policy_004": 2,
+      "policy_008": 2
+    },
+    "Can my parents be added to the health cover?": {
+      "policy_016_insurance": 2
+    },
+    "Where do I report a fire hazard in the office?": {
+      "policy_010": 2
+    }
+  },
+
+  "notes_on_the_close_calls": [
+    "Can I tell a friend which clients we work with? -- policy_001 is graded 2 alongside policy_009. The Code of Conduct says in as many words that client data must not be disclosed. This is the case the README already named as a labelling artefact; grading it is the fix, and widening the gold label would not have been.",
+    "What happens if I use software that is not approved? -- policy_004 forbids the install, policy_008 states the consequence. The question asks what happens, so both are 2.",
+    "Is chemotherapy for cancer covered by the plan? -- policy_016_insurance covers day-care procedures and hospitalisation for illness, which answers the question without naming cancer, so 2. policy_016_exclusions is 1 because it is where a reader checks whether a treatment is excluded, not because it answers.",
+    "My wife is having a baby, what am I entitled to? -- policy_003_mat is graded 0, not 1. Maternity leave is an entitlement of the pregnant employee and the asker is not her. Sharing a family with the right answer is not relevance, and grading it 1 would have handed the retriever credit for exactly the confusion the reranker was added to fix.",
+    "I am burnt out and need someone to talk to -- policy_012 (Grievance) is graded 0. A grievance channel is for complaints about the company, not for distress. Retrievers conflate the two routinely, which is the reason to be strict rather than generous here.",
+    "Set A is not judged. Its queries are the corpus's own question fields, so a graded view of Set A would measure the same contamination the strict view already does. Set A stays strict-only and stays a smoke test."
+  ]
+}

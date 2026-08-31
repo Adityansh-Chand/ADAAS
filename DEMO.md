@@ -135,18 +135,41 @@ cd hr-backend
 npm run eval
 ```
 
-The full four-way comparison, plus the abstention tiers and eleven gates. Two
-results are reported rather than hidden: hybrid fusion does **not** beat dense
-alone, and abstention rejects 12 of 12 plainly off-domain probes but only 2 of 12
-HR-shaped questions the corpus does not answer.
+The full four-way comparison, both scorings, the abstention tiers and thirteen
+gates. Three results are reported rather than hidden: hybrid fusion does **not**
+beat dense alone; abstention rejects 12 of 12 plainly off-domain probes but only 2
+of 12 HR-shaped questions the corpus does not answer; and the graded relevance
+judgements show that **none** of the three remaining reranked misses is a labelling
+artefact -- they are genuine ranking errors, which is the opposite of what the
+previous README predicted.
 
 ```bash
 npm run bakeoff
 ```
 
-The model selection itself, on the dev half only. Five bi-encoders and four
-rerankers, including the three rerankers that made it worse and the 768-dimension
-model that was no better than the 384-dimension one.
+The model selection itself, on the dev half only. Five bi-encoders, eight
+rerankers and eleven ways of combining the two scores -- including the five
+rerankers that made it worse, the 768-dimension encoder that was no better than
+the 384-dimension one, the 1.1 GB `bge-reranker-base` that came second from last,
+and eleven fusion strategies that were all *exactly* as good as the cross-encoder
+alone.
+
+```bash
+npm run bakeoff:intent
+```
+
+The same discipline for the intent decision rule, and it will refuse to open the
+three held-out sets -- by throwing, not by convention. The incumbent k-NN came last
+but one of thirteen candidates.
+
+```bash
+npm run probe:abstention
+```
+
+A third abstention signal, built and rejected: term-level corpus coverage. It
+prints the least-covered word in every out-of-scope probe (`dog`, `car`, `sublet`,
+`canteen`) and then shows why it cannot ship -- the weakest genuine query, about
+taxi receipts, scores below eight of the twelve hard negatives.
 
 ## 5c. Intent classification, rules against embeddings
 
@@ -155,16 +178,19 @@ cd hr-backend
 npm run eval:intent
 ```
 
-Four sets, two methods, and the table says what each set is worth. The one that
-matters is `held_out_3`, written before the classifier existed: **rules 0.5667,
-embedding 0.9000**.
+Five sets, two methods, and the table says what each set is worth. Two are clean:
+`held_out_3`, written before the classifier existed, at **rules 0.5667, embedding
+0.9333**; and `held_out_4`, written before the classifier was *rewritten*, at
+**rules 0.3667, embedding 0.8000**.
 
-That 0.9000 was 0.9667 under the previous embedding model. The swap was made for
-retrieval and cost two of thirty cases here; it was not reverted, because the
-intent model was chosen on the two sets that are not held out and re-picking on
-the `held_out_3` number would burn the only clean set left. The README explains it
-at length — it is the clearest example in this project of the evaluation
-discipline costing something real.
+Set 3 previously read 0.9000, down from 0.9667 before the embedding model changed,
+and the README then said the honest way to recover it was a fourth held-out set
+written before anything was re-picked. That is exactly the order it happened in:
+set 4 first, then a dev-only comparison of thirteen decision rules, then the
+held-out sets read once. The incumbent k-NN came last but one; a plain logistic
+regression on the same vectors won. Set 3 recovered to 0.9333 -- two-thirds of the
+loss, not all of it -- and the 54 training examples added at the same time turned
+out to contribute nothing, which the README says in as many words.
 
 Try three queries the rules get wrong. With `RETRIEVAL_MODE=reranked` running:
 
