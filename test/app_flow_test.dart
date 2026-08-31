@@ -59,6 +59,22 @@ void main() {
     expect(find.textContaining('Attendance'), findsNothing);
   });
 
+  testWidgets('with no backend, routing fails rather than guessing locally',
+      (tester) async {
+    // Intent classification moved to the backend, and there is deliberately no
+    // local fallback: every intent needs the service anyway, so routing here
+    // could only produce a confidently wrong answer from the weaker of two
+    // implementations. The app says it could not work out the question.
+    await tester.pumpWidget(const MaterialApp(home: CreatePromptScreen()));
+    await tester.pump();
+
+    await send(tester, 'anything at all');
+
+    expect(find.byKey(const Key('failure-message')), findsOneWidget);
+    expect(find.textContaining("couldn't work out what you were asking"),
+        findsOneWidget);
+  });
+
   testWidgets('a balance lookup with no backend reports failure', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: CreatePromptScreen()));
     await tester.pump();

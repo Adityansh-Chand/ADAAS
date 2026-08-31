@@ -11,6 +11,7 @@ const LeaveBalance = require('./models/LeaveBalance');
 const llm = require('./llm');
 const { buildIndex, retrieve } = require('./retrieval');
 const denseRetrieval = require('./dense');
+const intentModule = require('./intent');
 const embeddings = require('./embeddings');
 const {
   ENTITLEMENTS,
@@ -37,6 +38,9 @@ const counters = {
   llm_fallback_total: 0,
   retrieval_dense_failures_total: 0,
   leave_decisions_total: 0,
+  intent_requests_total: 0,
+  intent_embedding_failures_total: 0,
+  notifications_created_total: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -54,6 +58,9 @@ const counters = {
 // to the `/assets/` the Dockerfile copies to -- true only because WORKDIR is
 // exactly one level deep. Changing WORKDIR to `/usr/src/app` would have broken
 // /chat at runtime while every build check still passed.
+const INTENT_TRAINING_PATH = path.resolve(
+  __dirname, '..', 'eval', 'intent_training.json',
+);
 const KB_PATH = process.env.KB_PATH
   ? path.resolve(process.env.KB_PATH)
   : path.resolve(__dirname, '..', 'assets', 'hr_knowledge_base.json');
@@ -62,6 +69,10 @@ let retrievalIndex = null;
 let kbError = null;
 let vectorStore = null;
 let kbById = new Map();
+// Declared with the rest of the module state rather than beside
+// loadIntentClassifier(): that function is hoisted but a `let` is not, so
+// calling it during startup hit a temporal-dead-zone error.
+let intentClassifier = null;
 
 // ---------------------------------------------------------------------------
 // Retrieval mode
@@ -131,6 +142,7 @@ function loadKnowledgeBase() {
 }
 
 loadKnowledgeBase();
+loadIntentClassifier();
 
 // ---------------------------------------------------------------------------
 // In-memory demo data
@@ -632,6 +644,14 @@ app.post('/leave-applications/:reference/decision', requireApiKey,
     }
 
     await setApplicationStatus(reference, decision, decidedBy);
+    addNotification({
+      employeeId: application.employee_id,
+      referenceId: reference,
+      decision,
+      leaveType: application.leave_type,
+      days: application.days,
+      decidedBy,
+    });
     counters.leave_decisions_total += 1;
 
     res.json({
@@ -660,6 +680,134 @@ app.get('/leave-applications', requireApiKey, asyncHandler(async (req, res) => {
   }
 
   res.json({ applications: fallbackLeaveApplications.slice(-50).reverse() });
+}));
+
+// ---------------------------------------------------------------------------
+// Intent classification
+//
+// Moved here from the Flutter client. All three intents require this service, so
+// a client-side router was pure duplication -- and the client-side retriever it
+// sat next to had already proved that two copies of a decision drift apart.
+//
+// The classifier is fitted on eval/intent_training.json and needs a query
+// embedded at request time, so it is subject to the same RETRIEVAL_MODE gating as
+// dense retrieval. With embeddings unavailable, the rules run and the response
+// says so.
+// ---------------------------------------------------------------------------
+function loadIntentClassifier() {
+  intentClassifier = null;
+  if (!vectorStore) return;
+  try {
+    const training = JSON.parse(fs.readFileSync(INTENT_TRAINING_PATH, 'utf8'));
+    const built = intentModule.buildClassifier(training.cases, vectorStore.queries);
+    if (built.missing.length) {
+      console.error(
+        `${built.missing.length} intent training example(s) have no embedding; `
+        + 'intent classification will use rules only. Run `npm run embed`.',
+      );
+      return;
+    }
+    intentClassifier = built;
+  } catch (error) {
+    console.error(`intent classifier unavailable, using rules: ${error.message}`);
+  }
+}
+
+/** Classify a message, embedding it if the configured mode allows. */
+async function classifyIntent(message) {
+  const { mode } = activeRetrievalMode();
+  if (mode === 'lexical' || !intentClassifier) {
+    return intentModule.route(message, null, null);
+  }
+  try {
+    const vector = vectorStore.queries[message]
+      || await embeddings.embedOne(message);
+    return intentModule.route(message, intentClassifier, vector);
+  } catch (error) {
+    counters.intent_embedding_failures_total += 1;
+    console.error(`intent embedding unavailable, using rules: ${error.message}`);
+    return intentModule.route(message, null, null);
+  }
+}
+
+app.post('/intent', requireApiKey, asyncHandler(async (req, res) => {
+  const message = req.body.message || '';
+  if (!message.trim()) {
+    res.status(400).json({ error: 'message is required' });
+    return;
+  }
+
+  const result = await classifyIntent(message);
+  counters.intent_requests_total += 1;
+  counters[`intent_via_${result.method}_total`] =
+    (counters[`intent_via_${result.method}_total`] || 0) + 1;
+
+  res.json({
+    intent: result.intent,
+    method: result.method,
+    confidence: result.confidence,
+  });
+}));
+
+// ---------------------------------------------------------------------------
+// Decision notifications
+//
+// A decision the applicant is never told about is not a workflow. Notifications
+// are written when a decision is recorded and read back per employee, so the app
+// can surface "your leave was rejected" rather than leaving the employee to
+// notice their balance moved.
+//
+// Deliberately a table this service owns rather than email or push: those need
+// credentials and an external dependency, and every other dependency here is
+// optional by design. What matters is that the decision produces a durable
+// record addressed to someone.
+// ---------------------------------------------------------------------------
+const fallbackNotifications = [];
+
+function addNotification({ employeeId, referenceId, decision, leaveType, days, decidedBy }) {
+  fallbackNotifications.push({
+    id: `NTF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+    employee_id: String(employeeId),
+    reference_id: referenceId,
+    decision,
+    leave_type: leaveType,
+    days,
+    decided_by: String(decidedBy),
+    read: false,
+    created_at: new Date().toISOString(),
+    message: decision === 'approved'
+      ? `Your request for ${days} day(s) of ${leaveType} (${referenceId}) was approved.`
+      : `Your request for ${days} day(s) of ${leaveType} (${referenceId}) was `
+        + `rejected. ${days} day(s) have been returned to your balance.`,
+  });
+  counters.notifications_created_total += 1;
+}
+
+app.get('/notifications', requireApiKey, asyncHandler(async (req, res) => {
+  const employeeId = req.query.employee_id;
+  if (!employeeId) {
+    res.status(400).json({ error: 'employee_id is required' });
+    return;
+  }
+
+  const unreadOnly = String(req.query.unread || '') === 'true';
+  const notifications = fallbackNotifications
+    .filter((n) => n.employee_id === String(employeeId))
+    .filter((n) => !unreadOnly || !n.read)
+    .slice(-50)
+    .reverse();
+
+  res.json({ notifications, unread: notifications.filter((n) => !n.read).length });
+}));
+
+app.post('/notifications/:id/ack', requireApiKey, asyncHandler(async (req, res) => {
+  const notification = fallbackNotifications.find((n) => n.id === req.params.id);
+  if (!notification) {
+    res.status(404).json({ error: 'Notification not found' });
+    return;
+  }
+  notification.read = true;
+  res.json({ id: notification.id, read: true });
 }));
 
 app.use((req, res) => {
@@ -706,6 +854,7 @@ module.exports.retrieveContext = retrieveContext;
 module.exports.loadKnowledgeBase = loadKnowledgeBase;
 module.exports.activeRetrievalMode = activeRetrievalMode;
 module.exports.configuredRetrievalMode = configuredRetrievalMode;
+module.exports.classifyIntent = classifyIntent;
 
 /**
  * Restore the seeded in-memory demo data.
@@ -716,6 +865,7 @@ module.exports.configuredRetrievalMode = configuredRetrievalMode;
  */
 module.exports.__resetDemoData = () => {
   fallbackLeaveApplications.length = 0;
+  fallbackNotifications.length = 0;
   for (const key of Object.keys(fallbackLeaveUsage)) delete fallbackLeaveUsage[key];
   Object.assign(fallbackLeaveUsage, SEEDED_LEAVE_USAGE());
 };

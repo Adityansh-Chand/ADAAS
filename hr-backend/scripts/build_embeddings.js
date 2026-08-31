@@ -61,7 +61,29 @@ async function build() {
   // Set A queries are the corpus's own question fields; Set B is the paraphrases.
   const setAQueries = kb.filter((e) => e.question).map((e) => e.question);
   const setBQueries = policyQueries.cases.map((c) => c.q);
-  const allQueries = [...new Set([...setAQueries, ...setBQueries])];
+
+  // Intent training examples and every intent eval query. Training vectors are
+  // what the classifier is fitted on; eval vectors let the intent eval run with
+  // no model download, exactly like the retrieval eval.
+  const intentFiles = [
+    'intent_training.json',
+    'intent_queries.json',
+    'held_out_intent_queries.json',
+    'held_out_intent_queries_2.json',
+    'held_out_intent_queries_3.json',
+  ];
+  const intentQueries = [];
+  for (const file of intentFiles) {
+    const full = path.join(EVAL_DIR, file);
+    if (!fs.existsSync(full)) {
+      throw new Error(`missing intent fixture: ${file}`);
+    }
+    for (const c of loadJson(full).cases) intentQueries.push(c.q);
+  }
+
+  const allQueries = [...new Set([
+    ...setAQueries, ...setBQueries, ...intentQueries,
+  ])];
 
   process.stdout.write(`embedding ${kb.length} policies ... `);
   const policyVectors = await embeddings.embed(kb.map(policyText));
@@ -94,6 +116,11 @@ async function build() {
     // edit without a re-embed is detectable rather than silent.
     corpus_digest: digest(kb),
     queries_digest: digest(allQueries.slice().sort()),
+    query_sources: [
+      'policy Set A (corpus question fields)',
+      'policy Set B (eval/policy_queries.json)',
+      'intent training + all four intent eval sets',
+    ],
     policies,
     queries,
   };
