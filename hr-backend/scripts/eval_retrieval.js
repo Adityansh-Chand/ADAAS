@@ -41,21 +41,36 @@
  * no model download and is deterministic. `npm run embed:verify` and
  * `npm run rerank:verify` check both still match the corpus.
  *
- * A SINGLE GOLD LABEL PER QUERY IS A KNOWN LIMITATION
+ * TWO SCORINGS, AND WHY BOTH
  *
- * Each Set B case names exactly one correct policy, and anything else counts as
- * a miss. On a corpus with two near-duplicate families that is sometimes unfair
- * to the retriever. "Can I tell a friend which clients we work with?" is scored
- * against policy_009 (Confidentiality); policy_001 (Code of Conduct) states that
- * client data must not be disclosed, which answers the question, and would still
- * be counted wrong.
+ * Each Set B case names exactly one correct policy, and under that scoring
+ * anything else is a miss. On a corpus with two near-duplicate families and
+ * several genuinely overlapping policies that is sometimes unfair: "Can I tell a
+ * friend which clients we work with?" is labelled policy_009 (Confidentiality),
+ * and policy_001 (Code of Conduct) says in as many words that client data must
+ * not be disclosed. A retriever that returns policy_001 has answered the
+ * employee's question and scores zero.
  *
- * The labels have deliberately NOT been widened to fix this. Relaxing a metric
+ * The single gold labels were NOT widened to fix that, because relaxing a metric
  * after seeing which cases it fails is how an evaluation stops being able to
- * fail, and the strict number stays comparable to every number reported earlier
- * in the project. The honest fix is graded relevance judgements written by
- * someone other than the person tuning the retriever, which is recorded in the
- * README as the next real step rather than approximated here.
+ * fail, and because every top-1 figure reported earlier in this project would
+ * stop being comparable. Instead eval/policy_qrels.json grades all 26 documents
+ * per query -- 2 answers it, 1 is useful but incomplete, 0 is irrelevant -- and
+ * both scorings are printed side by side:
+ *
+ *   strict    top-1 / recall@5 / MRR against the one gold label, gated as before
+ *   graded    nDCG@5, and how often the top result is relevant at all
+ *
+ * Neither is allowed to stand in for the other. The graded view cannot flatter
+ * the strict one, since the strict one does not read the qrels; and the strict
+ * view stays the headline. The gap between them is itself the reportable
+ * quantity: it says how much of the residual error is ranking and how much is
+ * labelling.
+ *
+ * The remaining weakness is stated in the fixture and not smoothed over here:
+ * the same person who tuned the retriever wrote the judgements. The guards
+ * against that are the unchanged strict gates, and the assertion below that
+ * every original gold is graded 2 -- so a gold cannot be quietly demoted.
  */
 
 const fs = require('fs');
@@ -69,6 +84,7 @@ const rerankModule = require('../rerank');
 const ROOT = path.resolve(__dirname, '..', '..');
 const KB_PATH = path.join(ROOT, 'assets', 'hr_knowledge_base.json');
 const QUERIES_PATH = path.join(ROOT, 'eval', 'policy_queries.json');
+const QRELS_PATH = path.join(ROOT, 'eval', 'policy_qrels.json');
 const OUT_OF_SCOPE_PATH = path.join(ROOT, 'eval', 'out_of_scope_queries.json');
 
 const TOP_K = 5;
@@ -96,6 +112,15 @@ const QUALITY_GATES = {
 // actually achieved -- 2 of 12 -- because the other 10 are not separable by a
 // similarity score at all. See the ABSTENTION note in rerank.js.
 const ABSTENTION_GATES = { easy: 12, hard: 2 };
+
+// Graded floors, on the judgements in eval/policy_qrels.json. Separate from the
+// strict gates and deliberately not a substitute for them: a change that lifts
+// nDCG while dropping strict top-1 has moved relevant-but-wrong documents up,
+// which is not the same as answering more questions.
+const GRADED_GATES = {
+  'dense B/report': 0.78,
+  'reranked B/report': 0.84,
+};
 
 // Every in-scope query must survive the abstention thresholds. A threshold that
 // buys out-of-scope rejection by silently dropping real questions is not a
@@ -151,6 +176,116 @@ function scoreRanked(cases, rank) {
 
   const n = cases.length;
   return { n, top1: top1 / n, recallAtK: inTopK / n, mrr: rrTotal / n, empty, misses };
+}
+
+/**
+ * Load the graded judgements and refuse to score on a fixture that does not
+ * validate.
+ *
+ * Every check here exists because of a specific way the fixture could lie:
+ *
+ *   unknown query      a judgement for a query that is not in the eval set is
+ *                      dead weight that looks like coverage
+ *   unknown policy id  a typo'd id silently grades nothing, which reads as "the
+ *                      retriever failed to return a relevant document"
+ *   gold not graded 2  the one label that predates the qrels must survive them.
+ *                      This is the check that stops the graded view from being
+ *                      used to quietly demote an inconvenient gold
+ *   unjudged query     a Set B query with no judgements would score nDCG 0 for
+ *                      every method and drag the average down invisibly
+ *
+ * Throws rather than warning. A partially-valid relevance fixture produces
+ * numbers that look fine and are not.
+ */
+function loadQrels(setB, kbById) {
+  const raw = loadJson(QRELS_PATH);
+  const byQuery = raw.judgements;
+  const problems = [];
+  const queryText = new Set(setB.map((c) => c.q));
+
+  for (const [q, grades] of Object.entries(byQuery)) {
+    if (!queryText.has(q)) problems.push(`judged query is not in Set B: ${JSON.stringify(q)}`);
+    for (const [id, grade] of Object.entries(grades)) {
+      if (!kbById.has(id)) problems.push(`judged id is not in the corpus: ${id} (${q})`);
+      if (![1, 2].includes(grade)) {
+        problems.push(`grade must be 1 or 2, got ${grade} for ${id} (${q})`);
+      }
+    }
+  }
+  for (const c of setB) {
+    const grades = byQuery[c.q];
+    if (!grades) {
+      problems.push(`Set B query has no judgements: ${JSON.stringify(c.q)}`);
+      continue;
+    }
+    if (grades[c.id] !== 2) {
+      problems.push(
+        `the original gold ${c.id} is graded ${grades[c.id] === undefined ? 'nothing' : grades[c.id]} `
+        + `rather than 2 for ${JSON.stringify(c.q)}`,
+      );
+    }
+  }
+
+  if (problems.length) {
+    console.error('eval/policy_qrels.json does not validate:');
+    for (const p of problems) console.error(`  - ${p}`);
+    process.exit(1);
+  }
+  return byQuery;
+}
+
+/**
+ * Graded scoring: nDCG@5 plus two readings of the top result.
+ *
+ * Gain is 2^grade - 1, so answering (3) is worth three times as much as being
+ * merely useful (1) and an irrelevant document is worth nothing. The ideal DCG
+ * is computed from that query's own judgements, so a query with one relevant
+ * document and a query with four are both scored out of their own achievable
+ * best rather than against each other.
+ *
+ * `p1Relevant` is the share of queries whose top result is graded at all, and
+ * `p1Answers` the share whose top result is graded 2. The pair matters: a method
+ * can lift the first while leaving the second flat, which means it is surfacing
+ * adjacent policies rather than answers, and that is worth seeing separately.
+ */
+function scoreGraded(cases, rank, qrels) {
+  const gain = (g) => (2 ** g) - 1;
+  const dcg = (grades) => grades
+    .reduce((sum, g, i) => sum + gain(g) / Math.log2(i + 2), 0);
+
+  let ndcgTotal = 0;
+  let p1Relevant = 0;
+  let p1Answers = 0;
+  const rescued = [];
+
+  for (const testCase of cases) {
+    const grades = qrels[testCase.q];
+    const ranked = (rank(testCase) || []).slice(0, TOP_K);
+    const got = ranked.map((x) => grades[x.entry.id] || 0);
+
+    const ideal = Object.values(grades).sort((a, b) => b - a).slice(0, TOP_K);
+    const idealDcg = dcg(ideal);
+    ndcgTotal += idealDcg === 0 ? 0 : dcg(got) / idealDcg;
+
+    if (got[0] >= 1) p1Relevant += 1;
+    if (got[0] === 2) p1Answers += 1;
+
+    // Strictly wrong, graded as answering: the cases where the two scorings
+    // disagree. Listing them is the point -- it is the evidence for how much of
+    // the strict miss rate is a labelling artefact rather than a ranking error.
+    if (ranked.length && ranked[0].entry.id !== testCase.id && got[0] === 2) {
+      rescued.push({ q: testCase.q, want: testCase.id, got: ranked[0].entry.id });
+    }
+  }
+
+  const n = cases.length;
+  return {
+    n,
+    ndcg: ndcgTotal / n,
+    p1Relevant: p1Relevant / n,
+    p1Answers: p1Answers / n,
+    rescued,
+  };
 }
 
 const fmt = (v) => v.toFixed(4);
@@ -268,11 +403,16 @@ function main() {
         + '-- run `npm run rerank:build`',
       );
     }
-    return densePool(c)
+    // Mirrors rerank.js exactly, including that the floor gates the answer
+    // rather than filtering the list -- see the note there. If these two ever
+    // disagree the eval stops measuring the service.
+    const ranked = densePool(c)
       .map((x) => ({ entry: x.entry, score: row[x.entry.id], retrievalScore: x.score }))
-      .filter((x) => x.score >= rerankModule.DEFAULT_MIN_LOGIT)
-      .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
-      .slice(0, TOP_K);
+      .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id));
+    if (ranked.length === 0 || ranked[0].score < rerankModule.DEFAULT_MIN_LOGIT) {
+      return [];
+    }
+    return ranked.slice(0, TOP_K);
   };
 
   const methods = [
@@ -288,6 +428,17 @@ function main() {
       for (const half of ['dev', 'report']) {
         results[`${name} ${set}/${half}`] = scoreRanked(splits[set][half], rank);
       }
+    }
+  }
+
+  // Graded scoring, Set B only. Set A is deliberately not judged: its queries
+  // are the corpus's own question fields, so a graded view of Set A would
+  // measure the same contamination the strict view already shows.
+  const qrels = loadQrels(setB, kbById);
+  const graded = {};
+  for (const [name, rank] of methods) {
+    for (const half of ['dev', 'report']) {
+      graded[`${name} B/${half}`] = scoreGraded(splits.B[half], rank, qrels);
     }
   }
 
@@ -311,6 +462,39 @@ function main() {
   for (const [name] of methods) {
     printRow(`${name} B/dev`, results[`${name} B/dev`]);
     printRow(`${name} B/report`, results[`${name} B/report`]);
+  }
+
+  console.log('');
+  console.log('Set B graded -- eval/policy_qrels.json, 2 = answers it, 1 = useful but');
+  console.log('         incomplete, 0 = irrelevant. nDCG@5 uses gain 2^g-1 against each');
+  console.log('         query\'s own ideal ranking. "top-1 rel" is how often the first');
+  console.log('         result is relevant at all; "top-1 ans" how often it answers.');
+  for (const [name] of methods) {
+    for (const half of ['dev', 'report']) {
+      const g = graded[`${name} B/${half}`];
+      console.log(
+        `  ${`${name} B/${half}`.padEnd(20)} n=${String(g.n).padStart(3)}   `
+        + `nDCG@${TOP_K} ${fmt(g.ndcg)}   top-1 rel ${fmt(g.p1Relevant)}   `
+        + `top-1 ans ${fmt(g.p1Answers)}`,
+      );
+    }
+  }
+
+  if (verbose) {
+    const r = graded['reranked B/report'];
+    const strict = results['reranked B/report'];
+    console.log('');
+    console.log('Where the two scorings disagree -- reranked, Set B report half.');
+    console.log(`  strict misses ${strict.misses.length}, of which `
+      + `${r.rescued.length} returned a document graded 2 (it answers the question).`);
+    for (const x of r.rescued) {
+      console.log(`      LABEL "${x.q}"`);
+      console.log(`           gold ${x.want}  returned ${x.got}  `
+        + '(graded 2: also answers it)');
+    }
+    if (r.rescued.length === 0) {
+      console.log('      none -- every strict miss is a genuine ranking error.');
+    }
   }
 
   if (verbose) {
@@ -384,6 +568,16 @@ function main() {
       + `${ok ? 'ok' : 'FAIL'}`,
     );
     if (!ok) failures.push(`${key} ${fmt(actual)} < floor ${fmt(floor)}`);
+  }
+
+  for (const [key, floor] of Object.entries(GRADED_GATES)) {
+    const actual = graded[key].ndcg;
+    const ok = actual >= floor;
+    console.log(
+      `  gate nDCG ${key.padEnd(15)} floor ${fmt(floor)}  actual ${fmt(actual)}  `
+      + `${ok ? 'ok' : 'FAIL'}`,
+    );
+    if (!ok) failures.push(`nDCG ${key} ${fmt(actual)} < floor ${fmt(floor)}`);
   }
 
   for (const [tier, floor] of Object.entries(ABSTENTION_GATES)) {

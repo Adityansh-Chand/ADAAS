@@ -15,7 +15,9 @@
     "embed:verify": "node scripts/build_embeddings.js --verify",
     "rerank:build": "node scripts/build_rerank_scores.js",
     "rerank:verify": "node scripts/build_rerank_scores.js --verify",
-    "bakeoff": "node scripts/bakeoff_retrieval.js"
+    "bakeoff": "node scripts/bakeoff_retrieval.js",
+    "bakeoff:intent": "node scripts/bakeoff_intent.js",
+    "probe:abstention": "node scripts/probe_abstention.js"
   },
   "keywords": [],
   "author": "",

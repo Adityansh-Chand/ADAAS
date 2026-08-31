@@ -75,31 +75,60 @@
       "n": 18,
       "top1": 0.7222222222222222,
       "recallAtK": 1,
-      "mrr": 0.8472222222222222
+      "mrr": 0.8425925925925926
     },
     {
       "id": "Xenova/ms-marco-MiniLM-L-12-v2",
       "note": "ms-marco cross-encoder, 12 layers",
       "n": 18,
-      "top1": 0.7222222222222222,
+      "top1": 0.6666666666666666,
       "recallAtK": 1,
-      "mrr": 0.837962962962963
+      "mrr": 0.7962962962962963
     },
     {
       "id": "jinaai/jina-reranker-v1-tiny-en",
       "note": "Jina v1 tiny",
       "n": 18,
-      "top1": 0.6111111111111112,
+      "top1": 0.7777777777777778,
       "recallAtK": 0.9444444444444444,
-      "mrr": 0.7518518518518519
+      "mrr": 0.8444444444444444
+    },
+    {
+      "id": "jinaai/jina-reranker-v1-turbo-en",
+      "note": "Jina v1 turbo, 6x tiny",
+      "n": 18,
+      "top1": 0.5,
+      "recallAtK": 0.9444444444444444,
+      "mrr": 0.6824074074074074
     },
     {
       "id": "mixedbread-ai/mxbai-rerank-xsmall-v1",
-      "note": "mixedbread xsmall",
+      "note": "mixedbread xsmall, incumbent",
       "n": 18,
-      "top1": 0.8333333333333334,
+      "top1": 0.8888888888888888,
       "recallAtK": 1,
-      "mrr": 0.9166666666666666
+      "mrr": 0.9444444444444444
+    },
+    {
+      "id": "mixedbread-ai/mxbai-rerank-base-v1",
+      "note": "mixedbread base, same family",
+      "n": 18,
+      "top1": 0.8888888888888888,
+      "recallAtK": 1,
+      "mrr": 0.9351851851851851
+    },
+    {
+      "id": "Xenova/bge-reranker-base",
+      "note": "BAAI, pairs with the bge retriever",
+      "n": 18,
+      "top1": 0.6111111111111112,
+      "recallAtK": 1,
+      "mrr": 0.7777777777777778
+    },
+    {
+      "id": "Alibaba-NLP/gte-multilingual-reranker-base",
+      "note": "Alibaba GTE",
+      "unavailable": "Unsupported model type: new"
     }
   ],
   "ablation_reranker": "mixedbread-ai/mxbai-rerank-xsmall-v1",
@@ -136,5 +165,169 @@
       "recallAtK": 1,
       "mrr": 0.9444444444444444
     }
-  ]
+  ],
+  "fusion_rerankers": [
+    "mixedbread-ai/mxbai-rerank-xsmall-v1",
+    "mixedbread-ai/mxbai-rerank-base-v1"
+  ],
+  "fusion": {
+    "mixedbread-ai/mxbai-rerank-xsmall-v1": [
+      {
+        "label": "cross-encoder only (w=1.0, production)",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "dense only (w=0.0, no reranking)",
+        "n": 18,
+        "top1": 0.7777777777777778,
+        "recallAtK": 1,
+        "mrr": 0.8657407407407407
+      },
+      {
+        "label": "RRF over both orderings, k=60",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "RRF over both orderings, k=10",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "RRF over both orderings, k=1",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "min-max blend, w=0.3",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "min-max blend, w=0.5",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "min-max blend, w=0.6",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "min-max blend, w=0.7",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "min-max blend, w=0.8",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      },
+      {
+        "label": "min-max blend, w=0.9",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9444444444444444
+      }
+    ],
+    "mixedbread-ai/mxbai-rerank-base-v1": [
+      {
+        "label": "cross-encoder only (w=1.0, production)",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "dense only (w=0.0, no reranking)",
+        "n": 18,
+        "top1": 0.7777777777777778,
+        "recallAtK": 1,
+        "mrr": 0.8657407407407407
+      },
+      {
+        "label": "RRF over both orderings, k=60",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "RRF over both orderings, k=10",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "RRF over both orderings, k=1",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "min-max blend, w=0.3",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9305555555555556
+      },
+      {
+        "label": "min-max blend, w=0.5",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "min-max blend, w=0.6",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "min-max blend, w=0.7",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "min-max blend, w=0.8",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      },
+      {
+        "label": "min-max blend, w=0.9",
+        "n": 18,
+        "top1": 0.8888888888888888,
+        "recallAtK": 1,
+        "mrr": 0.9351851851851851
+      }
+    ]
+  }
 }

@@ -35,6 +35,11 @@
 const fs = require('fs');
 const path = require('path');
 
+// For MODEL_ID only -- the id of the encoder production ships with, so a
+// later-stage-only run benchmarks against what is actually deployed. Requiring
+// this does not load a model; embeddings.js is lazy.
+const embeddings = require('../embeddings');
+
 const ROOT = path.resolve(__dirname, '..', '..');
 const KB_PATH = path.join(ROOT, 'assets', 'hr_knowledge_base.json');
 const QUERIES_PATH = path.join(ROOT, 'eval', 'policy_queries.json');
@@ -81,11 +86,25 @@ const BI_ENCODERS = [
   },
 ];
 
+// WHY THE SECOND ROUND ADDED RERANKERS AND NO BI-ENCODERS
+//
+// The first round's bi-encoder table answers that question by itself: all five
+// candidates scored recall@5 1.0000 on the dev half. Every one of them already
+// puts the right policy in the top five for every query, so the gold document is
+// never missing from the pool -- it is only in the wrong position within it. A
+// better bi-encoder has nothing left to win on this corpus, and the entire
+// remaining headroom, top-1 0.7778 to a ceiling of 1.0000, sits in the stage
+// that orders the pool. Round two therefore spends its download budget on
+// cross-encoders and on how their scores are combined, and adds no encoders.
 const RERANKERS = [
   { id: 'Xenova/ms-marco-MiniLM-L-6-v2', note: 'ms-marco cross-encoder, 6 layers' },
   { id: 'Xenova/ms-marco-MiniLM-L-12-v2', note: 'ms-marco cross-encoder, 12 layers' },
   { id: 'jinaai/jina-reranker-v1-tiny-en', note: 'Jina v1 tiny' },
-  { id: 'mixedbread-ai/mxbai-rerank-xsmall-v1', note: 'mixedbread xsmall' },
+  { id: 'jinaai/jina-reranker-v1-turbo-en', note: 'Jina v1 turbo, 6x tiny' },
+  { id: 'mixedbread-ai/mxbai-rerank-xsmall-v1', note: 'mixedbread xsmall, incumbent' },
+  { id: 'mixedbread-ai/mxbai-rerank-base-v1', note: 'mixedbread base, same family' },
+  { id: 'Xenova/bge-reranker-base', note: 'BAAI, pairs with the bge retriever' },
+  { id: 'Alibaba-NLP/gte-multilingual-reranker-base', note: 'Alibaba GTE' },
 ];
 
 function loadJson(file) {
@@ -112,9 +131,30 @@ function policyText(entry) {
   ].filter(Boolean).join('. ');
 }
 
-/** Passage text handed to a cross-encoder: no question field, no keyword list. */
-function rerankPassage(entry) {
+/**
+ * Passage text handed to a cross-encoder in the ablation: no question field.
+ *
+ * Stage 2 does NOT use this, and that is a correction rather than a preference.
+ * It used to, which meant every reranker was ranked on passage text that stage 3
+ * then went on to show was the worse of the two options, and that rerank.js does
+ * not send. The consequence was not cosmetic: measured on answer-only text the
+ * mixedbread base model beat xsmall (MRR 0.9352 to 0.9167) and would have been
+ * selected, at 704 MB of ONNX weights against 271 MB. Measured on the text
+ * production actually sends, xsmall wins (0.9444 to 0.9352) and the larger
+ * download buys nothing.
+ *
+ * A selection stage must score candidates in the configuration they will be
+ * deployed in. This is kept only so the ablation can still isolate the effect of
+ * the question field.
+ */
+function rerankPassageAnswerOnly(entry) {
   return [entry.category || '', entry.answer || ''].filter(Boolean).join('. ');
+}
+
+/** The passage text rerank.js sends in production. What stage 2 scores. */
+function rerankPassage(entry) {
+  return [entry.question || '', entry.category || '', entry.answer || '']
+    .filter(Boolean).join('. ');
 }
 
 let transformers = null;
@@ -230,10 +270,22 @@ async function stageReranker(kb, cases, winner) {
 
   const rows = [{ id: '(none)', note: 'baseline', ...baseline }];
   for (const cand of RERANKERS) {
-    const tok = await t.AutoTokenizer.from_pretrained(cand.id);
-    const model = await t.AutoModelForSequenceClassification.from_pretrained(
-      cand.id, { dtype: 'fp32' },
-    );
+    // A candidate with no usable ONNX export is a fact about the candidate, not
+    // a reason to abandon the comparison. Recorded and skipped, so the table
+    // shows what was attempted rather than only what happened to work.
+    let tok;
+    let model;
+    try {
+      tok = await t.AutoTokenizer.from_pretrained(cand.id);
+      model = await t.AutoModelForSequenceClassification.from_pretrained(
+        cand.id, { dtype: 'fp32' },
+      );
+    } catch (error) {
+      rows.push({ ...cand, unavailable: String(error.message).slice(0, 200) });
+      console.log(`  ${cand.id.padEnd(40)} unavailable -- `
+        + `${String(error.message).slice(0, 90)}`);
+      continue;
+    }
 
     const reranked = new Map();
     for (const c of cases) {
@@ -308,8 +360,8 @@ async function stageAblation(kb, cases, winner, rerankerId) {
   ].filter(Boolean).join('. ');
 
   const variants = [
-    { pool: 10, text: rerankPassage, label: 'pool 10, answer only' },
-    { pool: 26, text: rerankPassage, label: 'pool 26 (full corpus), answer only' },
+    { pool: 10, text: rerankPassageAnswerOnly, label: 'pool 10, answer only' },
+    { pool: 26, text: rerankPassageAnswerOnly, label: 'pool 26 (full corpus), answer only' },
     { pool: 10, text: withQuestion, label: 'pool 10, question + answer' },
     { pool: 26, text: withQuestion, label: 'pool 26 (full corpus), question + answer' },
   ];
@@ -341,6 +393,152 @@ async function stageAblation(kb, cases, winner, rerankerId) {
   return rows;
 }
 
+/**
+ * STAGE 4 -- how to combine the two scores, rather than which reranker to use.
+ *
+ * Production currently throws the retriever's opinion away. The cross-encoder
+ * scores the top 10 and its logit alone decides the order, so a document the
+ * bi-encoder ranked first and the cross-encoder ranked fourth ends up fourth on
+ * the cross-encoder's word alone. That is a choice, and it was never measured.
+ *
+ * It is worth measuring because the two scorers fail differently -- the same
+ * argument that justified the reranker in the first place. The bi-encoder is
+ * weak at separating near-duplicates and reliable at topic; the cross-encoder is
+ * the reverse often enough that three of the four candidates in round one scored
+ * below doing nothing at all. Combining them can beat either, and the honest
+ * outcome is that it might not.
+ *
+ * Both families of combination are tried:
+ *
+ *   rank fusion   reciprocal rank fusion over the two orderings. Needs no
+ *                 normalisation, which is why dense.js already uses it for
+ *                 lexical/dense. `k` matters far more here than it does there:
+ *                 with only 10 candidates, k=60 flattens 1/(k+rank) almost to a
+ *                 constant, so the standard constant is close to averaging the
+ *                 two ranks. Small k is also tried.
+ *
+ *   score fusion  weighted sum after per-query min-max normalisation. Raw values
+ *                 are not comparable -- cosines sit in a narrow band near 0.5,
+ *                 logits range over roughly [-9, +6] -- and normalising within
+ *                 each query's own pool is the cheapest defensible way to put
+ *                 them on one scale without inventing a calibration.
+ *
+ * `w` is the weight on the cross-encoder, so w=1.0 reproduces production exactly
+ * and w=0.0 reproduces no reranking. Both endpoints are in the table on purpose:
+ * a fusion result that does not bracket its own endpoints is a bug.
+ */
+async function stageFusion(kb, cases, winner, rerankerId) {
+  const t = await tf();
+  console.log('');
+  console.log('STAGE 4 -- fusing the retriever and the reranker');
+  console.log(`  retriever: ${winner.id}   reranker: ${rerankerId}   `
+    + `pool: ${RERANK_POOL}`);
+  console.log('');
+
+  const policyVectors = await embedAll(
+    winner.id, kb.map((e) => (winner.passagePrefix || '') + policyText(e)),
+  );
+  const queryVectors = await embedAll(
+    winner.id, cases.map((c) => (winner.queryPrefix || '') + c.q),
+  );
+  const byQuery = new Map(cases.map((c, i) => [c.q, queryVectors[i]]));
+
+  const tok = await t.AutoTokenizer.from_pretrained(rerankerId);
+  const model = await t.AutoModelForSequenceClassification.from_pretrained(
+    rerankerId, { dtype: 'fp32' },
+  );
+
+  // question + category + answer: the passage text the ablation selected and the
+  // text rerank.js actually sends in production.
+  const passage = (entry) => [
+    entry.question || '', entry.category || '', entry.answer || '',
+  ].filter(Boolean).join('. ');
+
+  // Score every pool once, then evaluate every combination over the same
+  // numbers. Anything else would let model nondeterminism masquerade as a
+  // difference between strategies.
+  const pools = new Map();
+  for (const c of cases) {
+    const candidates = kb
+      .map((entry, i) => ({ entry, cos: cosine(byQuery.get(c.q), policyVectors[i]) }))
+      .sort((a, b) => b.cos - a.cos || a.entry.id.localeCompare(b.entry.id))
+      .slice(0, RERANK_POOL);
+    const inputs = tok(candidates.map(() => c.q), {
+      text_pair: candidates.map((x) => passage(x.entry)),
+      padding: true,
+      truncation: true,
+    });
+    const { logits } = await model(inputs);
+    const scores = logits.tolist().map((r) => r[0]);
+    pools.set(c.q, candidates.map((x, i) => ({ ...x, logit: scores[i] })));
+  }
+
+  const order = (pool, key) => pool.slice()
+    .sort((a, b) => b[key] - a[key] || a.entry.id.localeCompare(b.entry.id));
+
+  const rankMap = (pool, key) => {
+    const m = new Map();
+    order(pool, key).forEach((x, i) => m.set(x.entry.id, i));
+    return m;
+  };
+
+  const rrf = (k) => (c) => {
+    const pool = pools.get(c.q);
+    const dRank = rankMap(pool, 'cos');
+    const rRank = rankMap(pool, 'logit');
+    return pool
+      .map((x) => ({
+        entry: x.entry,
+        score: 1 / (k + dRank.get(x.entry.id) + 1)
+          + 1 / (k + rRank.get(x.entry.id) + 1),
+      }))
+      .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
+      .slice(0, TOP_K);
+  };
+
+  const blend = (w) => (c) => {
+    const pool = pools.get(c.q);
+    const norm = (vals) => {
+      const lo = Math.min(...vals);
+      const hi = Math.max(...vals);
+      // A pool where every score is identical carries no information; treat it
+      // as all-equal rather than dividing by zero.
+      return vals.map((v) => (hi === lo ? 0.5 : (v - lo) / (hi - lo)));
+    };
+    const cosN = norm(pool.map((x) => x.cos));
+    const logitN = norm(pool.map((x) => x.logit));
+    return pool
+      .map((x, i) => ({ entry: x.entry, score: w * logitN[i] + (1 - w) * cosN[i] }))
+      .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
+      .slice(0, TOP_K);
+  };
+
+  const strategies = [
+    { label: 'cross-encoder only (w=1.0, production)', rank: blend(1.0) },
+    { label: 'dense only (w=0.0, no reranking)', rank: blend(0.0) },
+    { label: 'RRF over both orderings, k=60', rank: rrf(60) },
+    { label: 'RRF over both orderings, k=10', rank: rrf(10) },
+    { label: 'RRF over both orderings, k=1', rank: rrf(1) },
+    { label: 'min-max blend, w=0.3', rank: blend(0.3) },
+    { label: 'min-max blend, w=0.5', rank: blend(0.5) },
+    { label: 'min-max blend, w=0.6', rank: blend(0.6) },
+    { label: 'min-max blend, w=0.7', rank: blend(0.7) },
+    { label: 'min-max blend, w=0.8', rank: blend(0.8) },
+    { label: 'min-max blend, w=0.9', rank: blend(0.9) },
+  ];
+
+  const rows = [];
+  for (const s of strategies) {
+    const m = score(cases, s.rank);
+    rows.push({ label: s.label, ...m });
+    console.log(
+      `  ${s.label.padEnd(42)} top-1 ${fmt(m.top1)}  `
+      + `recall@5 ${fmt(m.recallAtK)}  MRR ${fmt(m.mrr)}`,
+    );
+  }
+  return rows;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const stageArg = (args.find((a) => a.startsWith('--stage='))
@@ -359,19 +557,48 @@ async function main() {
 
   // Ranked by MRR rather than top-1: MRR uses the whole ranking, so it is the
   // less noisy signal on 18 cases, and reranking consumes a ranking.
-  const bestBi = (biRows || BI_ENCODERS.map((c) => ({ ...c, mrr: 0 })))
-    .slice().sort((a, b) => b.mrr - a.mrr)[0];
+  //
+  // When stage 1 is skipped there is nothing to rank, so the retriever the
+  // service actually ships with is used. Falling back to the first entry in the
+  // candidate list instead -- as this did -- silently benchmarked the later
+  // stages against all-MiniLM-L6-v2, which production stopped using.
+  const bestBi = biRows
+    ? biRows.slice().sort((a, b) => b.mrr - a.mrr)[0]
+    : BI_ENCODERS.find((c) => c.id === embeddings.MODEL_ID) || BI_ENCODERS[0];
 
-  if (stageArg === 'all' || stageArg === 'reranker' || stageArg === 'ablation') {
+  if (stageArg === 'all' || stageArg === 'reranker'
+      || stageArg === 'ablation' || stageArg === 'fusion') {
     out.reranker_retriever = bestBi.id;
     const rrRows = await stageReranker(kb, cases, bestBi);
     out.rerankers = rrRows;
 
+    const bestRr = rrRows
+      .filter((r) => r.id !== '(none)' && !r.unavailable)
+      .slice().sort((a, b) => b.mrr - a.mrr)[0];
+
     if (stageArg === 'all' || stageArg === 'ablation') {
-      const bestRr = rrRows.filter((r) => r.id !== '(none)')
-        .slice().sort((a, b) => b.mrr - a.mrr)[0];
       out.ablation_reranker = bestRr.id;
       out.ablation = await stageAblation(kb, cases, bestBi, bestRr.id);
+    }
+
+    if (stageArg === 'all' || stageArg === 'fusion') {
+      // Fusion is measured on the top TWO rerankers, not just the winner, and
+      // the reason is a decision this project has to make rather than a
+      // curiosity. The best reranker's ONNX weights are 704 MB against the
+      // runner-up's 271 MB -- a 2.6x step in download and resident memory for a
+      // gap of one case out of eighteen. If fusing the runner-up with the
+      // retriever's own score closes that gap, the small model ships and the
+      // step-up is not needed. That is worth knowing before committing to the
+      // download, and it cannot be answered by looking at the winner alone.
+      const topTwo = rrRows
+        .filter((r) => r.id !== '(none)' && !r.unavailable)
+        .slice().sort((a, b) => b.mrr - a.mrr)
+        .slice(0, 2);
+      out.fusion_rerankers = topTwo.map((r) => r.id);
+      out.fusion = {};
+      for (const r of topTwo) {
+        out.fusion[r.id] = await stageFusion(kb, cases, bestBi, r.id);
+      }
     }
   }
 

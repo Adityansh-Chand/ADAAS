@@ -46,7 +46,8 @@ const EVAL_DIR = path.join(ROOT, 'eval');
 // measured values so a regression trips them.
 const QUALITY_GATES = {
   'rules held_out_3': 0.35,
-  'embedding held_out_3': 0.80,
+  'embedding held_out_3': 0.88,
+  'embedding held_out_4': 0.72,
 };
 
 // THE EMBEDDING MODEL CHANGED, AND INTENT PAID FOR IT
@@ -89,6 +90,7 @@ const SETS = [
   ['held_out_1', 'held_out_intent_queries.json', 'BURNED -- informed rule fixes'],
   ['held_out_2', 'held_out_intent_queries_2.json', 'compromised -- seen before a change'],
   ['held_out_3', 'held_out_intent_queries_3.json', 'CLEAN for the classifier'],
+  ['held_out_4', 'held_out_intent_queries_4.json', 'CLEAN -- written before the rewrite'],
 ];
 
 function loadJson(file) {
@@ -192,7 +194,10 @@ function main() {
   console.log('');
   console.log('Intent classification');
   console.log(`training examples: ${classifier.examples.length}    `
-    + `k: ${classifier.k}    min confidence: ${classifier.minConfidence}`);
+    + `min confidence: ${classifier.minConfidence}`);
+  console.log('classifier: multinomial logistic regression   '
+    + `iterations ${classifier.model.iterations}   `
+    + `lr ${classifier.model.learningRate}   l2 ${classifier.model.l2}`);
   console.log(`model: ${store.model}`);
   console.log('');
 
@@ -210,13 +215,15 @@ function main() {
     );
   }
 
-  const clean = results['embedding held_out_3'];
   console.log('');
-  console.log('Method split on held_out_3 (embedding):',
-    JSON.stringify(clean.methods));
+  for (const set of ['held_out_3', 'held_out_4']) {
+    console.log(`Method split on ${set} (embedding):`,
+      JSON.stringify(results[`embedding ${set}`].methods));
+  }
 
   if (verbose) {
-    for (const key of ['rules held_out_3', 'embedding held_out_3']) {
+    for (const key of ['rules held_out_3', 'embedding held_out_3',
+      'rules held_out_4', 'embedding held_out_4']) {
       const r = results[key];
       console.log(`\n  --- ${key}: ${r.misroutes.length} misroute(s) ---`);
       for (const [pair, count] of Object.entries(r.confusion)) {

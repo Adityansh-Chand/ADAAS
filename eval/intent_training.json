@@ -1,72 +1,492 @@
 {
-  "about": "Labelled training examples for the embedding-based intent classifier. These are TRAINING data, not evaluation data: the classifier is fitted on them, so its score on them is meaningless by construction. Every phrasing here was written to be distinct from eval/intent_queries.json, eval/held_out_intent_queries.json, eval/held_out_intent_queries_2.json and eval/held_out_intent_queries_3.json. If a phrasing needs to move between this file and an eval file, it must be rewritten rather than copied, or the eval stops measuring anything.",
-  "labels": ["leaveBalance", "applyLeave", "policyQuestion"],
+  "about": "Labelled training examples for the embedding intent classifier. NOT an evaluation set -- the classifier is fitted on these, so its accuracy here is reported for reference and never gated. Grown from 64 examples to 118 because the classifier's weakest measured set was intent_queries at 0.7083, and 64 examples across three classes is thin for k-nearest-neighbour: with k=5 a single unusual phrasing has no near neighbour of its own class to find. The 54 added examples were written without reading any evaluation set, deliberately in registers the original 64 did not cover (bare noun phrases, a stated reason with the request implicit, policy questions about non-leave topics), and the fourth held-out set was created before any of them existed. eval_intent.js measures the nearest-neighbour similarity between every evaluation query and this file and fails the build above 0.92, so growth here cannot quietly become leakage.",
+  "labels": [
+    "leaveBalance",
+    "applyLeave",
+    "policyQuestion"
+  ],
   "cases": [
-    { "q": "what is my current leave allowance sitting at", "label": "leaveBalance" },
-    { "q": "tell me the number of days I have available", "label": "leaveBalance" },
-    { "q": "I want to see my leave account", "label": "leaveBalance" },
-    { "q": "how much of my allocation is unused", "label": "leaveBalance" },
-    { "q": "give me a breakdown of my time off", "label": "leaveBalance" },
-    { "q": "leave entitlement remaining for me this year", "label": "leaveBalance" },
-    { "q": "am I running low on casual days", "label": "leaveBalance" },
-    { "q": "what does my leave record show", "label": "leaveBalance" },
-    { "q": "days available to me", "label": "leaveBalance" },
-    { "q": "check the leave I have not used", "label": "leaveBalance" },
-    { "q": "how much sick allowance is untouched", "label": "leaveBalance" },
-    { "q": "summarise my absence allocation", "label": "leaveBalance" },
-    { "q": "do I have anything left to take this year", "label": "leaveBalance" },
-    { "q": "my current entitlement status", "label": "leaveBalance" },
-    { "q": "what is left over from my annual allocation", "label": "leaveBalance" },
-    { "q": "show the days I have consumed so far", "label": "leaveBalance" },
-    { "q": "how many casual days remain against my name", "label": "leaveBalance" },
-    { "q": "is there any allowance left for me", "label": "leaveBalance" },
-
-    { "q": "I would like to take next Thursday off", "label": "applyLeave" },
-    { "q": "put through a request for the 18th", "label": "applyLeave" },
-    { "q": "arrange time away for me in April", "label": "applyLeave" },
-    { "q": "I will not be working on Friday", "label": "applyLeave" },
-    { "q": "set aside two days for me next month", "label": "applyLeave" },
-    { "q": "start a leave request for the first week of June", "label": "applyLeave" },
-    { "q": "I have a hospital appointment and need the morning", "label": "applyLeave" },
-    { "q": "register me as away on the 25th", "label": "applyLeave" },
-    { "q": "I am taking the day for a wedding", "label": "applyLeave" },
-    { "q": "process sick leave for me, I have a fever", "label": "applyLeave" },
-    { "q": "I need cover for Monday, dealing with a family matter", "label": "applyLeave" },
-    { "q": "lodge a casual leave request for tomorrow", "label": "applyLeave" },
-    { "q": "I want the 12th and 13th as annual leave", "label": "applyLeave" },
-    { "q": "record my absence for this afternoon", "label": "applyLeave" },
-    { "q": "get me signed off for three days from Tuesday", "label": "applyLeave" },
-    { "q": "I am going to be unavailable all of next week", "label": "applyLeave" },
-    { "q": "add leave to my calendar for the 7th", "label": "applyLeave" },
-    { "q": "I would like earned leave in September", "label": "applyLeave" },
-    { "q": "kick off an application for two days casual", "label": "applyLeave" },
-
-    { "q": "what rules govern working from another city", "label": "policyQuestion" },
-    { "q": "explain how the company handles bereavement", "label": "policyQuestion" },
-    { "q": "are there limits on carrying days into next year", "label": "policyQuestion" },
-    { "q": "what does the handbook say about gifts from vendors", "label": "policyQuestion" },
-    { "q": "how are annual increments decided", "label": "policyQuestion" },
-    { "q": "what protections exist against workplace bullying", "label": "policyQuestion" },
-    { "q": "tell me about the provident fund arrangements", "label": "policyQuestion" },
-    { "q": "which expenses are reimbursable on a client visit", "label": "policyQuestion" },
-    { "q": "what counts as gross misconduct here", "label": "policyQuestion" },
-    { "q": "is there support available for counselling", "label": "policyQuestion" },
-    { "q": "how long before separation must I inform HR", "label": "policyQuestion" },
-    { "q": "what happens during a performance review cycle", "label": "policyQuestion" },
-    { "q": "are dependants included in the health cover", "label": "policyQuestion" },
-    { "q": "what is expected of me regarding client confidentiality", "label": "policyQuestion" },
-    { "q": "describe the fire evacuation arrangements", "label": "policyQuestion" },
-    { "q": "under what circumstances is a warning issued", "label": "policyQuestion" },
-    { "q": "how does the company approach upskilling", "label": "policyQuestion" },
-    { "q": "what should I do if I suspect fraud", "label": "policyQuestion" },
-    { "q": "are personal devices permitted for work files", "label": "policyQuestion" },
-    { "q": "what statutory entitlement applies to new mothers", "label": "policyQuestion" },
-    { "q": "how are complaints against a manager handled", "label": "policyQuestion" },
-    { "q": "what documentation supports a hospitalisation claim", "label": "policyQuestion" },
-    { "q": "which illnesses fall outside the insurance plan", "label": "policyQuestion" },
-    { "q": "is alcohol permitted at office events", "label": "policyQuestion" },
-    { "q": "what obligations continue after I leave the company", "label": "policyQuestion" },
-    { "q": "how quickly must HR respond to a raised concern", "label": "policyQuestion" },
-    { "q": "what training is mandatory for all staff", "label": "policyQuestion" }
-  ]
+    {
+      "q": "what is my current leave allowance sitting at",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "tell me the number of days I have available",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "I want to see my leave account",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how much of my allocation is unused",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "give me a breakdown of my time off",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "leave entitlement remaining for me this year",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "am I running low on casual days",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "what does my leave record show",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "days available to me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "check the leave I have not used",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how much sick allowance is untouched",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "summarise my absence allocation",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "do I have anything left to take this year",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "my current entitlement status",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "what is left over from my annual allocation",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "show the days I have consumed so far",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how many casual days remain against my name",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "is there any allowance left for me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "I would like to take next Thursday off",
+      "label": "applyLeave"
+    },
+    {
+      "q": "put through a request for the 18th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "arrange time away for me in April",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I will not be working on Friday",
+      "label": "applyLeave"
+    },
+    {
+      "q": "set aside two days for me next month",
+      "label": "applyLeave"
+    },
+    {
+      "q": "start a leave request for the first week of June",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I have a hospital appointment and need the morning",
+      "label": "applyLeave"
+    },
+    {
+      "q": "register me as away on the 25th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I am taking the day for a wedding",
+      "label": "applyLeave"
+    },
+    {
+      "q": "process sick leave for me, I have a fever",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I need cover for Monday, dealing with a family matter",
+      "label": "applyLeave"
+    },
+    {
+      "q": "lodge a casual leave request for tomorrow",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I want the 12th and 13th as annual leave",
+      "label": "applyLeave"
+    },
+    {
+      "q": "record my absence for this afternoon",
+      "label": "applyLeave"
+    },
+    {
+      "q": "get me signed off for three days from Tuesday",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I am going to be unavailable all of next week",
+      "label": "applyLeave"
+    },
+    {
+      "q": "add leave to my calendar for the 7th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I would like earned leave in September",
+      "label": "applyLeave"
+    },
+    {
+      "q": "kick off an application for two days casual",
+      "label": "applyLeave"
+    },
+    {
+      "q": "what rules govern working from another city",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "explain how the company handles bereavement",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "are there limits on carrying days into next year",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what does the handbook say about gifts from vendors",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how are annual increments decided",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what protections exist against workplace bullying",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "tell me about the provident fund arrangements",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "which expenses are reimbursable on a client visit",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what counts as gross misconduct here",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is there support available for counselling",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how long before separation must I inform HR",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what happens during a performance review cycle",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "are dependants included in the health cover",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what is expected of me regarding client confidentiality",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "describe the fire evacuation arrangements",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "under what circumstances is a warning issued",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how does the company approach upskilling",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what should I do if I suspect fraud",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "are personal devices permitted for work files",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what statutory entitlement applies to new mothers",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how are complaints against a manager handled",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what documentation supports a hospitalisation claim",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "which illnesses fall outside the insurance plan",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is alcohol permitted at office events",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what obligations continue after I leave the company",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how quickly must HR respond to a raised concern",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what training is mandatory for all staff",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how many casual days are still open for me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "i would like a statement of my leave",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "check my quota",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "am i running low on annual leave",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "total consumed versus total granted for me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "whats the state of my sick days",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "days in my kitty",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "leave ledger for this financial year",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "have i exhausted my earned leave",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "summarise my absences so far",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "count what is unused on my card",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "i need the figures before i plan anything",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "balance across all leave types for me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how much comp off is sitting with me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "did last years carry forward land in my account",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "print my leave utilisation",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "what is credited to me right now",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "any annual leave i can still use",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "tell me where my maternity balance stands",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "outstanding leave on my record",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "raise a casual leave for me on the 12th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i will be travelling from the 5th to the 9th, log it",
+      "label": "applyLeave"
+    },
+    {
+      "q": "please record two days sick from yesterday",
+      "label": "applyLeave"
+    },
+    {
+      "q": "going for a medical procedure on the 27th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "take me out for the second half of tomorrow",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i cannot attend next monday, personal reasons",
+      "label": "applyLeave"
+    },
+    {
+      "q": "put me on leave for the festival week",
+      "label": "applyLeave"
+    },
+    {
+      "q": "need an emergency day, my father is unwell",
+      "label": "applyLeave"
+    },
+    {
+      "q": "add a day off against comp off for the 18th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "book me maternity leave starting the 1st of next month",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i am unwell and staying in today",
+      "label": "applyLeave"
+    },
+    {
+      "q": "make a leave request for the 22nd and 23rd",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i want to use one earned leave this friday",
+      "label": "applyLeave"
+    },
+    {
+      "q": "count me absent on the 30th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "apply paternity leave from the 10th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i will take the afternoon off for a bank appointment",
+      "label": "applyLeave"
+    },
+    {
+      "q": "leave for four days starting monday please",
+      "label": "applyLeave"
+    },
+    {
+      "q": "off on the 6th, already told my manager",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i need tomorrow, cannot say more than that",
+      "label": "applyLeave"
+    },
+    {
+      "q": "reserve the 25th for me as leave without pay",
+      "label": "applyLeave"
+    },
+    {
+      "q": "how long before i can claim gratuity",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what documents does a medical claim need",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is there any support for higher studies",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what counts as misconduct here",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how are increments decided",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "are contractors under the same conduct rules",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what is the escalation path for a complaint",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how many late marks are tolerated in a month",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is a vpn required on public wifi",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what happens to my insurance after i resign",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "can dependents be added mid year",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "who conducts the exit interview",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what is the timeline for reimbursement of bills",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is smoking allowed anywhere on site",
+      "label": "policyQuestion"
+    }
+  ],
+  "provenance": {
+    "original": 64,
+    "added": 54,
+    "total": 118,
+    "by_label": {
+      "leaveBalance": 38,
+      "applyLeave": 39,
+      "policyQuestion": 41
+    }
+  }
 }
