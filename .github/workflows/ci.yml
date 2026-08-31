@@ -40,11 +40,42 @@ jobs:
           cache-dependency-path: hr-backend/package-lock.json
       - name: Install backend dependencies
         run: npm ci
-      # Scores policy retrieval against both eval sets and fails if either drops
-      # below its floor, or if the paraphrase set scores implausibly high -- which
-      # would mean the eval queries had leaked into the keyword lists.
+      # Scores lexical, dense and hybrid retrieval on identical splits. Dense
+      # reads the committed vectors in eval/embeddings.json, so this needs no
+      # model download and is deterministic. Fails if any method drops below its
+      # floor, or if lexical scores implausibly high on paraphrases -- which would
+      # mean the eval queries had leaked into the keyword lists.
       - name: Score retrieval
         run: npm run eval:gate
+
+  embeddings-verify:
+    name: Embeddings match the corpus
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hr-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hr-backend/package-lock.json
+      # Installs devDependencies too: the model tooling is dev-only and is
+      # deliberately absent from the production image.
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache the sentence-transformer model
+        uses: actions/cache@v4
+        with:
+          path: hr-backend/.model-cache
+          key: minilm-fp32-v1
+      # Re-embeds the corpus and fails if the committed vectors no longer match.
+      # Without this, editing a policy answer and forgetting to re-run
+      # `npm run embed` would leave dense retrieval scored against stale vectors
+      # with nothing to notice.
+      - name: Verify committed embeddings
+        run: npm run embed:verify
 
   backend-smoke:
     name: Backend smoke test

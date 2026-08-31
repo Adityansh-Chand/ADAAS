@@ -12,6 +12,10 @@ const LeaveApplicationSchema = new mongoose.Schema(
       enum: ['submitted', 'approved', 'rejected'],
       default: 'submitted',
     },
+    // Who decided, and when. Without these an application could only ever be
+    // `submitted`, which is what it was before the decision endpoint existed.
+    decidedBy: { type: String },
+    decidedAt: { type: Date },
   },
   { timestamps: true }
 );

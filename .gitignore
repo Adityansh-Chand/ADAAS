@@ -34,3 +34,7 @@ coverage/
 # next run will commit real browsing data.
 .dart_tool/
 .flutter-plugins-dependencies
+
+# Downloaded sentence-transformer weights (~87 MB). Cached explicitly rather than
+# left inside node_modules so CI can restore it between runs.
+hr-backend/.model-cache/
