@@ -1,0 +1,140 @@
+{
+  "top_k": 5,
+  "rerank_pool": 10,
+  "dev_n": 18,
+  "bi_encoders": [
+    {
+      "id": "Xenova/all-MiniLM-L6-v2",
+      "note": "incumbent",
+      "queryPrefix": "",
+      "passagePrefix": "",
+      "dim": 384,
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recallAtK": 1,
+      "mrr": 0.8148148148148148
+    },
+    {
+      "id": "Xenova/bge-small-en-v1.5",
+      "note": "BAAI, asymmetric prefixes",
+      "queryPrefix": "Represent this sentence for searching relevant passages: ",
+      "passagePrefix": "",
+      "dim": 384,
+      "n": 18,
+      "top1": 0.7777777777777778,
+      "recallAtK": 1,
+      "mrr": 0.8657407407407407
+    },
+    {
+      "id": "Xenova/gte-small",
+      "note": "Alibaba GTE, symmetric",
+      "queryPrefix": "",
+      "passagePrefix": "",
+      "dim": 384,
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recallAtK": 1,
+      "mrr": 0.8240740740740741
+    },
+    {
+      "id": "Xenova/e5-small-v2",
+      "note": "Microsoft E5, asymmetric prefixes",
+      "queryPrefix": "query: ",
+      "passagePrefix": "passage: ",
+      "dim": 384,
+      "n": 18,
+      "top1": 0.6666666666666666,
+      "recallAtK": 1,
+      "mrr": 0.7916666666666666
+    },
+    {
+      "id": "Xenova/bge-base-en-v1.5",
+      "note": "768-dim, ~4x the download",
+      "queryPrefix": "Represent this sentence for searching relevant passages: ",
+      "passagePrefix": "",
+      "dim": 768,
+      "n": 18,
+      "top1": 0.7777777777777778,
+      "recallAtK": 1,
+      "mrr": 0.8611111111111112
+    }
+  ],
+  "reranker_retriever": "Xenova/bge-small-en-v1.5",
+  "rerankers": [
+    {
+      "id": "(none)",
+      "note": "baseline",
+      "n": 18,
+      "top1": 0.7777777777777778,
+      "recallAtK": 1,
+      "mrr": 0.8657407407407407
+    },
+    {
+      "id": "Xenova/ms-marco-MiniLM-L-6-v2",
+      "note": "ms-marco cross-encoder, 6 layers",
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recallAtK": 1,
+      "mrr": 0.8472222222222222
+    },
+    {
+      "id": "Xenova/ms-marco-MiniLM-L-12-v2",
+      "note": "ms-marco cross-encoder, 12 layers",
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recallAtK": 1,
+      "mrr": 0.837962962962963
+    },
+    {
+      "id": "jinaai/jina-reranker-v1-tiny-en",
+      "note": "Jina v1 tiny",
+      "n": 18,
+      "top1": 0.6111111111111112,
+      "recallAtK": 0.9444444444444444,
+      "mrr": 0.7518518518518519
+    },
+    {
+      "id": "mixedbread-ai/mxbai-rerank-xsmall-v1",
+      "note": "mixedbread xsmall",
+      "n": 18,
+      "top1": 0.8333333333333334,
+      "recallAtK": 1,
+      "mrr": 0.9166666666666666
+    }
+  ],
+  "ablation_reranker": "mixedbread-ai/mxbai-rerank-xsmall-v1",
+  "ablation": [
+    {
+      "pool": 10,
+      "label": "pool 10, answer only",
+      "n": 18,
+      "top1": 0.8333333333333334,
+      "recallAtK": 1,
+      "mrr": 0.9166666666666666
+    },
+    {
+      "pool": 26,
+      "label": "pool 26 (full corpus), answer only",
+      "n": 18,
+      "top1": 0.8333333333333334,
+      "recallAtK": 1,
+      "mrr": 0.9166666666666666
+    },
+    {
+      "pool": 10,
+      "label": "pool 10, question + answer",
+      "n": 18,
+      "top1": 0.8888888888888888,
+      "recallAtK": 1,
+      "mrr": 0.9444444444444444
+    },
+    {
+      "pool": 26,
+      "label": "pool 26 (full corpus), question + answer",
+      "n": 18,
+      "top1": 0.8888888888888888,
+      "recallAtK": 1,
+      "mrr": 0.9444444444444444
+    }
+  ]
+}

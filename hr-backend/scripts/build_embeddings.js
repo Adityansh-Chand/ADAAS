@@ -81,16 +81,31 @@ async function build() {
     for (const c of loadJson(full).cases) intentQueries.push(c.q);
   }
 
+  // One table, and everything in it carries BGE's query prefix.
+  //
+  // This was briefly two tables -- prefixed for retrieval, unprefixed for the
+  // intent k-NN, on the argument that comparing two user utterances is symmetric
+  // and the prefix belongs only on the asymmetric side. Measurement disagreed;
+  // see the note on `embedUtterances` in embeddings.js for the numbers. Both
+  // sides of the intent comparison are questions, so prefixing both is correct
+  // and consistent, and one table is then the honest representation of that.
+  //
+  // Out-of-scope probes are retrieval queries too -- the ones that should
+  // retrieve nothing. Embedding them here is what lets the abstention gate run
+  // without a model download, like everything else.
+  const outOfScope = loadJson(path.join(EVAL_DIR, 'out_of_scope_queries.json'))
+    .cases.map((c) => c.q);
+
   const allQueries = [...new Set([
-    ...setAQueries, ...setBQueries, ...intentQueries,
+    ...setAQueries, ...setBQueries, ...outOfScope, ...intentQueries,
   ])];
 
   process.stdout.write(`embedding ${kb.length} policies ... `);
-  const policyVectors = await embeddings.embed(kb.map(policyText));
+  const policyVectors = await embeddings.embedPassages(kb.map(policyText));
   process.stdout.write('done\n');
 
   process.stdout.write(`embedding ${allQueries.length} queries ... `);
-  const queryVectors = await embeddings.embed(allQueries);
+  const queryVectors = await embeddings.embedQueries(allQueries);
   process.stdout.write('done\n');
 
   const policies = {};
@@ -116,9 +131,11 @@ async function build() {
     // edit without a re-embed is detectable rather than silent.
     corpus_digest: digest(kb),
     queries_digest: digest(allQueries.slice().sort()),
+    query_prefix: embeddings.QUERY_PREFIX,
     query_sources: [
       'policy Set A (corpus question fields)',
       'policy Set B (eval/policy_queries.json)',
+      'out-of-scope probes (eval/out_of_scope_queries.json)',
       'intent training + all four intent eval sets',
     ],
     policies,

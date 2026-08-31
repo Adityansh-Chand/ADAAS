@@ -957,3 +957,122 @@ test('notifications require an employee, and an unknown ack is 404', async () =>
       (await postJson(baseUrl, '/notifications/NTF-NOPE/ack', {})).status, 404);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Reranking
+//
+// The reranker exists to fix a ranking failure, so what needs guarding is not
+// "does it score well" -- `npm run eval` does that, with gates -- but the two
+// properties the design depends on: it must never invent a result, and its
+// abstention floor must actually be applied. Both are things a refactor could
+// silently break while every accuracy number stayed identical.
+// ---------------------------------------------------------------------------
+
+const reranker = require('./rerank');
+
+test('reranking an empty candidate list returns empty, not a guess', async () => {
+  assert.deepEqual(await reranker.rerank('anything', []), []);
+  assert.deepEqual(await reranker.rerank('anything', null), []);
+});
+
+test('reranking cannot introduce a document retrieval did not return', async () => {
+  // The whole abstention story rests on this. If the reranker scored the corpus
+  // instead of the shortlist, the service would always have a best guess and
+  // could never honestly say it found nothing.
+  const shortlist = KB.slice(0, 3).map((entry) => ({ entry, score: 0.5 }));
+  const precomputed = Object.fromEntries(KB.map((e) => [e.id, 0]));
+
+  const out = await reranker.rerank('q', shortlist, { precomputed });
+  const returnedIds = out.map((x) => x.entry.id).sort();
+  const shortlistIds = shortlist.map((x) => x.entry.id).sort();
+
+  assert.deepEqual(returnedIds, shortlistIds);
+});
+
+test('the logit floor drops candidates the cross-encoder scored badly', async () => {
+  const shortlist = KB.slice(0, 3).map((entry) => ({ entry, score: 0.5 }));
+  const floor = reranker.DEFAULT_MIN_LOGIT;
+
+  // One clearly above the floor, two clearly below.
+  const precomputed = {
+    [KB[0].id]: floor + 1,
+    [KB[1].id]: floor - 1,
+    [KB[2].id]: floor - 5,
+  };
+
+  const out = await reranker.rerank('q', shortlist, { precomputed });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].entry.id, KB[0].id);
+
+  // And everything below the floor means nothing, not the least-bad option.
+  const allBad = Object.fromEntries(
+    shortlist.map((x) => [x.entry.id, floor - 1]),
+  );
+  assert.deepEqual(await reranker.rerank('q', shortlist, { precomputed: allBad }), []);
+});
+
+test('reranking preserves the retrieval score rather than overwriting it', async () => {
+  // A caller needs to be able to see what each stage thought. Collapsing the two
+  // into one number is how a retrieval score gets quietly renamed "confidence".
+  const shortlist = [{ entry: KB[0], score: 0.61 }];
+  const out = await reranker.rerank('q', shortlist, {
+    precomputed: { [KB[0].id]: 0 },
+  });
+  assert.equal(out[0].retrievalScore, 0.61);
+  assert.equal(out[0].score, 0);
+});
+
+test('a missing precomputed score is an error, not a silent live call', async () => {
+  // Otherwise the eval would quietly become non-deterministic and dependent on a
+  // model download, which is the property the committed fixtures exist to avoid.
+  await assert.rejects(
+    () => reranker.rerank('q', [{ entry: KB[0], score: 0.5 }], { precomputed: {} }),
+    /no precomputed rerank score/,
+  );
+});
+
+test('the committed rerank fixture covers every eval query and policy', async () => {
+  const store = reranker.loadScores();
+  assert.ok(store, 'eval/rerank_scores.json should exist -- run `npm run rerank:build`');
+  assert.equal(store.model, reranker.MODEL_ID);
+
+  const oos = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, '..', 'eval', 'out_of_scope_queries.json'), 'utf8'));
+  const setB = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, '..', 'eval', 'policy_queries.json'), 'utf8'));
+
+  for (const c of [...oos.cases, ...setB.cases]) {
+    const row = store.scores[c.q];
+    assert.ok(row, `no committed rerank scores for ${JSON.stringify(c.q)}`);
+    for (const entry of KB) {
+      assert.equal(typeof row[entry.id], 'number',
+        `no score for ${entry.id} / ${JSON.stringify(c.q)}`);
+    }
+  }
+});
+
+test('reranked is a valid retrieval mode and degrades one step, not two', async () => {
+  // `reranked` needs the model at request time. When the package is missing it
+  // must fall back to dense, which runs from committed vectors, rather than all
+  // the way to lexical -- and /health has to say which happened.
+  const previous = process.env.RETRIEVAL_MODE;
+  process.env.RETRIEVAL_MODE = 'reranked';
+  try {
+    const { mode, reason } = app.activeRetrievalMode();
+    assert.ok(['reranked', 'dense', 'lexical'].includes(mode));
+    if (mode === 'dense') {
+      assert.equal(reason, 'reranker_package_not_installed');
+    }
+  } finally {
+    if (previous === undefined) delete process.env.RETRIEVAL_MODE;
+    else process.env.RETRIEVAL_MODE = previous;
+  }
+});
+
+test('the passage the cross-encoder scores includes the question field', async () => {
+  // Measured choice, not incidental: question+answer beat answer-only on the dev
+  // half. A refactor that dropped it would cost accuracy silently.
+  const text = reranker.passageText(KB[0]);
+  assert.ok(text.includes(KB[0].question));
+  assert.ok(text.includes(KB[0].answer));
+});

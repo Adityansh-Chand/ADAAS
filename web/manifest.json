@@ -1,11 +1,11 @@
 {
-    "name": "adaas",
-    "short_name": "adaas",
+    "name": "ADAAS",
+    "short_name": "ADAAS",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFFFFF",
+    "theme_color": "#FFFFFF",
+    "description": "HR assistant: conversational leave management and policy retrieval over an Express backend.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
