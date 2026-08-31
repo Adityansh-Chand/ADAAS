@@ -1,6 +1,13 @@
 {
-  "employeeId": "1001",
-  "casual_leave_balance": 5,
-  "sick_leave_balance": 8,
-  "annual_leave_balance": 12
+  "employee_id": "1001",
+  "entitlements": {
+    "casual_leave": 4,
+    "combined_annual_sick_leave": 18
+  },
+  "used": {
+    "casual_leave": 1,
+    "combined_annual_sick_leave": 3
+  },
+  "casual_leave_balance": 3,
+  "combined_annual_sick_leave_balance": 15
 }

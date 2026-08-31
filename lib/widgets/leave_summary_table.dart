@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:adaas/Model/leave_balance_model.dart';
 
+/// Leave balance shown as remaining out of entitlement.
+///
+/// Two rows, not three. Annual and sick leave are a single shared pool in the
+/// policy corpus -- policy_003_el_sl grants "18 days per year (Combined
+/// Annual/Earned/Sick)" -- so listing them as separate balances was the reason
+/// the displayed numbers could never be reconciled with the policy the same app
+/// quotes. Showing the entitlement next to the remainder makes the figure
+/// checkable.
 class LeaveSummaryTable extends StatelessWidget {
   final LeaveBalanceModel balance;
 
@@ -9,12 +17,12 @@ class LeaveSummaryTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const textStyle = TextStyle(color: Colors.white, fontSize: 14);
+    const mutedStyle = TextStyle(color: Colors.white70, fontSize: 14);
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          // In tests, MediaQuery might need a default, but this is safe
           maxWidth: MediaQuery.of(context).size.width * 0.85,
         ),
         margin: const EdgeInsets.only(bottom: 10),
@@ -45,25 +53,33 @@ class LeaveSummaryTable extends StatelessWidget {
               columns: const [
                 DataColumn(label: Text('Leave Type', style: textStyle)),
                 DataColumn(
-                    label: Text('Balance', style: textStyle), numeric: true),
+                    label: Text('Remaining', style: textStyle), numeric: true),
+                DataColumn(
+                    label: Text('Entitlement', style: textStyle),
+                    numeric: true),
               ],
               rows: [
                 DataRow(cells: [
-                  DataCell(Text('Casual Leave', style: textStyle)),
-                  DataCell(
-                      Text(balance.casualLeave.toString(), style: textStyle)),
+                  const DataCell(Text('Casual Leave', style: textStyle)),
+                  DataCell(Text(balance.casualRemaining.toString(),
+                      style: textStyle)),
+                  DataCell(Text(balance.casualEntitlement.toString(),
+                      style: mutedStyle)),
                 ]),
                 DataRow(cells: [
-                  DataCell(Text('Sick Leave', style: textStyle)),
-                  DataCell(
-                      Text(balance.sickLeave.toString(), style: textStyle)),
-                ]),
-                DataRow(cells: [
-                  DataCell(Text('Annual Leave', style: textStyle)),
-                  DataCell(
-                      Text(balance.annualLeave.toString(), style: textStyle)),
+                  const DataCell(
+                      Text('Annual / Sick (shared)', style: textStyle)),
+                  DataCell(Text(balance.combinedRemaining.toString(),
+                      style: textStyle)),
+                  DataCell(Text(balance.combinedEntitlement.toString(),
+                      style: mutedStyle)),
                 ]),
               ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Annual, earned and sick leave draw on one shared pool.',
+              style: TextStyle(color: Colors.white60, fontSize: 12),
             ),
           ],
         ),

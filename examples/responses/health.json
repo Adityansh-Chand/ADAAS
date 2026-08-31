@@ -1,4 +1,8 @@
 {
   "status": "running",
-  "dataSource": "memory"
+  "dataSource": "memory",
+  "knowledgeBase": {
+    "entries": 26
+  },
+  "llm": "none"
 }

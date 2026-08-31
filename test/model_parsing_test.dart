@@ -1,52 +1,62 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:adaas/Model/leave_balance_model.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('LeaveBalanceModel Parsing', () {
-    // 1. Happy Path: JSON is perfect
-    test('should parse valid JSON correctly', () {
-      final json = {
-        "casual_leave_balance": 5,
-        "sick_leave_balance": 8,
-        "annual_leave_balance": 12
-      };
+  group('LeaveBalanceModel parsing', () {
+    test('parses remaining and entitlement', () {
+      final model = LeaveBalanceModel.fromJson(const {
+        'employee_id': '1001',
+        'entitlements': {
+          'casual_leave': 4,
+          'combined_annual_sick_leave': 18,
+        },
+        'used': {'casual_leave': 1, 'combined_annual_sick_leave': 3},
+        'casual_leave_balance': 3,
+        'combined_annual_sick_leave_balance': 15,
+      });
 
-      final model = LeaveBalanceModel.fromJson(json);
-
-      expect(model.casualLeave, 5);
-      expect(model.sickLeave, 8);
-      expect(model.annualLeave, 12);
+      expect(model.casualRemaining, 3);
+      expect(model.casualEntitlement, 4);
+      expect(model.combinedRemaining, 15);
+      expect(model.combinedEntitlement, 18);
+      expect(model.casualUsed, 1);
+      expect(model.combinedUsed, 3);
     });
 
-    // 2. Edge Case: JSON has missing keys (Null safety check)
-    // Your factory uses '?? 0', so it should default to 0, not crash.
-    test('should default to 0 if keys are missing', () {
-      final json = {
-        "casual_leave_balance": 5,
-        // sick_leave_balance is missing
-        // annual_leave_balance is missing
-      };
+    test('defaults to 0 for missing keys rather than throwing', () {
+      final model = LeaveBalanceModel.fromJson(const {
+        'casual_leave_balance': 3,
+      });
 
-      final model = LeaveBalanceModel.fromJson(json);
-
-      expect(model.casualLeave, 5);
-      expect(model.sickLeave, 0); // Default
-      expect(model.annualLeave, 0); // Default
+      expect(model.casualRemaining, 3);
+      expect(model.casualEntitlement, 0);
+      expect(model.combinedRemaining, 0);
+      expect(model.combinedEntitlement, 0);
     });
 
-    // 3. Edge Case: JSON has null values
-    test('should handle null values gracefully', () {
-      final json = {
-        "casual_leave_balance": null,
-        "sick_leave_balance": 10,
-        "annual_leave_balance": null
-      };
+    test('handles nulls, doubles and numeric strings', () {
+      final model = LeaveBalanceModel.fromJson(const {
+        'entitlements': {'casual_leave': '4', 'combined_annual_sick_leave': 18.0},
+        'casual_leave_balance': null,
+        'combined_annual_sick_leave_balance': 15.4,
+      });
 
-      final model = LeaveBalanceModel.fromJson(json);
+      expect(model.casualRemaining, 0);
+      expect(model.casualEntitlement, 4);
+      expect(model.combinedRemaining, 15);
+      expect(model.combinedEntitlement, 18);
+    });
 
-      expect(model.casualLeave, 0);
-      expect(model.sickLeave, 10);
-      expect(model.annualLeave, 0);
+    test('used never goes negative when the API is inconsistent', () {
+      // Remaining above entitlement should not produce a negative "used".
+      final model = LeaveBalanceModel.fromJson(const {
+        'entitlements': {'casual_leave': 4, 'combined_annual_sick_leave': 18},
+        'casual_leave_balance': 9,
+        'combined_annual_sick_leave_balance': 99,
+      });
+
+      expect(model.casualUsed, 0);
+      expect(model.combinedUsed, 0);
     });
   });
 }
