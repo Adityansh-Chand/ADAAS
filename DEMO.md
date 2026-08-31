@@ -82,6 +82,50 @@ answers this directly; it is not retrieved because the query contains none of
 the indexed keyword strings. That single response is the argument for the
 capstone's retrieval work.
 
+## 5b. The same question, with dense retrieval on
+
+This is the demo. Stop the server and restart it with embeddings enabled:
+
+```bash
+cd hr-backend
+npm install                    # devDependencies included, ~87 MB model on first run
+RETRIEVAL_MODE=dense npm start
+```
+
+```bash
+curl -s http://localhost:3000/health
+```
+
+`retrieval` now reads `{"mode":"dense"}`. If the package or the vectors were
+missing it would read `{"mode":"lexical","requested":"dense","degraded_because":...}`
+— it never silently falls back.
+
+Now the query that just failed:
+
+```bash
+curl -s -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"message":"Can I work from my house a few days a week?"}'
+```
+
+The Flexible Work Arrangement Policy, correctly. Across the whole paraphrase set
+that is 0.1111 → 0.6111 top-1 and 0.1111 → 0.9444 recall@5.
+
+And the threshold still holds, so it has not simply become a machine that always
+guesses:
+
+```bash
+curl -s -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"message":"what is the capital of Portugal"}'
+```
+
+Still `"I couldn't find a matching company policy for that question."`
+
+```bash
+cd hr-backend
+npm run eval
+```
+
+The full three-way comparison. Note that hybrid fusion does **not** beat dense
+alone — that is a real measured result, not an omission.
+
 ## 6. Leave balance, checkable against the policy
 
 ```bash
@@ -113,6 +157,54 @@ curl -s http://localhost:3000/leave-applications
 The balance drops by the days submitted. Previously the two features never
 touched each other, so the balance was unchanged no matter how much leave you
 filed.
+
+## 8b. Approving and rejecting
+
+File one, then reject it:
+
+```bash
+REF=$(curl -s -X POST http://localhost:3000/leave-application   -H "Content-Type: application/json"   -d @examples/requests/leave-application.json | python -c "import json,sys;print(json.load(sys.stdin)['reference_id'])")
+
+curl -s "http://localhost:3000/leave-balance?employee_id=1001"
+
+curl -s -X POST "http://localhost:3000/leave-applications/$REF/decision"   -H "Content-Type: application/json"   -d @examples/requests/leave-decision.json
+
+curl -s "http://localhost:3000/leave-balance?employee_id=1001"
+```
+
+The days come back. They are deducted at submission so a balance cannot be spent
+twice by two concurrent requests, which makes restoring them on rejection a
+required invariant rather than a nicety.
+
+Three refusals worth trying:
+
+```bash
+# Deciding twice -- 409, and the days are not restored again
+curl -s -X POST "http://localhost:3000/leave-applications/$REF/decision"   -H "Content-Type: application/json" -d '{"decision":"rejected","decided_by":"1002"}'
+
+# Self-approval -- 403
+REF2=$(curl -s -X POST http://localhost:3000/leave-application   -H "Content-Type: application/json"   -d '{"employee_id":"1001","request_text":"apply for 1 day casual leave"}'   | python -c "import json,sys;print(json.load(sys.stdin)['reference_id'])")
+curl -s -X POST "http://localhost:3000/leave-applications/$REF2/decision"   -H "Content-Type: application/json" -d '{"decision":"approved","decided_by":"1001"}'
+
+# Unknown reference -- 404
+curl -s -X POST "http://localhost:3000/leave-applications/LMS-NOPE/decision"   -H "Content-Type: application/json" -d '{"decision":"approved","decided_by":"1002"}'
+```
+
+## 8c. A second employee
+
+```bash
+curl -s "http://localhost:3000/leave-balance?employee_id=1002"
+```
+
+Different usage from 1001, so identity is observably real rather than notional.
+In the app:
+
+```bash
+flutter run -d chrome   --dart-define=HR_API_BASE_URL=http://localhost:3000   --dart-define=HR_EMPLOYEE_ID=1002
+```
+
+The header shows `employee 1002`. This is a demo identity selected at build time,
+not authentication — the header is there so that is visible rather than implied.
 
 ## 9. Protected endpoints
 
@@ -174,7 +266,8 @@ notion of failure at all.
 
 - Requests: `examples/requests/chat.json`, `leave-application.json`,
   `leave-application-rejected.json`
+- Requests: also `leave-decision.json`
 - Responses: `examples/responses/health.json`, `metrics.json`,
-  `leave-balance.json`, `leave-application.json`,
-  `leave-application-rejected.json`, `leave-applications.json`, `chat.json`,
-  `chat-no-policy.json`
+  `leave-balance.json`, `leave-balance-1002.json`, `leave-application.json`,
+  `leave-application-rejected.json`, `leave-decision.json`,
+  `leave-applications.json`, `chat.json`, `chat-no-policy.json`

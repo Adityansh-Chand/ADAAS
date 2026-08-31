@@ -10,8 +10,11 @@ const LeaveApplication = require('./models/LeaveApplication');
 const LeaveBalance = require('./models/LeaveBalance');
 const llm = require('./llm');
 const { buildIndex, retrieve } = require('./retrieval');
+const denseRetrieval = require('./dense');
+const embeddings = require('./embeddings');
 const {
   ENTITLEMENTS,
+  POOL_FOR_TYPE,
   determineLeaveType,
   parseRequestedDays,
   validateRequest,
@@ -32,6 +35,8 @@ const counters = {
   leave_applications_total: 0,
   leave_applications_rejected_total: 0,
   llm_fallback_total: 0,
+  retrieval_dense_failures_total: 0,
+  leave_decisions_total: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -55,6 +60,43 @@ const KB_PATH = process.env.KB_PATH
 let knowledgeBase = [];
 let retrievalIndex = null;
 let kbError = null;
+let vectorStore = null;
+let kbById = new Map();
+
+// ---------------------------------------------------------------------------
+// Retrieval mode
+//
+// Default is `lexical`, which needs nothing beyond the corpus. `dense` and
+// `hybrid` score 0.6111 top-1 on paraphrased questions against lexical's 0.1111
+// -- see `npm run eval` -- but they need a query embedded at request time, which
+// means the optional @huggingface/transformers devDependency. That package pulls
+// in onnxruntime-node and sharp, whose advisories have no fix available, so it is
+// deliberately absent from the production image (`npm ci --omit=dev`) and
+// `npm audit --omit=dev` reports zero vulnerabilities.
+//
+// The measured consequence of that choice is stated in the README rather than
+// hidden: the default mode is the weaker one, and turning on the better one is
+// one install and one environment variable away.
+// ---------------------------------------------------------------------------
+const VALID_RETRIEVAL_MODES = ['lexical', 'dense', 'hybrid'];
+
+function configuredRetrievalMode() {
+  const raw = (process.env.RETRIEVAL_MODE || 'lexical').trim().toLowerCase();
+  return VALID_RETRIEVAL_MODES.includes(raw) ? raw : 'lexical';
+}
+
+/** The mode actually in use, which may be weaker than the one requested. */
+function activeRetrievalMode() {
+  const wanted = configuredRetrievalMode();
+  if (wanted === 'lexical') return { mode: 'lexical', reason: 'configured' };
+  if (!vectorStore) {
+    return { mode: 'lexical', reason: 'no_precomputed_vectors' };
+  }
+  if (!embeddings.isAvailable()) {
+    return { mode: 'lexical', reason: 'embeddings_package_not_installed' };
+  }
+  return { mode: wanted, reason: 'configured' };
+}
 
 function loadKnowledgeBase() {
   try {
@@ -64,10 +106,24 @@ function loadKnowledgeBase() {
     }
     knowledgeBase = parsed;
     retrievalIndex = buildIndex(knowledgeBase);
+    kbById = new Map(knowledgeBase.map((entry) => [entry.id, entry]));
     kbError = null;
+
+    // Precomputed policy vectors. Absent is fine -- retrieval falls back to
+    // lexical and /health says so.
+    vectorStore = denseRetrieval.loadVectors();
+    if (vectorStore && vectorStore.dimensions !== embeddings.DIMENSIONS) {
+      console.error(
+        `eval/embeddings.json has ${vectorStore.dimensions} dimensions, expected `
+        + `${embeddings.DIMENSIONS}; ignoring it`,
+      );
+      vectorStore = null;
+    }
   } catch (err) {
     knowledgeBase = [];
     retrievalIndex = null;
+    kbById = new Map();
+    vectorStore = null;
     kbError = err.message;
     console.error(`Failed to load knowledge base from ${KB_PATH}: ${err.message}`);
   }
@@ -84,8 +140,13 @@ loadKnowledgeBase();
 // means the numbers cannot drift out of agreement with the policy text.
 // ---------------------------------------------------------------------------
 const fallbackLeaveApplications = [];
+
+// Two employees with different usage, so switching identity produces visibly
+// different numbers. With a single seeded employee, "the app is hardcoded to
+// 1001" and "the app supports one employee" were indistinguishable.
 const SEEDED_LEAVE_USAGE = () => ({
   '1001': { casual_leave: 1, combined_annual_sick_leave: 3 },
+  '1002': { casual_leave: 3, combined_annual_sick_leave: 11 },
 });
 const fallbackLeaveUsage = SEEDED_LEAVE_USAGE();
 
@@ -153,21 +214,53 @@ function mongoUsable() {
 // Policy retrieval and answering
 // ---------------------------------------------------------------------------
 
-function retrieveContext(message) {
-  if (!retrievalIndex) {
-    return { sources: [], primaryAnswer: '', context: '', matches: [] };
-  }
-
-  const ranked = retrieve(message, retrievalIndex, { topK: 5 });
-
+function shapeRetrieval(ranked, mode) {
   return {
     matches: ranked,
+    mode,
     sources: ranked.map((item) => item.entry.source),
     primaryAnswer: ranked[0]?.entry.answer || '',
     context: ranked
       .map((item) => `Source: ${item.entry.source}\nPolicy Details: ${item.entry.answer}`)
       .join('\n\n'),
   };
+}
+
+/**
+ * Retrieve policies for a message.
+ *
+ * Async because the dense path has to embed the query at request time. Falls back
+ * to lexical rather than failing if embedding turns out to be unavailable, and
+ * reports which mode actually ran so a caller is never guessing.
+ */
+async function retrieveContext(message) {
+  if (!retrievalIndex) return shapeRetrieval([], 'unavailable');
+
+  const lexical = retrieve(message, retrievalIndex, { topK: 5 });
+  const { mode } = activeRetrievalMode();
+  if (mode === 'lexical') return shapeRetrieval(lexical, 'lexical');
+
+  let denseRanked;
+  try {
+    denseRanked = await denseRetrieval.denseRetrieve(
+      message, vectorStore, kbById, { topK: 5 },
+    );
+  } catch (error) {
+    // A missing model or a load failure must degrade, not 500.
+    counters.retrieval_dense_failures_total += 1;
+    console.error(`dense retrieval unavailable, using lexical: ${error.message}`);
+    return shapeRetrieval(lexical, 'lexical');
+  }
+
+  if (mode === 'dense') return shapeRetrieval(denseRanked, 'dense');
+
+  // Hybrid measures no better than dense alone on this corpus -- identical top-1
+  // and recall@5, marginally worse MRR -- and equal weighting is actively worse
+  // than favouring dense. Offered because running the comparison is the point of
+  // the harness, not because it wins.
+  return shapeRetrieval(
+    denseRetrieval.fuse(lexical, denseRanked, { topK: 5 }), 'hybrid',
+  );
 }
 
 function groundedAnswer(retrieval) {
@@ -240,21 +333,60 @@ async function readUsage(employeeId) {
   return fallbackLeaveUsage[employeeId] || null;
 }
 
+async function findApplication(reference) {
+  if (mongoUsable()) {
+    const record = await LeaveApplication.findOne({ referenceId: reference }).lean();
+    if (!record) return null;
+    return {
+      employee_id: record.employeeId,
+      leave_type: record.leaveType,
+      days: record.days,
+      status: record.status,
+    };
+  }
+  return fallbackLeaveApplications.find((a) => a.reference_id === reference) || null;
+}
+
+async function setApplicationStatus(reference, status, decidedBy) {
+  if (mongoUsable()) {
+    await LeaveApplication.updateOne(
+      { referenceId: reference },
+      { $set: { status, decidedBy, decidedAt: new Date() } },
+    );
+    return;
+  }
+  const application = fallbackLeaveApplications
+    .find((a) => a.reference_id === reference);
+  if (application) {
+    application.status = status;
+    application.decided_by = decidedBy;
+    application.decided_at = new Date().toISOString();
+  }
+}
+
 async function commitUsage(employeeId, pool, days) {
   if (mongoUsable()) {
     const field = pool === 'casual_leave'
       ? 'casualLeaveUsed'
       : 'combinedAnnualSickLeaveUsed';
+    // $inc cannot enforce the schema's `min: 0`, so read-modify-write with a
+    // clamp. Same reasoning as the fallback path: a restore must not push usage
+    // below zero and report a balance above the entitlement.
+    const record = await LeaveBalance.findOne({ employeeId }).lean();
+    const current = (record && record[field]) || 0;
     await LeaveBalance.updateOne(
       { employeeId },
-      { $inc: { [field]: days } },
+      { $set: { [field]: Math.max(0, current + days) } },
       { upsert: true },
     );
     return;
   }
 
   const usage = fallbackLeaveUsage[employeeId];
-  usage[pool] = (usage[pool] || 0) + days;
+  // Clamped at zero: `days` is negative when a rejection restores leave, and a
+  // double-rejection or a mismatched record must not produce negative usage,
+  // which would report a balance above the entitlement.
+  usage[pool] = Math.max(0, (usage[pool] || 0) + days);
 }
 
 // ---------------------------------------------------------------------------
@@ -281,6 +413,13 @@ app.get('/health', (req, res) => {
       ? { entries: knowledgeBase.length }
       : { entries: 0, error: kbError },
     llm: llm.isConfigured() ? llm.readConfig().provider : 'none',
+    retrieval: (() => {
+      const { mode, reason } = activeRetrievalMode();
+      const requested = configuredRetrievalMode();
+      return mode === requested
+        ? { mode }
+        : { mode, requested, degraded_because: reason };
+    })(),
   };
   res.status(ready ? 200 : 503).json(body);
 });
@@ -291,6 +430,7 @@ app.get('/metrics', (req, res) => {
     counters,
     dataSource: mongoUsable() ? 'mongodb' : 'memory',
     knowledge_base_entries: knowledgeBase.length,
+    retrieval_mode: activeRetrievalMode().mode,
   });
 });
 
@@ -410,7 +550,7 @@ app.post('/chat', requireApiKey, asyncHandler(async (req, res) => {
   }
 
   counters.chat_requests_total += 1;
-  const retrieval = retrieveContext(message);
+  const retrieval = await retrieveContext(message);
   if (!retrieval.context) {
     counters.chat_no_policy_total += 1;
   }
@@ -419,10 +559,95 @@ app.post('/chat', requireApiKey, asyncHandler(async (req, res) => {
   res.json({
     answer: generated.answer,
     sources: retrieval.sources,
+    retrieval_mode: retrieval.mode,
     generated_by: generated.generated_by,
     ...(generated.llm_status ? { llm_status: generated.llm_status } : {}),
   });
 }));
+
+/**
+ * Approve or reject a submitted application.
+ *
+ * Rejecting restores the days to the pool they were taken from. Days are
+ * deducted at submission time so a balance can never be spent twice by two
+ * concurrent requests, which means a rejection has to give them back -- and that
+ * invariant is the whole reason this endpoint exists rather than a status column
+ * nobody writes to. Previously an application recorded as `submitted` and never
+ * moved again.
+ */
+app.post('/leave-applications/:reference/decision', requireApiKey,
+  asyncHandler(async (req, res) => {
+    const reference = req.params.reference;
+    const decision = String(req.body.decision || '').toLowerCase();
+    const decidedBy = req.body.decided_by;
+
+    if (!['approved', 'rejected'].includes(decision)) {
+      res.status(400).json({
+        error: "decision must be 'approved' or 'rejected'",
+        request_id: req.requestId,
+      });
+      return;
+    }
+    if (!decidedBy) {
+      res.status(400).json({
+        error: 'decided_by is required',
+        request_id: req.requestId,
+      });
+      return;
+    }
+
+    const application = await findApplication(reference);
+    if (!application) {
+      res.status(404).json({ error: 'Application not found' });
+      return;
+    }
+
+    // Self-approval is the one authorisation rule that can be enforced without
+    // an identity provider: the approver must not be the applicant.
+    if (String(decidedBy) === String(application.employee_id)) {
+      res.status(403).json({
+        error: 'An application cannot be decided by the employee who filed it',
+        request_id: req.requestId,
+      });
+      return;
+    }
+
+    if (application.status !== 'submitted') {
+      res.status(409).json({
+        error: `Application ${reference} is already ${application.status}`,
+        request_id: req.requestId,
+      });
+      return;
+    }
+
+    let restored = null;
+    if (decision === 'rejected') {
+      const pool = POOL_FOR_TYPE[application.leave_type];
+      await commitUsage(application.employee_id, pool, -application.days);
+      const usage = await readUsage(application.employee_id);
+      const balance = balancePayload(application.employee_id, usage);
+      restored = pool === 'casual_leave'
+        ? balance.casual_leave_balance
+        : balance.combined_annual_sick_leave_balance;
+    }
+
+    await setApplicationStatus(reference, decision, decidedBy);
+    counters.leave_decisions_total += 1;
+
+    res.json({
+      reference_id: reference,
+      employee_id: application.employee_id,
+      leave_type: application.leave_type,
+      days: application.days,
+      status: decision,
+      decided_by: decidedBy,
+      ...(restored === null ? {} : { restored_balance: restored }),
+      message: decision === 'approved'
+        ? `Approved ${application.days} day(s) of ${application.leave_type}.`
+        : `Rejected ${application.days} day(s) of ${application.leave_type}. `
+          + `${application.days} day(s) returned to the balance.`,
+    });
+  }));
 
 app.get('/leave-applications', requireApiKey, asyncHandler(async (req, res) => {
   if (mongoUsable()) {
@@ -479,6 +704,8 @@ module.exports = app;
 module.exports.determineLeaveType = determineLeaveType;
 module.exports.retrieveContext = retrieveContext;
 module.exports.loadKnowledgeBase = loadKnowledgeBase;
+module.exports.activeRetrievalMode = activeRetrievalMode;
+module.exports.configuredRetrievalMode = configuredRetrievalMode;
 
 /**
  * Restore the seeded in-memory demo data.

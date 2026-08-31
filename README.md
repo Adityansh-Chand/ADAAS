@@ -11,58 +11,188 @@ configured and seeded in-memory data otherwise. An LLM is used when
 text when it is not. The whole thing runs end to end on a laptop with no cloud
 account, no API key and no billing.
 
-## Where this is honest, and where it is weak
+## Setup
 
-The interesting numbers are the bad ones, so they are stated up front rather
-than left for a reader to discover.
+### Prerequisites
 
-| What | Measured |
-|---|---|
-| Policy retrieval, queries taken from the corpus's own `question` fields | top-1 **0.9231** |
-| Policy retrieval, the same 26 policies asked in paraphrase | top-1 **0.1111** |
-| Intent routing, on the labelled set the rules were written against | **1.0000** |
-| Intent routing, on a held-out set written after the rules were frozen | **0.4583** |
+| | Version | Notes |
+|---|---|---|
+| Node.js | 24 | CI pins 24; anything with `node --test` and global `fetch` works |
+| Flutter | stable | `flutter --version` — Dart 3.10+ for sealed-class pattern matching |
+| MongoDB | optional | omit it and seeded in-memory data is used |
+| Docker | optional | only for the Compose path |
 
-Both pairs say the same thing. Lexical matching handles the vocabulary it was
-given and falls off a cliff on anything else — 15 of 18 paraphrased policy
-questions retrieve nothing at all, and every intent misroute falls through to
-the policy-question default. This is the ceiling of the approach, not a bug in
-this implementation of it, and closing that gap needs embeddings rather than more
-keywords.
+### First run, from a fresh clone
 
-Reproduce both:
+```bash
+git clone https://github.com/Adityansh-Chand/ADAAS.git
+cd ADAAS
+
+# Backend dependencies. REQUIRED -- see the note below.
+cd hr-backend && npm ci && cd ..
+
+# Flutter dependencies.
+flutter pub get
+```
+
+> **`npm ci` is not optional.** `hr-backend/node_modules` used to be committed to
+> this repository — 1,508 tracked files — and is now correctly ignored. So a fresh
+> clone has no dependencies installed, and `npm test` fails with
+> `Cannot find module 'cors'` until you run `npm ci`. The same applies after
+> checking out any commit from before the removal, because git deletes the
+> `node_modules` files it was tracking on the way past. Re-run `npm ci` and it is
+> fine. `package-lock.json` is committed, so `npm ci` is reproducible.
+
+### Verify the checkout
+
+Four commands. All four should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm ci
-npm run eval        # policy retrieval, both eval sets, with the misses listed
+npm test               # 50 backend tests
+npm run eval           # lexical, dense and hybrid on identical splits
+npm run embed:verify   # committed embeddings still match the corpus
+cd ..
+flutter analyze        # no issues
+flutter test           # 33 Flutter tests, prints intent accuracy
 ```
 
+### Turning on dense retrieval
+
 ```bash
-flutter test        # intent accuracy is printed by test/intent_router_test.dart
+cd hr-backend
+npm install                          # devDependencies included
+RETRIEVAL_MODE=dense npm start
 ```
+
+The first run downloads ~87 MB of model weights into `hr-backend/.model-cache`.
+`GET /health` reports the mode actually in use, and says `degraded_because` if
+dense was requested but is unavailable -- it never silently falls back without
+saying so.
+
+### Acting as a different employee
+
+```bash
+flutter run -d chrome   --dart-define=HR_API_BASE_URL=http://localhost:3000   --dart-define=HR_EMPLOYEE_ID=1002
+```
+
+Employees `1001` and `1002` are seeded with different usage, so switching is
+observably real. This is a demo identity, not authentication -- see the gaps
+below.
+
+### Run it
+
+Terminal 1:
+
+```bash
+cd hr-backend
+npm start         # http://localhost:3000
+```
+
+Terminal 2 — smoke test against the running service:
+
+```bash
+cd hr-backend
+npm run smoke     # 20 checks, all on response content
+```
+
+Terminal 2 — or the app:
+
+```bash
+flutter run -d chrome --dart-define=HR_API_BASE_URL=http://localhost:3000
+```
+
+### Optional configuration
+
+Copy `hr-backend/.env.example` to `hr-backend/.env` and fill in only what you
+need. Everything in it is optional; with an empty file the service runs on
+seeded data with no LLM.
+
+| Variable | Effect if unset |
+|---|---|
+| `MONGODB_URI` | seeded in-memory data |
+| `API_KEY` | HR data and chat endpoints are unauthenticated |
+| `RETRIEVAL_MODE` | `lexical` -- the weaker mode; see the table above |
+| `LLM_PROVIDER` | policy answers come straight from the retrieved policy text |
+| `PORT` | 3000 |
+| `KB_PATH` | resolves to `assets/hr_knowledge_base.json` |
+
+## Where this is honest, and where it is weak
+
+The interesting numbers are the ones that show the limits, so they are stated up
+front rather than left for a reader to discover.
+
+### Policy retrieval, three methods on identical splits
+
+Set B is 36 paraphrases of the same 26 policies, phrased the way an employee
+would ask. `npm run eval` reproduces this, with every miss listed.
+
+| Method | Set B top-1 | Set B recall@5 | Returns nothing |
+|---|---|---|---|
+| lexical (keyword, IDF-weighted) | 0.1111 | 0.1111 | 15 of 18 |
+| **dense (MiniLM embeddings)** | **0.6111** | **0.9444** | **0 of 18** |
+| hybrid (reciprocal rank fusion) | 0.6111 | 0.9444 | 0 of 18 |
+
+Dense retrieval is the answer to the gap this project spent a long time
+measuring: **5.5x the top-1 accuracy and 8.5x the recall** of keyword matching,
+and it answers every paraphrase instead of failing on five in six.
+
+Two findings worth as much as the headline:
+
+- **Hybrid fusion does not beat dense alone.** Identical top-1 and recall@5,
+  marginally worse MRR. Sweeping the fusion weights on the dev half showed equal
+  weighting is *worse* than dense alone, and that every dense-favouring weight
+  simply converges on dense's own score. On this corpus, fusing adds nothing --
+  the same conclusion the enterprise RAG work in this portfolio reached on
+  BEIR/NFCorpus.
+- **Set A is not evidence for dense.** On the corpus's own `question` fields
+  dense scores 1.0000, and that number is meaningless: the policy vectors embed
+  that same question field, so the test is scored against its own answer key. It
+  is gated only as a smoke test that the vectors load and align.
+
+### Intent routing
+
+| Set | Score | What it measures |
+|---|---|---|
+| the labelled set the rules were written against | 1.0000 | coverage of remembered phrasings |
+| held out, written after the rules were frozen | **0.4583** | generalisation |
+
+Still the weakest component, and the gap is the same lexical gap: every misroute
+falls through to the policy-question default because the sentence uses vocabulary
+no rule enumerates. Adding rules has been shown, with numbers, to buy coverage of
+remembered cases and not generalisation -- so the next step here is a classifier
+over the same embeddings, not more keywords.
 
 ### How the evaluation is kept honest
 
-- **Two retrieval sets.** Set A is each policy's own `question` field, which
-  shares vocabulary with its answer by construction and is therefore the easiest
-  possible test. Set B is paraphrased and is the number that matters. Both are
-  split into dev and report halves; tunables were swept against dev only.
-- **`questionWeight` is 0 on purpose.** Indexing each policy's `question` field
-  measured as no help on Set B, and it would have made Set A meaningless — Set
-  A's queries *are* those fields, so scoring against them is scoring a test
-  against its own answer key.
-- **A ceiling gate as well as a floor.** `npm run eval:gate` fails if Set B
-  scores *above* 0.90, because a lexical retriever cannot legitimately do that
-  well on paraphrases; it would mean the eval queries had leaked into the keyword
-  lists.
-- **Held-out sets are retired once they are used.**
+- **Two sets per component**, split into dev and report halves. Every tunable was
+  swept against dev only.
+- **`questionWeight` is 0 in the lexical retriever on purpose.** Indexing each
+  policy's `question` field measured as no help on Set B, and it would have made
+  Set A meaningless for the lexical path too.
+- **Gates fire in both directions.** `npm run eval:gate` fails on a floor and on
+  a ceiling: lexical scoring above 0.90 on paraphrases would mean the eval
+  queries had leaked into the keyword lists. Both directions are verified by
+  setting an impossible threshold and confirming a non-zero exit.
+- **Thresholds are chosen by measuring separation, not by maximising a score.**
+  The dense cut-off sits at 0.12 because six out-of-scope queries scored at most
+  0.0899 and three in-scope paraphrases at least 0.1636. Small sample, stated as
+  such in `dense.js`.
+- **`minScore` must stay above zero in the lexical retriever.** At zero it looked
+  like an improvement -- Set B top-1 0.1111 to 0.1667, recall 0.1111 to 0.3333 --
+  until the scores showed every policy at exactly 0.000 on a paraphrase, with the
+  sort falling through to an alphabetical tiebreak. The gain was luck in the
+  ordering of the file.
+- **Committed embeddings are verified, not trusted.** `npm run embed:verify`
+  re-embeds the corpus and fails if the vectors drift, if the corpus digest
+  changes, or if the batch size changes -- editing one policy answer shifted four
+  vectors in testing, because texts are padded to the longest item in their batch.
+- **Held-out sets are retired once used.**
   `eval/held_out_intent_queries.json` revealed two general bugs, the fixes were
-  informed by it, and it is now labelled BURNED and kept only as a regression
-  guard. `eval/held_out_intent_queries_2.json` is the clean number. Four words
-  that had been lifted from set 2 after seeing its score were removed again —
-  they had lifted it from 0.4167 to 0.5833, which would have been the set
-  scoring vocabulary copied from itself.
+  informed by it, and it is labelled BURNED and kept only as a regression guard.
+  Set 2 is the clean number. Four words that had been lifted from set 2 after
+  seeing its score were removed again -- they had raised it from 0.4167 to 0.5833,
+  which would have been the set scoring vocabulary copied from itself.
 
 ## Architecture
 
@@ -73,10 +203,15 @@ flowchart LR
   IntentRouter -->|apply| LeaveApplicationAPI
   IntentRouter -->|policy| ChatAPI
   ChatAPI --> Retrieval
-  Retrieval --> HRCorpus
+  Retrieval --> Lexical
+  Retrieval --> Dense
+  Lexical --> HRCorpus
+  Dense --> Vectors
   ChatAPI -->|optional| LLM
   LeaveApplicationAPI --> LeaveRules
   LeaveRules --> HRCorpus
+  DecisionAPI --> LeaveRules
+  IntentRouter -->|apply| LeaveApplicationAPI
   LeaveBalanceAPI --> MongoOrMemory
   LeaveApplicationAPI --> MongoOrMemory
   Response --> FlutterUI
@@ -103,12 +238,13 @@ remaining is derived, for the same reason.
 | Endpoint | Purpose |
 |---|---|
 | `GET /live` | Liveness. Unconditional: is the process up? |
-| `GET /health` | Readiness. **503** when the policy corpus cannot be read. |
-| `GET /metrics` | Counters, uptime, corpus size. |
+| `GET /health` | Readiness. **503** when the policy corpus cannot be read. Reports the active retrieval mode. |
+| `GET /metrics` | Counters, uptime, corpus size, retrieval mode. |
 | `GET /leave-balance?employee_id=1001` | Entitlement, used, and remaining. |
-| `POST /leave-application` | Validated against entitlement and balance. |
-| `GET /leave-applications` | Recent applications. |
-| `POST /chat` | Policy question. Cites its sources. |
+| `POST /leave-application` | Validated against entitlement and balance; decrements it. |
+| `GET /leave-applications` | Recent applications with their status. |
+| `POST /leave-applications/:reference/decision` | Approve or reject. A rejection returns the days to the balance. |
+| `POST /chat` | Policy question. Cites its sources and reports which retrieval mode answered. |
 
 Set `API_KEY` to require `X-API-Key` on the HR data and chat endpoints.
 
@@ -192,25 +328,30 @@ for approval. Reference ID: LMS-123456"* while nothing was persisted anywhere.
 
 ## Tests
 
-**65 total: 33 backend, 32 Flutter.** `flutter analyze` clean.
+**83 total: 50 backend, 33 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
 - An unreachable, stalled, 401-ing, 422-ing and 500-ing backend each produce a
   failure or rejection, never a submitted result. Verified against a real
   `HttpServer`, not a mock.
-- A stalled LLM provider does not stall the caller — the test measures the
-  deadline rather than trusting the constant, and the timeout is read at call
-  time so it can actually be reconfigured.
+- Dense retrieval answers a paraphrase the lexical retriever returns nothing for,
+  and the test asserts the lexical failure too, so the comparison is real rather
+  than asserted.
+- Dense retrieval refuses an out-of-scope query, so the threshold is exercised
+  rather than assumed.
+- Rejecting a leave application returns the days to the balance; approving does
+  not; deciding twice is refused and does not restore twice.
+- An employee cannot decide their own application.
+- A balance never exceeds its entitlement, even after a restore.
 - Entitlements match the policy text they were transcribed from.
-- An application moves the balance; a refusal does not.
+- A stalled LLM provider does not stall the caller -- the test measures the
+  deadline rather than trusting the constant.
 - Retrieval matching is word-bounded: the corpus keyword `cl` no longer fires
   inside `clients`, and the `IT` category no longer scores on the letters "it"
   inside `entitled` and `submit`.
-- Retrieval returns nothing when there is no lexical evidence. `minScore` must
-  stay above zero: at zero every policy scores 0.000 on a paraphrase, the sort
-  falls through to its tiebreak, and `policy_001` is returned for everything —
-  which looks like recall but is alphabetical luck.
+- The precomputed vectors cover every policy and have the expected dimensions,
+  so a policy added without re-embedding fails on the next run.
 
 ## Reviewer Status
 
@@ -219,17 +360,25 @@ The ones worth knowing about:
 - **Quickstart:** `cd hr-backend && npm ci && npm test && npm start`, then
   `npm run smoke` and `npm run eval` in a second terminal.
 - **Demo path:** `DEMO.md`.
-- **What works:** all six data endpoints, validated leave applications that move
-  balances, policy retrieval with cited sources, honest failure reporting,
-  bounded timeouts, Docker/Compose/K8s config, CI covering tests, the retrieval
-  quality gate, the smoke test, a container that is started and queried, and
-  Flutter analyze/tests.
-- **Known weak spots, measured:** paraphrased policy questions retrieve nothing
-  15 times in 18; intent routing generalises at 0.4583. Both need embeddings, not
-  more rules.
-- **Remaining gaps:** production HR data integration, an identity provider (the
-  app is hardcoded to employee `1001`), managed MongoDB, managed secrets, an
-  approval workflow, cloud deployment, and policy data governance.
+- **What works:** eight endpoints; validated leave applications that move
+  balances; an approval workflow where a rejection returns the days; policy
+  retrieval in three modes with cited sources; honest failure reporting; bounded
+  timeouts; readiness that can report unready; Docker/Compose/K8s config; CI
+  covering tests, the retrieval quality gate, embedding verification, the smoke
+  test, a container that is started and queried, and Flutter analyze/tests.
+- **Known weak spots, measured:** intent routing generalises at 0.4583; lexical
+  retrieval reaches only 0.1111 on paraphrases, which is why dense exists. The
+  default retrieval mode is the weaker one, because the better one needs a
+  dependency whose transitive advisories have no fix and which is therefore kept
+  out of production images.
+- **Remaining gaps:** no identity provider — `HR_EMPLOYEE_ID` selects a seeded
+  demo employee and proves nothing about who the user is; no notification on a
+  decision; intent routing still rule-based; production HR data integration,
+  managed MongoDB, managed secrets, cloud deployment, and policy data governance.
+- **Security posture:** `npm audit --omit=dev` reports zero vulnerabilities. Four
+  high-severity advisories remain in devDependencies only (adm-zip and sharp, via
+  onnxruntime-node, via the embeddings package) and have no fix available
+  upstream; the Dockerfile installs with `--omit=dev` so none of it ships.
 - **Portfolio index:** https://github.com/Adityansh-Chand/ai-engineering-portfolio
 
 ## License

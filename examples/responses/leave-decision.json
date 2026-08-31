@@ -1,0 +1,10 @@
+{
+  "reference_id": "LMS-EXAMPLE",
+  "employee_id": "1001",
+  "leave_type": "Casual Leave",
+  "days": 1,
+  "status": "rejected",
+  "decided_by": "1002",
+  "restored_balance": 3,
+  "message": "Rejected 1 day(s) of Casual Leave. 1 day(s) returned to the balance."
+}
