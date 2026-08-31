@@ -280,29 +280,44 @@ class MessageBubble extends StatelessWidget {
   static const Color _failureGround = Color(0xCC5A1A16);
   static const Color _failureEdge = Color(0xFFE8817C);
 
+  // Notices are informational, not errors: HR decided something while the
+  // employee was away. Distinct from both an answer and a failure.
+  static const Color _noticeInk = Color(0xFFD6ECEF);
+  static const Color _noticeGround = Color(0xCC123032);
+  static const Color _noticeEdge = Color(0xFF56B9C0);
+
   @override
   Widget build(BuildContext context) {
     final isFailure = message.isFailure;
+    final isNotice = message.isNotice;
 
     return Align(
       alignment:
           isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        key: isFailure ? const Key('failure-message') : null,
+        key: isFailure
+            ? const Key('failure-message')
+            : isNotice
+                ? const Key('notice-message')
+                : null,
         constraints: BoxConstraints(maxWidth: maxWidth),
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: isFailure
               ? _failureGround
-              : isUserMessage
-                  ? Theme.of(context)
-                      .primaryColor
-                      .withAlpha((255 * 0.9).toInt())
-                  : Colors.black.withAlpha((255 * 0.6).toInt()),
+              : isNotice
+                  ? _noticeGround
+                  : isUserMessage
+                      ? Theme.of(context)
+                          .primaryColor
+                          .withAlpha((255 * 0.9).toInt())
+                      : Colors.black.withAlpha((255 * 0.6).toInt()),
           border: isFailure
               ? Border.all(color: _failureEdge, width: 1)
-              : null,
+              : isNotice
+                  ? Border.all(color: _noticeEdge, width: 1)
+                  : null,
         ),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         child: Column(
@@ -328,14 +343,35 @@ class MessageBubble extends StatelessWidget {
               ),
               const SizedBox(height: 8),
             ],
+            if (isNotice) ...[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.notifications_none, size: 16, color: _noticeEdge),
+                  SizedBox(width: 6),
+                  Text(
+                    'WHILE YOU WERE AWAY',
+                    style: TextStyle(
+                      color: _noticeEdge,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               message.text ?? "",
               style: TextStyle(
                 color: isFailure
                     ? _failureInk
-                    : isUserMessage
-                        ? Colors.black
-                        : Colors.white,
+                    : isNotice
+                        ? _noticeInk
+                        : isUserMessage
+                            ? Colors.black
+                            : Colors.white,
                 fontSize: 16,
               ),
             ),

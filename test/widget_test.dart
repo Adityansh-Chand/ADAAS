@@ -87,4 +87,47 @@ void main() {
     // The successful answer cites its source.
     expect(find.textContaining('Leave Policy Guidelines'), findsOneWidget);
   });
+
+  testWidgets('a notice is distinct from both an answer and a failure',
+      (tester) async {
+    // Three visually distinct kinds: an answer, something HR did while the
+    // employee was away, and something that did not happen.
+    await tester.pumpWidget(_host(Column(children: [
+      MessageBubble(
+        message: AppMessageModel(
+          role: 'model',
+          type: MessageType.text,
+          text: 'Casual leave entitlement is 4 days per year.',
+        ),
+        isUserMessage: false,
+        maxWidth: 400,
+      ),
+      MessageBubble(
+        message: AppMessageModel(
+          role: 'model',
+          type: MessageType.notice,
+          text: 'Your request for 2 day(s) of Casual Leave was rejected.',
+        ),
+        isUserMessage: false,
+        maxWidth: 400,
+      ),
+      MessageBubble(
+        message: AppMessageModel(
+          role: 'model',
+          type: MessageType.failure,
+          text: 'Nothing has been filed.',
+        ),
+        isUserMessage: false,
+        maxWidth: 400,
+      ),
+    ])));
+    await tester.pump();
+
+    expect(find.byKey(const Key('notice-message')), findsOneWidget);
+    expect(find.byKey(const Key('failure-message')), findsOneWidget);
+    expect(find.text('WHILE YOU WERE AWAY'), findsOneWidget);
+    expect(find.text('NOT COMPLETED'), findsOneWidget);
+    expect(find.byIcon(Icons.notifications_none), findsOneWidget);
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+  });
 }

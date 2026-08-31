@@ -10,7 +10,9 @@
     "eval": "node scripts/eval_retrieval.js",
     "eval:gate": "node scripts/eval_retrieval.js --gate",
     "embed": "node scripts/build_embeddings.js",
-    "embed:verify": "node scripts/build_embeddings.js --verify"
+    "embed:verify": "node scripts/build_embeddings.js --verify",
+    "eval:intent": "node scripts/eval_intent.js",
+    "eval:intent:gate": "node scripts/eval_intent.js --gate"
   },
   "keywords": [],
   "author": "",

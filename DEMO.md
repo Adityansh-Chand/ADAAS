@@ -126,6 +126,29 @@ npm run eval
 The full three-way comparison. Note that hybrid fusion does **not** beat dense
 alone — that is a real measured result, not an omission.
 
+## 5c. Intent classification, rules against embeddings
+
+```bash
+cd hr-backend
+npm run eval:intent
+```
+
+Four sets, two methods, and the table says what each set is worth. The one that
+matters is `held_out_3`, written before the classifier existed: **rules 0.5667,
+embedding 0.9667**.
+
+Try three queries the rules get wrong. With `RETRIEVAL_MODE=dense` running:
+
+```bash
+for Q in "just checking, do I still have days in hand"          "I want to be off on the 19th, sort that out"          "does the firm reimburse a taxi to the airport"; do
+  curl -s -X POST http://localhost:3000/intent     -H "Content-Type: application/json" -d "{\"message\":\"$Q\"}"
+  echo
+done
+```
+
+All three classify correctly, each reporting `"method":"embedding"`. Restart with
+`RETRIEVAL_MODE=lexical` and the same three fall through to `policyQuestion`.
+
 ## 6. Leave balance, checkable against the policy
 
 ```bash
@@ -190,7 +213,33 @@ curl -s -X POST "http://localhost:3000/leave-applications/$REF2/decision"   -H "
 curl -s -X POST "http://localhost:3000/leave-applications/LMS-NOPE/decision"   -H "Content-Type: application/json" -d '{"decision":"approved","decided_by":"1002"}'
 ```
 
-## 8c. A second employee
+## 8c. The applicant is told
+
+The rejection above wrote a notification:
+
+```bash
+curl -s "http://localhost:3000/notifications?employee_id=1001&unread=true"
+```
+
+Previously a decision moved a balance silently and left the employee to notice.
+Acknowledge it:
+
+```bash
+NID=$(curl -s "http://localhost:3000/notifications?employee_id=1001"   | python -c "import json,sys;print(json.load(sys.stdin)['notifications'][0]['id'])")
+curl -s -X POST "http://localhost:3000/notifications/$NID/ack"   -H "Content-Type: application/json" -d '{}'
+```
+
+And check the approver was not notified — the notification is addressed to the
+applicant:
+
+```bash
+curl -s "http://localhost:3000/notifications?employee_id=1002"
+```
+
+In the app, a pending decision appears before the answer to whatever you asked,
+in its own bubble labelled **WHILE YOU WERE AWAY**.
+
+## 8d. A second employee
 
 ```bash
 curl -s "http://localhost:3000/leave-balance?employee_id=1002"
@@ -241,7 +290,8 @@ Try, in order:
 | `Show my leave balance` | It went down. |
 | `I want 400 days of casual leave` | Refused, citing the policy. |
 | `What is the remote work policy?` | Answer plus its cited source. |
-| `Can I take maternity leave?` | A policy answer, not a leave application. The old router filed this as an application because the sentence contains "take" and "leave". |
+| `Can I take maternity leave?` | A policy answer, not a leave application. The old rule-based router filed this as an application because the sentence contains "take" and "leave". |
+| `just checking, do I still have days in hand` | A balance. The rules read this as a policy question; the classifier does not. |
 | `Can I work from my house a few days a week?` | Honest "no matching policy". |
 
 ### Then the part worth demoing

@@ -773,3 +773,187 @@ test('a decision needs a valid verdict and a decider', async () => {
     assert.equal(unknown.status, 404);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Intent classification
+// ---------------------------------------------------------------------------
+
+const intentModule = require('./intent');
+
+function evalFile(name) {
+  return JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, '..', 'eval', name), 'utf8',
+  )).cases;
+}
+
+test('the intent endpoint classifies and reports which method decided', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await postJson(baseUrl, '/intent', {
+      message: 'show my leave balance',
+    });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.ok(intentModule.INTENTS.includes(data.intent), data.intent);
+    // Default RETRIEVAL_MODE is lexical, so the rules decide and say so.
+    assert.equal(data.method, 'rules');
+  });
+});
+
+test('the intent endpoint rejects an empty message', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await postJson(baseUrl, '/intent', { message: '   ' });
+    assert.equal(response.status, 400);
+  });
+});
+
+test('the embedding classifier beats the rules on held-out phrasing', () => {
+  // The headline: 0.9667 against 0.5667 on eval/held_out_intent_queries_3.json,
+  // a set written before the classifier existed. `npm run eval:intent`
+  // reproduces it. Asserted here so a regression in either direction is caught.
+  const store = denseRetrieval.loadVectors();
+  const training = evalFile('intent_training.json');
+  const heldOut = evalFile('held_out_intent_queries_3.json');
+
+  const classifier = intentModule.buildClassifier(training, store.queries);
+  assert.equal(classifier.missing.length, 0,
+    'training examples lack embeddings; run `npm run embed`');
+
+  let rules = 0;
+  let embedding = 0;
+  for (const c of heldOut) {
+    if (intentModule.routeByRules(c.q) === c.label) rules += 1;
+    const decided = intentModule.route(c.q, classifier, store.queries[c.q]);
+    if (decided.intent === c.label) embedding += 1;
+  }
+
+  const rulesAccuracy = rules / heldOut.length;
+  const embeddingAccuracy = embedding / heldOut.length;
+  assert.ok(embeddingAccuracy > rulesAccuracy,
+    `embedding ${embeddingAccuracy} should beat rules ${rulesAccuracy}`);
+  assert.ok(embeddingAccuracy >= 0.55, `embedding accuracy ${embeddingAccuracy}`);
+});
+
+test('the classifier declines rather than guessing on an unrelated message', () => {
+  const store = denseRetrieval.loadVectors();
+  const classifier = intentModule.buildClassifier(
+    evalFile('intent_training.json'), store.queries,
+  );
+
+  // A vector orthogonal to everything must fall below the confidence floor, so
+  // the rules take over rather than a weak neighbour deciding.
+  const orthogonal = new Array(embeddingsModule.DIMENSIONS).fill(0);
+  const result = intentModule.classify(classifier, orthogonal);
+  assert.equal(result.intent, null);
+  assert.equal(result.confidence, 0);
+});
+
+test('the training set is not a paraphrase of any held-out set', () => {
+  // The real leakage test, and what the intent eval gates on. A high score on
+  // unseen phrasing only means something if the phrasing is genuinely unseen.
+  const store = denseRetrieval.loadVectors();
+  const training = evalFile('intent_training.json');
+
+  let worst = 0;
+  for (const file of ['held_out_intent_queries.json',
+    'held_out_intent_queries_2.json', 'held_out_intent_queries_3.json']) {
+    for (const c of evalFile(file)) {
+      const v = store.queries[c.q];
+      if (!v) continue;
+      for (const t of training) {
+        const tv = store.queries[t.q];
+        if (!tv) continue;
+        const similarity = embeddingsModule.cosine(v, tv);
+        if (similarity > worst) worst = similarity;
+      }
+    }
+  }
+  assert.ok(worst < 0.92, `closest training/eval pair is ${worst.toFixed(4)}`);
+});
+
+// ---------------------------------------------------------------------------
+// Decision notifications
+// ---------------------------------------------------------------------------
+
+test('a decision produces a notification addressed to the applicant', async () => {
+  // A decision the applicant is never told about is not a workflow. Approvals
+  // and rejections previously moved a balance silently.
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 2 days casual leave',
+    })).json();
+
+    await postJson(baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'rejected', decided_by: '1002' });
+
+    const data = await (await fetch(
+      `${baseUrl}/notifications?employee_id=1001&unread=true`)).json();
+    assert.equal(data.unread, 1);
+    assert.match(data.notifications[0].message, /rejected/i);
+    assert.match(data.notifications[0].message, /returned to your balance/i);
+    assert.equal(data.notifications[0].reference_id, filed.reference_id);
+  });
+});
+
+test('a notification goes to the applicant, not the approver', async () => {
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+    await postJson(baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'approved', decided_by: '1002' });
+
+    const applicant = await (await fetch(
+      `${baseUrl}/notifications?employee_id=1001`)).json();
+    const approver = await (await fetch(
+      `${baseUrl}/notifications?employee_id=1002`)).json();
+
+    assert.equal(applicant.notifications.length, 1);
+    assert.equal(approver.notifications.length, 0);
+  });
+});
+
+test('acknowledging a notification clears it from unread', async () => {
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+    await postJson(baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'approved', decided_by: '1002' });
+
+    const before = await (await fetch(
+      `${baseUrl}/notifications?employee_id=1001&unread=true`)).json();
+    assert.equal(before.unread, 1);
+
+    const ack = await postJson(
+      baseUrl, `/notifications/${before.notifications[0].id}/ack`, {});
+    assert.equal(ack.status, 200);
+
+    const after = await (await fetch(
+      `${baseUrl}/notifications?employee_id=1001&unread=true`)).json();
+    assert.equal(after.unread, 0);
+  });
+});
+
+test('a refused application produces no notification', async () => {
+  // Nothing happened, so there is nothing to announce.
+  await withServer(async (baseUrl) => {
+    await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'I want 400 days of casual leave',
+    });
+    const data = await (await fetch(
+      `${baseUrl}/notifications?employee_id=1001`)).json();
+    assert.equal(data.notifications.length, 0);
+  });
+});
+
+test('notifications require an employee, and an unknown ack is 404', async () => {
+  await withServer(async (baseUrl) => {
+    assert.equal((await fetch(`${baseUrl}/notifications`)).status, 400);
+    assert.equal(
+      (await postJson(baseUrl, '/notifications/NTF-NOPE/ack', {})).status, 404);
+  });
+});
