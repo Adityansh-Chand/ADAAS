@@ -26,7 +26,7 @@ jobs:
           MONGODB_URI: ""
 
   retrieval-eval:
-    name: Retrieval quality gate
+    name: Retrieval and intent quality gates
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -47,6 +47,11 @@ jobs:
       # mean the eval queries had leaked into the keyword lists.
       - name: Score retrieval
         run: npm run eval:gate
+      # Scores rules against the embedding classifier on four intent sets, and
+      # gates on a direct training/eval overlap check rather than on a
+      # suspiciously high accuracy -- leakage is measurable, so it is measured.
+      - name: Score intent classification
+        run: npm run eval:intent:gate
 
   embeddings-verify:
     name: Embeddings match the corpus
