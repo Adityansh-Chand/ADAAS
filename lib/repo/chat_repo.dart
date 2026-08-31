@@ -1,86 +1,87 @@
-import 'dart:convert';
-import 'dart:developer';
-import 'package:adaas/Model/chat_message_model.dart';
 import 'package:adaas/services/app_config.dart';
+import 'package:adaas/services/http_client.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart';
 
+/// Outcome of asking a policy question.
+sealed class PolicyAnswerResult {
+  const PolicyAnswerResult();
+}
+
+/// The service answered from the HR knowledge base.
+class PolicyAnswer extends PolicyAnswerResult {
+  final String answer;
+  final List<String> sources;
+
+  const PolicyAnswer({required this.answer, this.sources = const []});
+}
+
+/// The service was reached and had no policy covering the question. This is a
+/// real answer, not a failure -- it is distinguished from [PolicyLookupFailed]
+/// because "we have no policy on that" and "we could not ask" are different
+/// facts and the user is entitled to know which one happened.
+class PolicyNotFound extends PolicyAnswerResult {
+  const PolicyNotFound();
+}
+
+/// The question never reached the service.
+class PolicyLookupFailed extends PolicyAnswerResult {
+  final String reason;
+
+  const PolicyLookupFailed(this.reason);
+}
+
+/// Policy questions are answered by the backend, which owns the only retrieval
+/// implementation in the system.
+///
+/// This class used to carry a second, different retriever: it loaded the same
+/// knowledge base into the client and scored it by unranked substring match,
+/// taking whichever entry appeared first in the JSON file. It disagreed with the
+/// backend -- on "What is the remote work policy?" the backend returned the
+/// Flexible Work Arrangement Policy and the client returned Attendance -- and it
+/// ran precisely when the backend was unreachable and nobody was watching. Two
+/// rankers that disagree is not a bug that can be fixed, only picked between, so
+/// the client-side one is gone.
 class ChatRepo {
-  static List<Map<String, dynamic>> _knowledgeBase = [];
-
-  static Future<void> loadKnowledgeBase() async {
-    try {
-      final String jsonString =
-          await rootBundle.loadString('assets/hr_knowledge_base.json');
-      _knowledgeBase =
-          (jsonDecode(jsonString) as List).cast<Map<String, dynamic>>();
-      log('Knowledge base loaded successfully. ${_knowledgeBase.length} entries.');
-    } catch (e) {
-      log('Error loading knowledge base: $e');
-    }
-  }
-
-  static String retrieveContext(
-      String userMessage, List<Map<String, dynamic>> kb) {
-    String context = "";
-    if (userMessage.isNotEmpty) {
-      for (var entry in kb) {
-        List<String> keywords = (entry['keywords'] as List).cast<String>();
-        for (var keyword in keywords) {
-          if (userMessage.toLowerCase().contains(keyword.toLowerCase())) {
-            context += "Source: ${entry['source']}\n";
-            context += "Policy Details: ${entry['answer']}\n\n";
-            break;
-          }
-        }
-      }
-    }
-    if (context.isEmpty) {
-      return "No specific company policy information was found for this query. Answer based on general knowledge.";
-    }
-    return context;
-  }
-
-  static Future<String> chatTextGenerationRepo(
-      List<AppMessageModel> previousMessages) async {
-    final userMessage = previousMessages.last.text ?? "";
-    final context = retrieveContext(userMessage, _knowledgeBase);
+  static Future<PolicyAnswerResult> askPolicyQuestion(
+    String userMessage, {
+    Dio? client,
+    String? baseUrl,
+  }) async {
+    final dio = client ?? HrHttpClient.create();
+    final root = baseUrl ?? AppConfig.hrApiBaseUrl;
 
     try {
-      final response =
-          await Dio(BaseOptions(headers: AppConfig.authHeaders)).post(
-        '${AppConfig.hrApiBaseUrl}/chat',
-        data: {
-          'message': userMessage,
-        },
+      final response = await dio.post(
+        '$root/chat',
+        data: {'message': userMessage},
       );
 
-      if (response.statusCode == 200 && response.data['answer'] is String) {
-        return response.data['answer'] as String;
+      final status = response.statusCode ?? 0;
+      final body = response.data;
+
+      if (status == 200 && body is Map && body['answer'] is String) {
+        final answer = body['answer'] as String;
+        final rawSources = body['sources'];
+        final sources = rawSources is List
+            ? rawSources.map((s) => s.toString()).toList()
+            : const <String>[];
+
+        if (sources.isEmpty && answer.startsWith("I couldn't find")) {
+          return const PolicyNotFound();
+        }
+
+        return PolicyAnswer(answer: answer, sources: sources);
       }
 
-      return _localAnswer(context);
-    } catch (e) {
-      log("Backend chat unavailable, using local RAG fallback: $e");
-      return _localAnswer(context);
+      if (status == 401 || status == 403) {
+        return const PolicyLookupFailed(
+            'this app is not authorised to query HR policy');
+      }
+
+      return PolicyLookupFailed(
+          'the HR service returned an unexpected response (status $status)');
+    } catch (error) {
+      return PolicyLookupFailed(HrHttpClient.describe(error));
     }
-  }
-
-  static String _localAnswer(String context) {
-    if (context.startsWith("No specific company policy")) {
-      return "I couldn't find a matching company policy for that question.";
-    }
-
-    final firstSource = RegExp(r"Source: (.+)").firstMatch(context)?.group(1);
-    final firstPolicy = RegExp(r"Policy Details: ([\s\S]+?)(?:\n\n|$)")
-        .firstMatch(context)
-        ?.group(1);
-
-    if (firstPolicy == null) {
-      return "I couldn't find a matching company policy for that question.";
-    }
-
-    final citation = firstSource == null ? "" : "\n\nSource: $firstSource";
-    return "$firstPolicy$citation";
   }
 }

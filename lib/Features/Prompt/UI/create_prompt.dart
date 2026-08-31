@@ -30,6 +30,8 @@ class _CreatePromptScreenState extends State<CreatePromptScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
+    textEditingController.dispose();
+    chatBloc.close();
     super.dispose();
   }
 
@@ -129,38 +131,11 @@ class _CreatePromptScreenState extends State<CreatePromptScreen>
                               return LeaveSummaryTable(
                                   balance: msg.leaveBalance!);
                             } else {
-                              // Render the text bubble
-                              return Align(
-                                alignment: isUserMessage
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth:
-                                        MediaQuery.of(context).size.width * 0.7,
-                                  ),
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16),
-                                    color: isUserMessage
-                                        ? Theme.of(context)
-                                            .primaryColor
-                                            .withAlpha((255 * 0.9).toInt())
-                                        : Colors.black
-                                            .withAlpha((255 * 0.6).toInt()),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 16),
-                                  child: Text(
-                                    msg.text ?? "",
-                                    style: TextStyle(
-                                      color: isUserMessage
-                                          ? Colors.black
-                                          : Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
+                              return MessageBubble(
+                                message: msg,
+                                isUserMessage: isUserMessage,
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.7,
                               );
                             }
                           },
@@ -258,6 +233,109 @@ class _CreatePromptScreenState extends State<CreatePromptScreen>
             // This is the default case (handles ChatInitial)
             return const Center(child: CircularProgressIndicator());
           }),
+    );
+  }
+}
+
+/// A chat bubble.
+///
+/// Failure messages get their own treatment -- warning-tinted ground, a border,
+/// an icon and a label. Before this existed, `ChatState` had no notion of
+/// failure, so a fabricated leave confirmation, a real confirmation and a
+/// connection error all arrived in an identical bubble. Distinguishing them
+/// visually is the other half of the fix in the repositories: the app can now
+/// tell the user that nothing was filed, and the user can see it.
+class MessageBubble extends StatelessWidget {
+  const MessageBubble({
+    super.key,
+    required this.message,
+    required this.isUserMessage,
+    required this.maxWidth,
+  });
+
+  final AppMessageModel message;
+  final bool isUserMessage;
+  final double maxWidth;
+
+  static const Color _failureInk = Color(0xFFFFD9D4);
+  static const Color _failureGround = Color(0xCC5A1A16);
+  static const Color _failureEdge = Color(0xFFE8817C);
+
+  @override
+  Widget build(BuildContext context) {
+    final isFailure = message.isFailure;
+
+    return Align(
+      alignment:
+          isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        key: isFailure ? const Key('failure-message') : null,
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: isFailure
+              ? _failureGround
+              : isUserMessage
+                  ? Theme.of(context)
+                      .primaryColor
+                      .withAlpha((255 * 0.9).toInt())
+                  : Colors.black.withAlpha((255 * 0.6).toInt()),
+          border: isFailure
+              ? Border.all(color: _failureEdge, width: 1)
+              : null,
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isFailure) ...[
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.error_outline, size: 16, color: _failureEdge),
+                  SizedBox(width: 6),
+                  Text(
+                    'NOT COMPLETED',
+                    style: TextStyle(
+                      color: _failureEdge,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+            Text(
+              message.text ?? "",
+              style: TextStyle(
+                color: isFailure
+                    ? _failureInk
+                    : isUserMessage
+                        ? Colors.black
+                        : Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            if (message.sources.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                message.sources.length == 1
+                    ? 'Source: ${message.sources.first}'
+                    : 'Sources: ${message.sources.join('; ')}',
+                style: TextStyle(
+                  color: Colors.white.withAlpha((255 * 0.62).toInt()),
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
