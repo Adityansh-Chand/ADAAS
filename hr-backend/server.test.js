@@ -493,3 +493,283 @@ test('a failing provider falls back to the retrieved policy text', async () => {
   assert.equal(result.text, null);
   assert.equal(result.reason, 'provider_status_503');
 });
+
+// ---------------------------------------------------------------------------
+// Retrieval modes
+// ---------------------------------------------------------------------------
+
+const denseRetrieval = require('./dense');
+const embeddingsModule = require('./embeddings');
+
+test('retrieval mode defaults to lexical', () => {
+  delete process.env.RETRIEVAL_MODE;
+  assert.equal(app.configuredRetrievalMode(), 'lexical');
+  assert.equal(app.activeRetrievalMode().mode, 'lexical');
+});
+
+test('an unrecognised retrieval mode falls back rather than throwing', () => {
+  process.env.RETRIEVAL_MODE = 'magic-beans';
+  try {
+    assert.equal(app.configuredRetrievalMode(), 'lexical');
+  } finally {
+    delete process.env.RETRIEVAL_MODE;
+  }
+});
+
+test('health reports the active mode and says when it is degraded', async () => {
+  process.env.RETRIEVAL_MODE = 'dense';
+  try {
+    await withServer(async (baseUrl) => {
+      const data = await (await fetch(`${baseUrl}/health`)).json();
+      // Vectors are committed and the dev package is installed locally and in
+      // CI, so this should be running dense. If either is absent the response
+      // must say so rather than silently pretending.
+      if (data.retrieval.mode === 'dense') {
+        assert.equal(data.retrieval.requested, undefined);
+      } else {
+        assert.equal(data.retrieval.mode, 'lexical');
+        assert.equal(data.retrieval.requested, 'dense');
+        assert.ok(data.retrieval.degraded_because);
+      }
+    });
+  } finally {
+    delete process.env.RETRIEVAL_MODE;
+  }
+});
+
+test('chat reports which retrieval mode produced the answer', async () => {
+  await withServer(async (baseUrl) => {
+    const data = await (await postJson(baseUrl, '/chat', {
+      message: 'What is the remote work policy?',
+    })).json();
+    assert.equal(data.retrieval_mode, 'lexical');
+  });
+});
+
+test('dense retrieval answers a paraphrase that lexical cannot', async () => {
+  // The headline result. Lexical returns nothing for this query because it
+  // contains none of the indexed keyword strings; dense retrieves the right
+  // policy. Measured across the whole eval set: 0.1111 -> 0.6111 top-1.
+  const store = denseRetrieval.loadVectors();
+  assert.ok(store, 'eval/embeddings.json must be committed');
+
+  const query = 'Can I work from my house a few days a week?';
+  const kbById = new Map(KB.map((e) => [e.id, e]));
+
+  const ranked = await denseRetrieval.denseRetrieve(query, store, kbById, {
+    topK: 5,
+    allowLiveEmbedding: false,
+  });
+  assert.equal(ranked[0].entry.id, 'policy_013');
+
+  // And the lexical retriever genuinely fails on it, so the comparison is real.
+  const lexical = retrieve(query, buildIndex(KB), { topK: 5 });
+  assert.equal(lexical.length, 0);
+});
+
+test('dense retrieval refuses an out-of-scope query', async () => {
+  // The threshold sits at 0.12, in the measured gap between out-of-scope queries
+  // (at most 0.0899) and in-scope paraphrases (at least 0.1636). Without it the
+  // service would always return its closest guess.
+  const store = denseRetrieval.loadVectors();
+  const kbById = new Map(KB.map((e) => [e.id, e]));
+  const vector = store.queries['Can I work from my house a few days a week?'];
+  assert.ok(vector);
+
+  // A vector orthogonal to everything must retrieve nothing.
+  const orthogonal = new Array(embeddingsModule.DIMENSIONS).fill(0);
+  const ranked = await denseRetrieval.denseRetrieve('irrelevant', store, kbById, {
+    topK: 5,
+    queryVector: orthogonal,
+    allowLiveEmbedding: false,
+  });
+  assert.equal(ranked.length, 0);
+});
+
+test('precomputed vectors match the corpus', () => {
+  // Guards against a policy being edited without re-embedding, which would leave
+  // dense retrieval scoring against stale vectors. `npm run embed:verify` is the
+  // full check; this asserts the shape and coverage cheaply on every test run.
+  const store = denseRetrieval.loadVectors();
+  assert.equal(store.dimensions, embeddingsModule.DIMENSIONS);
+  assert.equal(Object.keys(store.policies).length, KB.length);
+  for (const entry of KB) {
+    assert.ok(store.policies[entry.id], `no vector for ${entry.id}`);
+    assert.equal(store.policies[entry.id].length, embeddingsModule.DIMENSIONS);
+  }
+});
+
+test('fusion of two rankings keeps entries found by only one side', () => {
+  const a = [{ entry: { id: 'x' }, score: 1 }];
+  const b = [{ entry: { id: 'y' }, score: 1 }];
+  const fused = denseRetrieval.fuse(a, b, { topK: 5 });
+  assert.deepEqual(fused.map((f) => f.entry.id).sort(), ['x', 'y']);
+});
+
+test('a zero-weight side is excluded from fusion entirely', () => {
+  const lexical = [{ entry: { id: 'lex' }, score: 1 }];
+  const denseRanked = [{ entry: { id: 'dense' }, score: 1 }];
+  const fused = denseRetrieval.fuse(lexical, denseRanked, {
+    topK: 5, lexicalWeight: 0,
+  });
+  assert.deepEqual(fused.map((f) => f.entry.id), ['dense']);
+});
+
+// ---------------------------------------------------------------------------
+// Identity and the approval workflow
+// ---------------------------------------------------------------------------
+
+test('two employees have independent balances', async () => {
+  // With a single seeded employee, "hardcoded to 1001" and "supports one
+  // employee" were indistinguishable from the outside.
+  await withServer(async (baseUrl) => {
+    const a = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    const b = await (await fetch(`${baseUrl}/leave-balance?employee_id=1002`)).json();
+    assert.notEqual(a.casual_leave_balance, b.casual_leave_balance);
+    assert.equal(a.employee_id, '1001');
+    assert.equal(b.employee_id, '1002');
+  });
+});
+
+test('an application can be approved by someone else', async () => {
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+
+    const decided = await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'approved', decided_by: '1002' },
+    );
+    assert.equal(decided.status, 200);
+    const body = await decided.json();
+    assert.equal(body.status, 'approved');
+    assert.equal(body.decided_by, '1002');
+  });
+});
+
+test('rejecting an application returns the days to the balance', async () => {
+  // Days are deducted at submission so a balance cannot be spent twice, which
+  // makes restoring them on rejection a required invariant rather than a nicety.
+  await withServer(async (baseUrl) => {
+    const before = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 2 days casual leave',
+    })).json();
+
+    const during = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    assert.equal(during.casual_leave_balance, before.casual_leave_balance - 2);
+
+    const decided = await (await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'rejected', decided_by: '1002' },
+    )).json();
+    assert.equal(decided.status, 'rejected');
+    assert.equal(decided.restored_balance, before.casual_leave_balance);
+
+    const after = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    assert.equal(after.casual_leave_balance, before.casual_leave_balance);
+  });
+});
+
+test('approving does not return the days', async () => {
+  await withServer(async (baseUrl) => {
+    const before = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+    await postJson(baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'approved', decided_by: '1002' });
+
+    const after = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    assert.equal(after.casual_leave_balance, before.casual_leave_balance - 1);
+  });
+});
+
+test('an employee cannot decide their own application', async () => {
+  // The one authorisation rule enforceable without an identity provider.
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+
+    const response = await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'approved', decided_by: '1001' },
+    );
+    assert.equal(response.status, 403);
+  });
+});
+
+test('an application cannot be decided twice', async () => {
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+    const first = await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'rejected', decided_by: '1002' },
+    );
+    assert.equal(first.status, 200);
+
+    // A second rejection must not restore the days again.
+    const balance = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    const second = await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'rejected', decided_by: '1002' },
+    );
+    assert.equal(second.status, 409);
+
+    const after = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    assert.equal(after.casual_leave_balance, balance.casual_leave_balance);
+  });
+});
+
+test('a balance never exceeds its entitlement, even after restores', async () => {
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+    await postJson(baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'rejected', decided_by: '1002' });
+
+    const after = await (await fetch(`${baseUrl}/leave-balance?employee_id=1001`)).json();
+    assert.ok(after.casual_leave_balance <= after.entitlements.casual_leave,
+      `${after.casual_leave_balance} > ${after.entitlements.casual_leave}`);
+    assert.ok(after.used.casual_leave >= 0);
+  });
+});
+
+test('a decision needs a valid verdict and a decider', async () => {
+  await withServer(async (baseUrl) => {
+    const filed = await (await postJson(baseUrl, '/leave-application', {
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    })).json();
+
+    const noVerdict = await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decided_by: '1002' },
+    );
+    assert.equal(noVerdict.status, 400);
+
+    const noDecider = await postJson(
+      baseUrl, `/leave-applications/${filed.reference_id}/decision`,
+      { decision: 'approved' },
+    );
+    assert.equal(noDecider.status, 400);
+
+    const unknown = await postJson(
+      baseUrl, '/leave-applications/LMS-NOPE/decision',
+      { decision: 'approved', decided_by: '1002' },
+    );
+    assert.equal(unknown.status, 404);
+  });
+});

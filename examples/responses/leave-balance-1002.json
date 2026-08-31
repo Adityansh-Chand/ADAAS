@@ -1,0 +1,13 @@
+{
+  "employee_id": "1002",
+  "entitlements": {
+    "casual_leave": 4,
+    "combined_annual_sick_leave": 18
+  },
+  "used": {
+    "casual_leave": 3,
+    "combined_annual_sick_leave": 11
+  },
+  "casual_leave_balance": 1,
+  "combined_annual_sick_leave_balance": 7
+}

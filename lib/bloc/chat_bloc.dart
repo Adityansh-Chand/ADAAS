@@ -3,16 +3,13 @@ import 'package:adaas/Model/chat_message_model.dart';
 import 'package:adaas/repo/chat_repo.dart';
 import 'package:adaas/repo/leave_api_repo.dart';
 import 'package:adaas/repo/leave_application_repo.dart';
+import 'package:adaas/services/app_config.dart';
 import 'package:adaas/services/intent_router.dart';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
-
-/// Until there is an identity provider this is the only employee the app can
-/// act as. Named rather than inlined twice, so the assumption is visible.
-const String kDemoEmployeeId = '1001';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc() : super(ChatSuccessState(messages: const [])) {
@@ -56,7 +53,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   Future<AppMessageModel> _balanceReply() async {
-    final result = await LeaveApiRepo.fetchLeaveBalance(kDemoEmployeeId);
+    final result = await LeaveApiRepo.fetchLeaveBalance(AppConfig.employeeId);
     switch (result) {
       case LeaveBalanceLoaded(balance: final balance):
         return AppMessageModel(
@@ -75,7 +72,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   Future<AppMessageModel> _applyReply(String userMessage) async {
     final result =
-        await LeaveApplicationRepo.applyForLeave(kDemoEmployeeId, userMessage);
+        await LeaveApplicationRepo.applyForLeave(AppConfig.employeeId, userMessage);
 
     // Every branch here states plainly whether anything was filed. There is no
     // longer a path that reports success without a server having said so.
