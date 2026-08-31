@@ -6,6 +6,7 @@ const LeaveApplicationSchema = new mongoose.Schema(
     leaveType: { type: String, required: true },
     requestText: { type: String, required: true },
     referenceId: { type: String, required: true, unique: true },
+    days: { type: Number, required: true, min: 0.5 },
     status: {
       type: String,
       enum: ['submitted', 'approved', 'rejected'],

@@ -22,6 +22,59 @@ jobs:
         run: npm ci
       - name: Run backend tests
         run: npm test
+        env:
+          MONGODB_URI: ""
+
+  retrieval-eval:
+    name: Retrieval quality gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hr-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hr-backend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+      # Scores policy retrieval against both eval sets and fails if either drops
+      # below its floor, or if the paraphrase set scores implausibly high -- which
+      # would mean the eval queries had leaked into the keyword lists.
+      - name: Score retrieval
+        run: npm run eval:gate
+
+  backend-smoke:
+    name: Backend smoke test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hr-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hr-backend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci
+      - name: Start server
+        run: |
+          MONGODB_URI="" node server.js &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/health > /dev/null; then break; fi
+            sleep 1
+          done
+      # Asserts on response content, not just status codes. The previous version
+      # of this script checked only `response.ok`, so it passed while /chat
+      # returned "I couldn't find a matching company policy".
+      - name: Run smoke test
+        run: npm run smoke
+        env:
+          BASE_URL: http://127.0.0.1:3000
 
   backend-docker-build:
     name: Backend Docker image build
@@ -30,6 +83,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build backend service image
         run: docker build --file hr-backend/Dockerfile --tag adaas-hr-backend:${{ github.sha }} .
+      # The container resolves the corpus at ../assets relative to WORKDIR, which
+      # only lines up because WORKDIR happens to be one level deep. Prove the
+      # running image can actually read it rather than trusting the build.
+      - name: Verify the image can serve policy questions
+        run: |
+          docker run -d --name adaas-ci -p 3000:3000 adaas-hr-backend:${{ github.sha }}
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3000/health | tee /tmp/health.json
+          grep -q '"status":"running"' /tmp/health.json
+          curl -fsS -X POST http://127.0.0.1:3000/chat \
+            -H 'Content-Type: application/json' \
+            -d '{"message":"What is the remote work policy?"}' | tee /tmp/chat.json
+          grep -q 'Flexible Work Arrangement Policy' /tmp/chat.json
+      - name: Container logs
+        if: always()
+        run: docker logs adaas-ci || true
+      - name: Stop container
+        if: always()
+        run: docker rm -f adaas-ci || true
 
   flutter-test:
     name: Flutter analyze and tests
@@ -43,5 +118,7 @@ jobs:
         run: flutter pub get
       - name: Analyze
         run: flutter analyze
+      # Includes the intent-router accuracy gates and the end-to-end flow tests
+      # that assert a failed request is never reported as a success.
       - name: Test
         run: flutter test

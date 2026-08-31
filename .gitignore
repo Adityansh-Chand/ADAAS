@@ -26,3 +26,11 @@ coverage/
 .idea/
 .vscode/
 
+# Flutter/Dart build state. `.dart_tool/chrome-device/` is a full Chrome profile
+# written by `flutter run -d chrome`; 227 of its files were committed, including
+# ones named `Login Data`, `Network/Cookies` and a browser `History`. They were
+# inspected and held no credentials, no cookies and no autofill -- only 11
+# localhost URLs from local runs -- but the directory must not be tracked, or the
+# next run will commit real browsing data.
+.dart_tool/
+.flutter-plugins-dependencies

@@ -29,11 +29,31 @@ spec:
                   name: adaas-hr-backend-secrets
                   key: api-key
                   optional: true
-            - name: GEMINI_API_KEY
+            # Optional. With no provider configured the service answers
+            # policy questions straight from the knowledge base.
+            - name: LLM_PROVIDER
               valueFrom:
                 secretKeyRef:
                   name: adaas-hr-backend-secrets
-                  key: gemini-api-key
+                  key: llm-provider
+                  optional: true
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: adaas-hr-backend-secrets
+                  key: llm-api-key
+                  optional: true
+            - name: LLM_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: adaas-hr-backend-secrets
+                  key: llm-model
+                  optional: true
+            - name: LLM_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: adaas-hr-backend-secrets
+                  key: llm-base-url
                   optional: true
             - name: MONGODB_URI
               valueFrom:
@@ -41,15 +61,24 @@ spec:
                   name: adaas-hr-backend-secrets
                   key: mongodb-uri
                   optional: true
+          # Readiness asks "can this pod serve policy questions?" -- /health
+          # returns 503 when the corpus cannot be read, so a pod that would
+          # answer every question with "not found" is taken out of rotation.
+          # Previously both probes hit a /health that returned 200
+          # unconditionally, which made readiness meaningless.
           readinessProbe:
             httpGet:
               path: /health
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 10
+            failureThreshold: 3
+          # Liveness asks only "is the process alive?". It must not depend on the
+          # corpus, or a bad asset mount would restart-loop the pod instead of
+          # leaving it up and visibly unready.
           livenessProbe:
             httpGet:
-              path: /health
+              path: /live
               port: 3000
             initialDelaySeconds: 15
             periodSeconds: 20
