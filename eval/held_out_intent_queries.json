@@ -1,0 +1,30 @@
+{
+  "about": "Held-out intent cases. Written AFTER the routing rules in lib/services/intent_router.dart were finalised, and the rules were not modified in response to the result. This is the only intent number in the repository that is not an upper bound -- eval/intent_queries.json was visible while the rules were being written, so a high score there means the rules cover the cases the author thought of, not that the router works. Phrasings here are deliberately varied: indirect requests, non-questions, and vocabulary absent from the rule lists.",
+  "labels": ["leaveBalance", "applyLeave", "policyQuestion"],
+  "cases": [
+    { "q": "any idea how much holiday I've got left this year", "label": "leaveBalance" },
+    { "q": "sign me off for the 14th", "label": "applyLeave" },
+    { "q": "my daughter is ill, I have to stay home tomorrow", "label": "applyLeave" },
+    { "q": "remind me what the reimbursement window is", "label": "policyQuestion" },
+    { "q": "leave summary please", "label": "leaveBalance" },
+    { "q": "are there restrictions on consecutive casual leave", "label": "policyQuestion" },
+    { "q": "I'll be away Thursday and Friday", "label": "applyLeave" },
+    { "q": "show me what I've used so far", "label": "leaveBalance" },
+    { "q": "whats the process for a comp off", "label": "policyQuestion" },
+    { "q": "mark me on leave for next week", "label": "applyLeave" },
+    { "q": "do we get a birthday holiday", "label": "policyQuestion" },
+    { "q": "how much sick leave have I used", "label": "leaveBalance" },
+    { "q": "I want time off in December", "label": "applyLeave" },
+    { "q": "tell me about the appraisal cycle", "label": "policyQuestion" },
+    { "q": "is my leave approved yet", "label": "leaveBalance" },
+    { "q": "need to be out on the 2nd for a wedding", "label": "applyLeave" },
+    { "q": "who approves travel bookings", "label": "policyQuestion" },
+    { "q": "what's left in my casual bucket", "label": "leaveBalance" },
+    { "q": "going to the doctor Monday morning, taking half day", "label": "applyLeave" },
+    { "q": "explain the notice period for a senior engineer", "label": "policyQuestion" },
+    { "q": "can you check my balances", "label": "leaveBalance" },
+    { "q": "I'd rather work from home on Fridays going forward", "label": "policyQuestion" },
+    { "q": "put me down as absent on the 9th", "label": "applyLeave" },
+    { "q": "does the ICC handle bullying complaints too", "label": "policyQuestion" }
+  ]
+}
