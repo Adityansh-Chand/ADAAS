@@ -11,6 +11,7 @@ const LeaveBalance = require('./models/LeaveBalance');
 const llm = require('./llm');
 const { buildIndex, retrieve } = require('./retrieval');
 const denseRetrieval = require('./dense');
+const reranker = require('./rerank');
 const intentModule = require('./intent');
 const embeddings = require('./embeddings');
 const {
@@ -37,6 +38,7 @@ const counters = {
   leave_applications_rejected_total: 0,
   llm_fallback_total: 0,
   retrieval_dense_failures_total: 0,
+  retrieval_rerank_failures_total: 0,
   leave_decisions_total: 0,
   intent_requests_total: 0,
   intent_embedding_failures_total: 0,
@@ -89,7 +91,7 @@ let intentClassifier = null;
 // hidden: the default mode is the weaker one, and turning on the better one is
 // one install and one environment variable away.
 // ---------------------------------------------------------------------------
-const VALID_RETRIEVAL_MODES = ['lexical', 'dense', 'hybrid'];
+const VALID_RETRIEVAL_MODES = ['lexical', 'dense', 'hybrid', 'reranked'];
 
 function configuredRetrievalMode() {
   const raw = (process.env.RETRIEVAL_MODE || 'lexical').trim().toLowerCase();
@@ -105,6 +107,12 @@ function activeRetrievalMode() {
   }
   if (!embeddings.isAvailable()) {
     return { mode: 'lexical', reason: 'embeddings_package_not_installed' };
+  }
+  // Reranking needs the model at request time and cannot be precomputed for an
+  // arbitrary query, so it degrades to plain dense rather than to lexical -- one
+  // step down, not two.
+  if (wanted === 'reranked' && !reranker.isAvailable()) {
+    return { mode: 'dense', reason: 'reranker_package_not_installed' };
   }
   return { mode: wanted, reason: 'configured' };
 }
@@ -265,6 +273,23 @@ async function retrieveContext(message) {
   }
 
   if (mode === 'dense') return shapeRetrieval(denseRanked, 'dense');
+
+  if (mode === 'reranked') {
+    try {
+      // The pool is deliberately wider than the 5 that get returned: the
+      // cross-encoder can only reorder what it is handed.
+      const pooled = await denseRetrieval.denseRetrieve(
+        message, vectorStore, kbById, { topK: reranker.DEFAULT_POOL },
+      );
+      const reranked = await reranker.rerank(message, pooled);
+      return shapeRetrieval(reranked.slice(0, 5), 'reranked');
+    } catch (error) {
+      // Same rule as above: a model that will not load degrades, never 500s.
+      counters.retrieval_rerank_failures_total += 1;
+      console.error(`reranking unavailable, using dense: ${error.message}`);
+      return shapeRetrieval(denseRanked, 'dense');
+    }
+  }
 
   // Hybrid measures no better than dense alone on this corpus -- identical top-1
   // and recall@5, marginally worse MRR -- and equal weighting is actively worse
@@ -721,7 +746,7 @@ async function classifyIntent(message) {
   }
   try {
     const vector = vectorStore.queries[message]
-      || await embeddings.embedOne(message);
+      || await embeddings.embedUtterance(message);
     return intentModule.route(message, intentClassifier, vector);
   } catch (error) {
     counters.intent_embedding_failures_total += 1;

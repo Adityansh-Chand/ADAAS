@@ -40,11 +40,18 @@ jobs:
           cache-dependency-path: hr-backend/package-lock.json
       - name: Install backend dependencies
         run: npm ci
-      # Scores lexical, dense and hybrid retrieval on identical splits. Dense
-      # reads the committed vectors in eval/embeddings.json, so this needs no
-      # model download and is deterministic. Fails if any method drops below its
-      # floor, or if lexical scores implausibly high on paraphrases -- which would
-      # mean the eval queries had leaked into the keyword lists.
+      # Scores lexical, dense, hybrid and reranked retrieval on identical splits.
+      # Reads the committed vectors in eval/embeddings.json and the committed
+      # cross-encoder logits in eval/rerank_scores.json, so this needs no model
+      # download and is deterministic.
+      #
+      # Eleven gates, and they fire in both directions. Eight are floors, one per
+      # method and eval set. One is a ceiling: lexical retrieval scoring above
+      # 0.90 on paraphrases would mean the eval queries had leaked into the
+      # keyword lists, so failing upward trips the build too. Two cover
+      # abstention -- out-of-scope queries that must return nothing, and the
+      # converse check that the thresholds are not buying that by dropping real
+      # questions.
       - name: Score retrieval
         run: npm run eval:gate
       # Scores rules against the embedding classifier on four intent sets, and
@@ -70,17 +77,30 @@ jobs:
       # deliberately absent from the production image.
       - name: Install dependencies
         run: npm ci
-      - name: Cache the sentence-transformer model
+      # Keyed on both model names. Two models are downloaded now -- the
+      # bi-encoder and the cross-encoder -- and a stale key would silently
+      # re-download roughly 200 MB on every run.
+      - name: Cache the retrieval models
         uses: actions/cache@v4
         with:
           path: hr-backend/.model-cache
-          key: minilm-fp32-v1
+          key: bge-small-mxbai-xsmall-fp32-v1
       # Re-embeds the corpus and fails if the committed vectors no longer match.
       # Without this, editing a policy answer and forgetting to re-run
       # `npm run embed` would leave dense retrieval scored against stale vectors
       # with nothing to notice.
+      #
+      # Both checks allow one unit of the last stored decimal place. That is not
+      # slack for convenience: ONNX genuinely accumulates floating point
+      # differently on a different CPU, and an earlier version of this check that
+      # demanded exact equality failed here while being correct locally.
       - name: Verify committed embeddings
         run: npm run embed:verify
+      # Same contract for the cross-encoder logits. Reranking cannot be scored
+      # from the corpus alone -- the model has to see each query paired with each
+      # document -- so those scores are committed and verified the same way.
+      - name: Verify committed rerank scores
+        run: npm run rerank:verify
 
   backend-smoke:
     name: Backend smoke test
@@ -154,7 +174,10 @@ jobs:
         run: flutter pub get
       - name: Analyze
         run: flutter analyze
-      # Includes the intent-router accuracy gates and the end-to-end flow tests
-      # that assert a failed request is never reported as a success.
+      # Includes the end-to-end flow tests that assert a failed request is never
+      # reported as a success, and the theme contrast gates -- every message kind
+      # is checked against its own ground in both light and dark at the WCAG AA
+      # threshold, so the class of bug that made the old dark-on-photograph
+      # screen unreadable in light mode cannot come back unnoticed.
       - name: Test
         run: flutter test

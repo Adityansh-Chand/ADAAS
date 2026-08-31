@@ -29,18 +29,21 @@ const RRF_K = 60;
 
 // Cosine below this is treated as no match.
 //
-// Chosen by measuring the gap rather than by maximising recall. Six deliberately
-// out-of-scope queries (Kubernetes, restaurants, capital cities, gibberish)
-// scored at most 0.0899 against their best-matching policy; three in-scope
-// paraphrases scored at least 0.1636. 0.12 sits in that gap with margin on both
-// sides, so the service can still honestly answer "no matching policy" instead
-// of always returning its closest guess.
+// Recalibrated for bge-small-en-v1.5. Thresholds do not transfer between
+// embedding models: bge is trained with a contrastive objective that pushes
+// everything into a narrow high band, so in-scope queries here score 0.45-0.66
+// where MiniLM scored 0.14-0.55. The old 0.12 would have admitted literally
+// every query, including gibberish.
 //
-// It is a small sample -- 6 out-of-scope and 3 in-scope probes -- so treat the
-// gap as indicative, not established. Raising this to 0.20 cost 0.0556 of dev
-// recall@5 and 2 more empty results for no gain in top-1; lowering it to 0 makes
-// the service incapable of saying it found nothing.
-const DEFAULT_MIN_COSINE = 0.12;
+// 0.42 keeps all 18 in-scope Set B dev queries and rejects 7 of 12 easy
+// out-of-scope probes on its own. It is not sufficient by itself -- see
+// ABSTENTION in rerank.js for the second condition and for what neither
+// condition can do.
+//
+// Calibrated against eval/out_of_scope_queries.json (24 probes) and the Set B
+// dev half. The previous calibration used 6 out-of-scope probes and 3 in-scope
+// ones; that sample was too small to show what the larger one shows.
+const DEFAULT_MIN_COSINE = 0.42;
 
 function loadVectors(file = DEFAULT_EMBEDDINGS_PATH) {
   if (!fs.existsSync(file)) return null;
@@ -67,7 +70,7 @@ async function denseRetrieve(query, store, kbById, {
 
   if (!vector) {
     if (!allowLiveEmbedding) return null;
-    vector = await embeddings.embedOne(query);
+    vector = await embeddings.embedQuery(query);
   }
 
   const scored = [];

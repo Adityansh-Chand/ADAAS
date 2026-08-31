@@ -1,5 +1,5 @@
 name: adaas
-description: "A new Flutter project."
+description: "HR assistant: conversational leave management and policy retrieval over an Express backend."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -33,7 +33,6 @@ dependencies:
   bloc: ^9.1.0
   flutter_bloc: ^9.1.1
   dio: ^5.9.0
-  lottie: ^3.3.2
   meta: ^1.17.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -65,8 +64,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/images/earth.jpg
-    - assets/loader.json
     - assets/hr_knowledge_base.json
   #   - images/a_dot_ham.jpeg
 
@@ -81,10 +78,6 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  fonts:
-    - family: Sixtyfour
-      fonts:
-        - asset: assets/Fonts/Sixtyfour-Regular.ttf
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
   #   - family: Trajan Pro

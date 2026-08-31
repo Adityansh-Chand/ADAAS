@@ -9,8 +9,9 @@
  * Two methods on identical sets:
  *
  *   rules       the rule-based router that shipped first
- *   embedding   k-NN over MiniLM embeddings of eval/intent_training.json,
- *               falling back to the rules when it declines
+ *   embedding   k-NN over bge-small-en-v1.5 embeddings of
+ *               eval/intent_training.json, falling back to the rules when it
+ *               declines
  *
  * Which set means what, because this is the whole point:
  *
@@ -45,8 +46,26 @@ const EVAL_DIR = path.join(ROOT, 'eval');
 // measured values so a regression trips them.
 const QUALITY_GATES = {
   'rules held_out_3': 0.35,
-  'embedding held_out_3': 0.55,
+  'embedding held_out_3': 0.80,
 };
+
+// THE EMBEDDING MODEL CHANGED, AND INTENT PAID FOR IT
+//
+// held_out_3 scored 0.9667 with all-MiniLM-L6-v2. It scores 0.9000 with
+// bge-small-en-v1.5 -- two cases out of thirty. The swap was made for retrieval,
+// where it was worth four cases out of eighteen on top-1, so one model serving
+// both tasks is a net gain overall and a loss on this one.
+//
+// MiniLM could have been kept for intent alone. It was not, and the reason is
+// procedural rather than technical: the intent model was chosen on the two sets
+// that are not held out (the fitted set and the already-compromised held_out_2),
+// where prefixed bge-small beat MiniLM on average, 0.8333 to 0.8021. Reversing
+// that choice now, on the strength of the held_out_3 number, would consume the
+// only clean set this classifier has -- the same mistake that burned held_out_1.
+//
+// So the number stands as measured, and the trade is recorded rather than
+// optimised away. If intent accuracy becomes the priority, the honest route is a
+// fourth held-out set written before anything is re-picked.
 
 // Leakage is checked directly rather than inferred from a suspiciously high score.
 //

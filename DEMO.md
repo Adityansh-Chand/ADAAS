@@ -82,23 +82,24 @@ answers this directly; it is not retrieved because the query contains none of
 the indexed keyword strings. That single response is the argument for the
 capstone's retrieval work.
 
-## 5b. The same question, with dense retrieval on
+## 5b. The same question, with dense retrieval and reranking on
 
-This is the demo. Stop the server and restart it with embeddings enabled:
+This is the demo. Stop the server and restart it with the models enabled:
 
 ```bash
 cd hr-backend
-npm install                    # devDependencies included, ~87 MB model on first run
-RETRIEVAL_MODE=dense npm start
+npm install                    # devDependencies included; ~200 MB of models on first run
+RETRIEVAL_MODE=reranked npm start
 ```
 
 ```bash
 curl -s http://localhost:3000/health
 ```
 
-`retrieval` now reads `{"mode":"dense"}`. If the package or the vectors were
-missing it would read `{"mode":"lexical","requested":"dense","degraded_because":...}`
-— it never silently falls back.
+`retrieval` now reads `{"mode":"reranked"}`. If the models were unavailable it
+would read `{"mode":"dense",...,"degraded_because":"reranker_package_not_installed"}`,
+or drop to `lexical` if the vectors were missing too — it never silently falls
+back, and it degrades one step at a time.
 
 Now the query that just failed:
 
@@ -107,7 +108,18 @@ curl -s -X POST http://localhost:3000/chat -H "Content-Type: application/json" -
 ```
 
 The Flexible Work Arrangement Policy, correctly. Across the whole paraphrase set
-that is 0.1111 → 0.6111 top-1 and 0.1111 → 0.9444 recall@5.
+that is 0.1111 → 0.8333 top-1 and 0.1111 → 1.0000 recall@5.
+
+The query the reranker was actually added for — two medical sub-policies that a
+bi-encoder cannot separate, because they are the same topic at the same
+granularity:
+
+```bash
+curl -s -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"message":"I am burnt out and need someone to talk to"}'
+```
+
+The Employee Assistance Program, not the on-site medical rooms. Without reranking
+this returns the medical rooms.
 
 And the threshold still holds, so it has not simply become a machine that always
 guesses:
@@ -123,8 +135,18 @@ cd hr-backend
 npm run eval
 ```
 
-The full three-way comparison. Note that hybrid fusion does **not** beat dense
-alone — that is a real measured result, not an omission.
+The full four-way comparison, plus the abstention tiers and eleven gates. Two
+results are reported rather than hidden: hybrid fusion does **not** beat dense
+alone, and abstention rejects 12 of 12 plainly off-domain probes but only 2 of 12
+HR-shaped questions the corpus does not answer.
+
+```bash
+npm run bakeoff
+```
+
+The model selection itself, on the dev half only. Five bi-encoders and four
+rerankers, including the three rerankers that made it worse and the 768-dimension
+model that was no better than the 384-dimension one.
 
 ## 5c. Intent classification, rules against embeddings
 
@@ -135,9 +157,16 @@ npm run eval:intent
 
 Four sets, two methods, and the table says what each set is worth. The one that
 matters is `held_out_3`, written before the classifier existed: **rules 0.5667,
-embedding 0.9667**.
+embedding 0.9000**.
 
-Try three queries the rules get wrong. With `RETRIEVAL_MODE=dense` running:
+That 0.9000 was 0.9667 under the previous embedding model. The swap was made for
+retrieval and cost two of thirty cases here; it was not reverted, because the
+intent model was chosen on the two sets that are not held out and re-picking on
+the `held_out_3` number would burn the only clean set left. The README explains it
+at length — it is the clearest example in this project of the evaluation
+discipline costing something real.
+
+Try three queries the rules get wrong. With `RETRIEVAL_MODE=reranked` running:
 
 ```bash
 for Q in "just checking, do I still have days in hand"          "I want to be off on the 19th, sort that out"          "does the firm reimburse a taxi to the airport"; do
@@ -292,7 +321,8 @@ Try, in order:
 | `What is the remote work policy?` | Answer plus its cited source. |
 | `Can I take maternity leave?` | A policy answer, not a leave application. The old rule-based router filed this as an application because the sentence contains "take" and "leave". |
 | `just checking, do I still have days in hand` | A balance. The rules read this as a policy question; the classifier does not. |
-| `Can I work from my house a few days a week?` | Honest "no matching policy". |
+| `Can I work from my house a few days a week?` | With the backend on `lexical`, an honest "no matching policy"; on `reranked`, the Flexible Work policy. |
+| the theme button, top right | Cycles system → light → dark. Every message kind is legible in both, and CI fails the build if any pairing drops below WCAG AA. |
 
 ### Then the part worth demoing
 

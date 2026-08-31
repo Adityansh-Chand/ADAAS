@@ -1,12 +1,29 @@
-import 'dart:ui';
 import 'package:adaas/Model/chat_message_model.dart';
 import 'package:adaas/bloc/chat_bloc.dart';
+import 'package:adaas/main.dart' show themeModeNotifier;
 import 'package:adaas/services/app_config.dart';
+import 'package:adaas/theme/app_theme.dart';
 import 'package:adaas/widgets/leave_summary_table.dart';
+import 'package:adaas/widgets/thinking_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lottie/lottie.dart';
 
+/// The conversation.
+///
+/// Plain surface, no background image. This screen used to stack a full-bleed
+/// `assets/images/earth.jpg` under a [BackdropFilter] that blurred harder when the
+/// keyboard opened, with every piece of text drawn in white on top. Three problems
+/// went with it, and all three are gone rather than worked around:
+///
+///   Contrast was accidental. Legibility depended on which part of the photograph
+///   happened to sit behind a given line of text.
+///
+///   A light theme was not expressible. Nothing in the widget tree could be
+///   recoloured, because the colours were constants chosen against the image.
+///
+///   It cost a live blur over a full-screen image every frame, re-run on every
+///   keyboard metric change, for decoration.
 class CreatePromptScreen extends StatefulWidget {
   const CreatePromptScreen({super.key});
 
@@ -14,39 +31,17 @@ class CreatePromptScreen extends StatefulWidget {
   State<CreatePromptScreen> createState() => _CreatePromptScreenState();
 }
 
-class _CreatePromptScreenState extends State<CreatePromptScreen>
-    with WidgetsBindingObserver {
-  TextEditingController textEditingController = TextEditingController();
+class _CreatePromptScreenState extends State<CreatePromptScreen> {
+  final TextEditingController textEditingController = TextEditingController();
   final ChatBloc chatBloc = ChatBloc();
-  bool _isKeyboardVisible = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     textEditingController.dispose();
     chatBloc.close();
     super.dispose();
-  }
-
-  @override
-  void didChangeMetrics() {
-    super.didChangeMetrics();
-    final viewInsets = PlatformDispatcher.instance.views.first.viewInsets;
-    final bottomInsetPhysical = viewInsets.bottom;
-    final devicePixelRatio =
-        PlatformDispatcher.instance.views.first.devicePixelRatio;
-    final bottomInsetLogical = bottomInsetPhysical / devicePixelRatio;
-    setState(() {
-      _isKeyboardVisible = bottomInsetLogical > 0;
-    });
   }
 
   void _scrollToBottom() {
@@ -61,197 +56,264 @@ class _CreatePromptScreenState extends State<CreatePromptScreen>
     });
   }
 
+  void _submit(ChatSuccessState state) {
+    if (state.isGenerating) return;
+    final text = textEditingController.text.trim();
+    if (text.isEmpty) return;
+    chatBloc.add(ChatGenerateNewTextMessageEvent(inputMessage: text));
+    textEditingController.clear();
+    _scrollToBottom();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocConsumer<ChatBloc, ChatState>(
+      // The keyboard is handled by the framework now. The old screen observed
+      // window metrics by hand to drive the blur strength; with no blur there is
+      // nothing to drive, and `Scaffold` already insets for the keyboard.
+      body: SafeArea(
+        child: BlocConsumer<ChatBloc, ChatState>(
           bloc: chatBloc,
           listener: (context, state) {
-            if (state is ChatSuccessState) {
-              _scrollToBottom();
-            }
+            if (state is ChatSuccessState) _scrollToBottom();
           },
           builder: (context, state) {
-            if (state is ChatSuccessState) {
-              // The list is of type AppMessageModel
-              List<AppMessageModel> message = state.messages;
+            if (state is! ChatSuccessState) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-              return Stack(
-                children: [
-                  Container(
-                    height: MediaQuery.of(context).size.height,
-                    width: MediaQuery.of(context).size.width,
-                    decoration: const BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage('assets/images/earth.jpg'),
-                        fit: BoxFit
-                            .cover, // This makes the image fill the screen
-                      ),
-                    ),
-                  ),
-                  BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: _isKeyboardVisible ? 6.0 : 2.0,
-                      sigmaY: _isKeyboardVisible ? 6.0 : 2.0,
-                    ),
-                    child: Container(
-                      color: Colors.black.withAlpha(
-                          (255 * (_isKeyboardVisible ? 0.4 : 0.2)).toInt()),
-                    ),
-                  ),
-                  Column(
-                    children: [
-                      const SizedBox(height: 60),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            const Text(
-                              "ADAAS",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Sixtyfour',
-                              ),
-                            ),
-                            const Spacer(),
-                            // Which employee the app is acting as. Visible on
-                            // purpose: it is a demo identity set by
-                            // --dart-define, not authentication, and hiding that
-                            // would misrepresent it.
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                'employee ${AppConfig.employeeId}',
-                                key: const Key('acting-as'),
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: ListView.builder(
+            final messages = state.messages;
+
+            return Column(
+              children: [
+                const _Header(),
+                const Divider(height: 1),
+                Expanded(
+                  child: messages.isEmpty
+                      ? const _EmptyState()
+                      : ListView.builder(
                           controller: _scrollController,
-                          itemCount: message.length,
+                          itemCount: messages.length,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                              horizontal: 16, vertical: 16),
                           itemBuilder: (context, index) {
-                            final msg = message[index];
-                            bool isUserMessage = msg.role == 'user';
-
+                            final msg = messages[index];
                             if (msg.type == MessageType.table) {
-                              // Render the table widget
                               return LeaveSummaryTable(
                                   balance: msg.leaveBalance!);
-                            } else {
-                              return MessageBubble(
-                                message: msg,
-                                isUserMessage: isUserMessage,
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.7,
-                              );
                             }
+                            return MessageBubble(
+                              message: msg,
+                              isUserMessage: msg.role == 'user',
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.78,
+                            );
                           },
                         ),
-                      ),
-                      if (state.isGenerating)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                height: 60,
-                                width: 60,
-                                child: Lottie.asset('assets/loader.json'),
-                              ),
-                              const SizedBox(width: 12),
-                              const Text(
-                                "Processing...",
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 16),
-                              ),
-                            ],
-                          ),
-                        ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: textEditingController,
-                                style: const TextStyle(color: Colors.white),
-                                cursorColor: Colors.white,
-                                maxLines: 3,
-                                minLines: 1,
-                                decoration: InputDecoration(
-                                  hintText: "Ask HR (e.g., 'my leave balance')",
-                                  hintStyle: TextStyle(
-                                      color: Theme.of(context).primaryColor),
-                                  filled: true,
-                                  fillColor: Colors.black26,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 12),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: Theme.of(context).primaryColor,
-                                    width: 2),
-                              ),
-                              child: CircleAvatar(
-                                radius: 24,
-                                backgroundColor: Colors.transparent,
-                                child: IconButton(
-                                  icon: const Icon(Icons.send,
-                                      color: Colors.white),
-                                  // Check if the BLoC is already working.
-                                  // If it is, 'onPressed' will be null, disabling the button.
-                                  onPressed: state.isGenerating
-                                      ? null
-                                      : () {
-                                          // Only send an event if not already generating
-                                          if (textEditingController
-                                              .text.isNotEmpty) {
-                                            chatBloc.add(
-                                                ChatGenerateNewTextMessageEvent(
-                                              inputMessage:
-                                                  textEditingController.text,
-                                            ));
-                                            textEditingController.clear();
-                                            _scrollToBottom();
-                                          }
-                                        },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                ),
+                if (state.isGenerating)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 4, 20, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: ThinkingIndicator(),
+                    ),
                   ),
-                ],
+                _Composer(
+                  controller: textEditingController,
+                  isGenerating: state.isGenerating,
+                  onSubmit: () => _submit(state),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header();
+
+  /// system -> light -> dark -> system.
+  static ThemeMode _next(ThemeMode current) => switch (current) {
+        ThemeMode.system => ThemeMode.light,
+        ThemeMode.light => ThemeMode.dark,
+        ThemeMode.dark => ThemeMode.system,
+      };
+
+  static (IconData, String) _affordance(ThemeMode mode) => switch (mode) {
+        ThemeMode.system => (Icons.brightness_auto_outlined, 'Theme: system'),
+        ThemeMode.light => (Icons.light_mode_outlined, 'Theme: light'),
+        ThemeMode.dark => (Icons.dark_mode_outlined, 'Theme: dark'),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 12, 14),
+      child: Row(
+        children: [
+          Text('ADAAS', style: theme.textTheme.titleMedium),
+          const SizedBox(width: 10),
+          // Which employee the app is acting as. Visible on purpose: it is a demo
+          // identity set by --dart-define, not authentication, and hiding that
+          // would misrepresent it.
+          Text(
+            'employee ${AppConfig.employeeId}',
+            key: const Key('acting-as'),
+            style: theme.textTheme.bodySmall,
+          ),
+          const Spacer(),
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: themeModeNotifier,
+            builder: (context, mode, _) {
+              final (icon, label) = _affordance(mode);
+              return IconButton(
+                key: const Key('theme-toggle'),
+                icon: Icon(icon, size: 20),
+                tooltip: '$label. Tap to change.',
+                onPressed: () => themeModeNotifier.value = _next(mode),
               );
-            }
-            // This is the default case (handles ChatInitial)
-            return const Center(child: CircularProgressIndicator());
-          }),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  static const List<String> _examples = [
+    'What is my leave balance?',
+    'Apply for 2 days of casual leave next Monday',
+    'Can I work from home a few days a week?',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Ask about leave or company policy',
+                  style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                'Answers about policy are quoted from the company handbook and '
+                'cite the section they came from.',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 20),
+              for (final example in _examples)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    example,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  const _Composer({
+    required this.controller,
+    required this.isGenerating,
+    required this.onSubmit,
+  });
+
+  final TextEditingController controller;
+  final bool isGenerating;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Enter sends; Shift+Enter inserts a newline.
+          //
+          // Handled here, on the text change, rather than as a key shortcut, and
+          // both of the tidier approaches were tried in a browser first and
+          // failed. `onSubmitted` never fires: a TextField with maxLines > 1 is
+          // multiline, and a multiline field treats Enter as content. Wrapping it
+          // in `CallbackShortcuts` did nothing either, because Flutter dispatches
+          // keys from the focused node upwards -- an ancestor is too late -- and
+          // on web the newline does not arrive as a key event at all. The engine
+          // hands Flutter a text-editing delta from the browser's own input
+          // element, so the only place the Enter is observable is in the text.
+          //
+          // Shift is read from the live keyboard state instead of from a key
+          // event, since there is no event here to read it from.
+          Expanded(
+            child: TextField(
+              controller: controller,
+              minLines: 1,
+              maxLines: 5,
+              textInputAction: TextInputAction.send,
+              // Kept: on mobile the on-screen keyboard's send key does go
+              // through this, and there the field is not multiline-consuming.
+              onSubmitted: (_) => onSubmit(),
+              onChanged: (value) {
+                if (!value.endsWith('\n')) return;
+                if (HardwareKeyboard.instance.isShiftPressed) return;
+                controller.text = value.substring(0, value.length - 1);
+                controller.selection = TextSelection.collapsed(
+                  offset: controller.text.length,
+                );
+                onSubmit();
+              },
+              decoration: const InputDecoration(
+                hintText: "Ask HR — e.g. 'my leave balance'",
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Disabled while a turn is in flight, so a second request cannot race
+          // the first.
+          // Keyed rather than found by icon in tests. The tests used to locate
+          // this by `find.byIcon(Icons.send)`, which broke the whole app-flow
+          // suite the moment the icon changed -- a test coupled to a decorative
+          // detail of the thing it is testing.
+          IconButton.filled(
+            key: const Key('send'),
+            onPressed: isGenerating ? null : onSubmit,
+            icon: const Icon(Icons.arrow_upward_rounded, size: 20),
+            tooltip: 'Send',
+            style: IconButton.styleFrom(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+              disabledBackgroundColor: scheme.surfaceContainerHigh,
+              disabledForegroundColor: scheme.onSurfaceVariant,
+              minimumSize: const Size(46, 46),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -264,6 +326,9 @@ class _CreatePromptScreenState extends State<CreatePromptScreen>
 /// connection error all arrived in an identical bubble. Distinguishing them
 /// visually is the other half of the fix in the repositories: the app can now
 /// tell the user that nothing was filed, and the user can see it.
+///
+/// Every colour now comes from [ChatColors] rather than from constants declared
+/// here, so all four message kinds stay legible in both themes.
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
@@ -276,24 +341,34 @@ class MessageBubble extends StatelessWidget {
   final bool isUserMessage;
   final double maxWidth;
 
-  static const Color _failureInk = Color(0xFFFFD9D4);
-  static const Color _failureGround = Color(0xCC5A1A16);
-  static const Color _failureEdge = Color(0xFFE8817C);
-
-  // Notices are informational, not errors: HR decided something while the
-  // employee was away. Distinct from both an answer and a failure.
-  static const Color _noticeInk = Color(0xFFD6ECEF);
-  static const Color _noticeGround = Color(0xCC123032);
-  static const Color _noticeEdge = Color(0xFF56B9C0);
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final chat = ChatColors.of(context);
     final isFailure = message.isFailure;
     final isNotice = message.isNotice;
 
+    final Color ground;
+    final Color ink;
+    Color? edge;
+    if (isFailure) {
+      ground = chat.failureGround;
+      ink = chat.failureInk;
+      edge = chat.failureEdge;
+    } else if (isNotice) {
+      ground = chat.noticeGround;
+      ink = chat.noticeInk;
+      edge = chat.noticeEdge;
+    } else if (isUserMessage) {
+      ground = chat.userBubble;
+      ink = chat.userInk;
+    } else {
+      ground = chat.assistantBubble;
+      ink = chat.assistantInk;
+    }
+
     return Align(
-      alignment:
-          isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         key: isFailure
             ? const Key('failure-message')
@@ -301,79 +376,32 @@ class MessageBubble extends StatelessWidget {
                 ? const Key('notice-message')
                 : null,
         constraints: BoxConstraints(maxWidth: maxWidth),
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: isFailure
-              ? _failureGround
-              : isNotice
-                  ? _noticeGround
-                  : isUserMessage
-                      ? Theme.of(context)
-                          .primaryColor
-                          .withAlpha((255 * 0.9).toInt())
-                      : Colors.black.withAlpha((255 * 0.6).toInt()),
-          border: isFailure
-              ? Border.all(color: _failureEdge, width: 1)
-              : isNotice
-                  ? Border.all(color: _noticeEdge, width: 1)
-                  : null,
+          color: ground,
+          border: edge == null ? null : Border.all(color: edge, width: 1),
         ),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (isFailure) ...[
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.error_outline, size: 16, color: _failureEdge),
-                  SizedBox(width: 6),
-                  Text(
-                    'NOT COMPLETED',
-                    style: TextStyle(
-                      color: _failureEdge,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                ],
+            if (isFailure)
+              _Badge(
+                icon: Icons.error_outline,
+                label: 'NOT COMPLETED',
+                color: chat.failureEdge,
               ),
-              const SizedBox(height: 8),
-            ],
-            if (isNotice) ...[
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.notifications_none, size: 16, color: _noticeEdge),
-                  SizedBox(width: 6),
-                  Text(
-                    'WHILE YOU WERE AWAY',
-                    style: TextStyle(
-                      color: _noticeEdge,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
-                    ),
-                  ),
-                ],
+            if (isNotice)
+              _Badge(
+                icon: Icons.notifications_none,
+                label: 'WHILE YOU WERE AWAY',
+                color: chat.noticeEdge,
               ),
-              const SizedBox(height: 8),
-            ],
             Text(
-              message.text ?? "",
-              style: TextStyle(
-                color: isFailure
-                    ? _failureInk
-                    : isNotice
-                        ? _noticeInk
-                        : isUserMessage
-                            ? Colors.black
-                            : Colors.white,
-                fontSize: 16,
-              ),
+              message.text ?? '',
+              style: theme.textTheme.bodyMedium?.copyWith(color: ink),
             ),
             if (message.sources.isNotEmpty) ...[
               const SizedBox(height: 10),
@@ -381,15 +409,42 @@ class MessageBubble extends StatelessWidget {
                 message.sources.length == 1
                     ? 'Source: ${message.sources.first}'
                     : 'Sources: ${message.sources.join('; ')}',
-                style: TextStyle(
-                  color: Colors.white.withAlpha((255 * 0.62).toInt()),
-                  fontSize: 12,
-                  height: 1.35,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: ink.withValues(alpha: 0.72),
                 ),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.icon, required this.label, required this.color});
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: color),
+          ),
+        ],
       ),
     );
   }
