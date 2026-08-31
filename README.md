@@ -197,8 +197,17 @@ to beat, and they run when the classifier declines.
   ordering of the file.
 - **Committed embeddings are verified, not trusted.** `npm run embed:verify`
   re-embeds the corpus and fails if the vectors drift, if the corpus digest
-  changes, or if the batch size changes -- editing one policy answer shifted four
+  changes, or if the batch size changes. Editing one policy answer shifted four
   vectors in testing, because texts are padded to the longest item in their batch.
+- **The drift tolerance was wrong twice, in opposite directions.** Comparing by
+  cosine reported drift on byte-identical vectors, because rounding leaves a
+  vector fractionally off unit norm. Comparing float deltas against exactly
+  `1e-6` then failed CI at `max component drift 1.00e-6`: ONNX accumulates around
+  5e-7 differently on another CPU, so a raw value near a rounding boundary rounds
+  one step either way, and `1.0000000000000002e-6 > 1e-6` is true. The check now
+  compares scaled integers and allows one unit of the stored precision — real
+  drift is orders of magnitude larger, as an edited policy demonstrates at 23,699
+  units.
 - **Leakage is measured, not inferred.** The intent gate first failed the build
   when held-out accuracy went above 0.95, by analogy with the retrieval ceiling.
   That was the wrong instrument — 3-way classification is far easier than
