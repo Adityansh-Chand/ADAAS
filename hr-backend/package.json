@@ -8,7 +8,9 @@
     "smoke": "node scripts/smoke-test.js",
     "test": "node --test server.test.js",
     "eval": "node scripts/eval_retrieval.js",
-    "eval:gate": "node scripts/eval_retrieval.js --gate"
+    "eval:gate": "node scripts/eval_retrieval.js --gate",
+    "embed": "node scripts/build_embeddings.js",
+    "embed:verify": "node scripts/build_embeddings.js --verify"
   },
   "keywords": [],
   "author": "",
@@ -19,5 +21,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mongoose": "^9.0.0"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^4.2.0"
   }
 }

@@ -4,6 +4,7 @@
     "Flexible Work Arrangement Policy",
     "Employee Handbook, Section 4: Attendance"
   ],
+  "retrieval_mode": "lexical",
   "generated_by": "knowledge_base",
   "llm_status": "not_configured"
 }

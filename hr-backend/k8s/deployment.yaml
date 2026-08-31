@@ -29,6 +29,15 @@ spec:
                   name: adaas-hr-backend-secrets
                   key: api-key
                   optional: true
+            # lexical | dense | hybrid. dense and hybrid need the optional
+            # embeddings package, which production images omit, so they degrade
+            # to lexical and /health reports it.
+            - name: RETRIEVAL_MODE
+              valueFrom:
+                secretKeyRef:
+                  name: adaas-hr-backend-secrets
+                  key: retrieval-mode
+                  optional: true
             # Optional. With no provider configured the service answers
             # policy questions straight from the knowledge base.
             - name: LLM_PROVIDER
