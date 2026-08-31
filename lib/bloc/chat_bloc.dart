@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:adaas/Model/chat_message_model.dart';
 import 'package:adaas/repo/chat_repo.dart';
+import 'package:adaas/repo/intent_repo.dart';
 import 'package:adaas/repo/leave_api_repo.dart';
 import 'package:adaas/repo/leave_application_repo.dart';
+import 'package:adaas/repo/notification_repo.dart';
 import 'package:adaas/services/app_config.dart';
-import 'package:adaas/services/intent_router.dart';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 
@@ -33,22 +34,54 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     emit(ChatSuccessState(messages: messages, isGenerating: true));
 
+    // Decisions the employee has not been shown yet come first, so a rejected
+    // application is announced rather than left to be inferred from a balance
+    // that quietly moved.
+    final pending = await _pendingNotices();
     final reply = await _handle(userMessage);
 
     emit(ChatSuccessState(
-      messages: [...messages, reply],
+      messages: [...messages, ...pending, reply],
       isGenerating: false,
     ));
   }
 
+  Future<List<AppMessageModel>> _pendingNotices() async {
+    final notifications = await NotificationRepo.unread(AppConfig.employeeId);
+    final notices = <AppMessageModel>[];
+    for (final notification in notifications) {
+      notices.add(AppMessageModel(
+        role: 'model',
+        type: MessageType.notice,
+        text: notification.message,
+      ));
+      await NotificationRepo.acknowledge(notification.id);
+    }
+    return notices;
+  }
+
   Future<AppMessageModel> _handle(String userMessage) async {
-    switch (IntentRouter.route(userMessage)) {
-      case HRIntent.leaveBalance:
-        return _balanceReply();
-      case HRIntent.applyLeave:
-        return _applyReply(userMessage);
-      case HRIntent.policyQuestion:
-        return _policyReply(userMessage);
+    final classified = await IntentRepo.classify(userMessage);
+
+    switch (classified) {
+      case IntentUnavailable(reason: final reason):
+        // No local fallback, on purpose. Every intent needs the backend, so
+        // routing locally could only ever produce a confidently wrong answer
+        // from the weaker of two implementations.
+        return AppMessageModel(
+          role: 'model',
+          type: MessageType.failure,
+          text: "I couldn't work out what you were asking because $reason.",
+        );
+      case IntentClassified(intent: final intent):
+        switch (intent) {
+          case HRIntent.leaveBalance:
+            return _balanceReply();
+          case HRIntent.applyLeave:
+            return _applyReply(userMessage);
+          case HRIntent.policyQuestion:
+            return _policyReply(userMessage);
+        }
     }
   }
 
@@ -71,11 +104,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   Future<AppMessageModel> _applyReply(String userMessage) async {
-    final result =
-        await LeaveApplicationRepo.applyForLeave(AppConfig.employeeId, userMessage);
+    final result = await LeaveApplicationRepo.applyForLeave(
+        AppConfig.employeeId, userMessage);
 
-    // Every branch here states plainly whether anything was filed. There is no
-    // longer a path that reports success without a server having said so.
+    // Every branch states plainly whether anything was filed. There is no path
+    // that reports success without a server having said so.
     switch (result) {
       case LeaveApplicationSubmitted(
           message: final message,

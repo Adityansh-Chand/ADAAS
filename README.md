@@ -49,12 +49,13 @@ Four commands. All four should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm test               # 50 backend tests
+npm test               # 60 backend tests
 npm run eval           # lexical, dense and hybrid on identical splits
+npm run eval:intent    # rules vs the embedding classifier
 npm run embed:verify   # committed embeddings still match the corpus
 cd ..
 flutter analyze        # no issues
-flutter test           # 33 Flutter tests, prints intent accuracy
+flutter test           # 33 Flutter tests
 ```
 
 ### Turning on dense retrieval
@@ -150,18 +151,29 @@ Two findings worth as much as the headline:
   that same question field, so the test is scored against its own answer key. It
   is gated only as a smoke test that the vectors load and align.
 
-### Intent routing
+### Intent classification, two methods on four sets
 
-| Set | Score | What it measures |
-|---|---|---|
-| the labelled set the rules were written against | 1.0000 | coverage of remembered phrasings |
-| held out, written after the rules were frozen | **0.4583** | generalisation |
+`npm run eval:intent` reproduces this.
 
-Still the weakest component, and the gap is the same lexical gap: every misroute
-falls through to the policy-question default because the sentence uses vocabulary
-no rule enumerates. Adding rules has been shown, with numbers, to buy coverage of
-remembered cases and not generalisation -- so the next step here is a classifier
-over the same embeddings, not more keywords.
+| Set | rules | embedding | What the set means |
+|---|---|---|---|
+| `intent_queries` | 1.0000 | 0.7292 | the rules were written with these visible |
+| `held_out_1` | 0.8750 | 0.7917 | BURNED — its failures informed rule fixes |
+| `held_out_2` | 0.4583 | 0.8750 | compromised — seen before a later change |
+| **`held_out_3`** | **0.5667** | **0.9667** | **written before the classifier existed** |
+
+A k-NN classifier over MiniLM embeddings of 64 labelled examples reaches **0.9667
+on phrasing it has never seen**, against the rules' 0.5667. On `held_out_3` it
+decides 29 of 30 itself and falls back to the rules once, when its confidence sits
+below the floor.
+
+Note the rules win on `intent_queries` — 1.0000 against 0.7292. That set was
+constructed to exercise rule vocabulary, and several cases are terse or artificial
+(`"leave balance"`, `"APPLY FOR LEAVE"`). It is a fair illustration of what a
+fitted set measures: the rules were built to pass it, and they do.
+
+The rules are kept rather than deleted. They are the baseline the classifier has
+to beat, and they run when the classifier declines.
 
 ### How the evaluation is kept honest
 
@@ -185,8 +197,24 @@ over the same embeddings, not more keywords.
   ordering of the file.
 - **Committed embeddings are verified, not trusted.** `npm run embed:verify`
   re-embeds the corpus and fails if the vectors drift, if the corpus digest
-  changes, or if the batch size changes -- editing one policy answer shifted four
+  changes, or if the batch size changes. Editing one policy answer shifted four
   vectors in testing, because texts are padded to the longest item in their batch.
+- **The drift tolerance was wrong twice, in opposite directions.** Comparing by
+  cosine reported drift on byte-identical vectors, because rounding leaves a
+  vector fractionally off unit norm. Comparing float deltas against exactly
+  `1e-6` then failed CI at `max component drift 1.00e-6`: ONNX accumulates around
+  5e-7 differently on another CPU, so a raw value near a rounding boundary rounds
+  one step either way, and `1.0000000000000002e-6 > 1e-6` is true. The check now
+  compares scaled integers and allows one unit of the stored precision — real
+  drift is orders of magnitude larger, as an edited policy demonstrates at 23,699
+  units.
+- **Leakage is measured, not inferred.** The intent gate first failed the build
+  when held-out accuracy went above 0.95, by analogy with the retrieval ceiling.
+  That was the wrong instrument — 3-way classification is far easier than
+  retrieval over 26 documents, and 0.9667 was genuine. The nearest-neighbour
+  similarity between every eval query and the training set settled it: max
+  0.8035, mean 0.5159, nothing above 0.90. That measurement replaced the accuracy
+  ceiling, because it tests the thing the ceiling was only a proxy for.
 - **Held-out sets are retired once used.**
   `eval/held_out_intent_queries.json` revealed two general bugs, the fixes were
   informed by it, and it is labelled BURNED and kept only as a regression guard.
@@ -198,10 +226,13 @@ over the same embeddings, not more keywords.
 
 ```mermaid
 flowchart LR
-  UserQuery --> IntentRouter
-  IntentRouter -->|balance| LeaveBalanceAPI
-  IntentRouter -->|apply| LeaveApplicationAPI
-  IntentRouter -->|policy| ChatAPI
+  UserQuery --> IntentAPI
+  IntentAPI --> Classifier
+  IntentAPI --> Rules
+  Classifier --> Vectors
+  IntentAPI -->|balance| LeaveBalanceAPI
+  IntentAPI -->|apply| LeaveApplicationAPI
+  IntentAPI -->|policy| ChatAPI
   ChatAPI --> Retrieval
   Retrieval --> Lexical
   Retrieval --> Dense
@@ -211,7 +242,9 @@ flowchart LR
   LeaveApplicationAPI --> LeaveRules
   LeaveRules --> HRCorpus
   DecisionAPI --> LeaveRules
-  IntentRouter -->|apply| LeaveApplicationAPI
+  DecisionAPI --> Notifications
+  Notifications --> FlutterUI
+  IntentAPI -->|apply| LeaveApplicationAPI
   LeaveBalanceAPI --> MongoOrMemory
   LeaveApplicationAPI --> MongoOrMemory
   Response --> FlutterUI
@@ -220,13 +253,17 @@ flowchart LR
   LeaveApplicationAPI --> Response
 ```
 
-Retrieval lives only in the backend. The Flutter client used to carry a second,
-different retriever over the same corpus, and the two disagreed — on "What is
-the remote work policy?" the backend returned the Flexible Work Arrangement
-Policy and the client returned Attendance. It ran whenever the backend was
-unreachable, which is exactly when nobody was watching. Two rankers that
-disagree is not a bug that can be fixed, only picked between, so the client-side
-one was removed. When the backend cannot be reached the app now says so.
+Retrieval and intent classification both live only in the backend. The Flutter
+client used to carry its own copy of each. The retriever disagreed with the server
+— on "What is the remote work policy?" the backend returned the Flexible Work
+Arrangement Policy and the client returned Attendance — and it ran whenever the
+backend was unreachable, which is exactly when nobody was watching. The router had
+the same problem in waiting, plus a worse one: the client could not run the
+classifier at all, so keeping a copy there would have meant shipping the weaker
+implementation whenever the network hiccuped and calling it resilience.
+
+All three intents need the backend, so neither client-side copy bought anything.
+When the service cannot be reached the app now says so.
 
 Leave entitlements are transcribed from the corpus into `hr-backend/leave_rules.js`
 and asserted against the policy text by a test, so the demo data cannot drift
@@ -244,6 +281,9 @@ remaining is derived, for the same reason.
 | `POST /leave-application` | Validated against entitlement and balance; decrements it. |
 | `GET /leave-applications` | Recent applications with their status. |
 | `POST /leave-applications/:reference/decision` | Approve or reject. A rejection returns the days to the balance. |
+| `POST /intent` | Classifies a message. Reports whether the classifier or the rules decided. |
+| `GET /notifications?employee_id=1001` | Decisions the employee has not been shown. |
+| `POST /notifications/:id/ack` | Mark one as seen. |
 | `POST /chat` | Policy question. Cites its sources and reports which retrieval mode answered. |
 
 Set `API_KEY` to require `X-API-Key` on the HR data and chat endpoints.
@@ -328,7 +368,7 @@ for approval. Reference ID: LMS-123456"* while nothing was persisted anywhere.
 
 ## Tests
 
-**83 total: 50 backend, 33 Flutter.** `flutter analyze` clean.
+**93 total: 60 backend, 33 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
@@ -352,6 +392,12 @@ The ones worth knowing about:
   inside `entitled` and `submit`.
 - The precomputed vectors cover every policy and have the expected dimensions,
   so a policy added without re-embedding fails on the next run.
+- The embedding classifier beats the rules on held-out phrasing, asserted in both
+  directions so a regression either way is caught.
+- The classifier declines rather than guessing when nothing in training is close.
+- No held-out intent query is a paraphrase of a training example.
+- A decision notifies the applicant and not the approver; a refused application
+  notifies nobody, because nothing happened.
 
 ## Reviewer Status
 
@@ -366,15 +412,17 @@ The ones worth knowing about:
   timeouts; readiness that can report unready; Docker/Compose/K8s config; CI
   covering tests, the retrieval quality gate, embedding verification, the smoke
   test, a container that is started and queried, and Flutter analyze/tests.
-- **Known weak spots, measured:** intent routing generalises at 0.4583; lexical
-  retrieval reaches only 0.1111 on paraphrases, which is why dense exists. The
-  default retrieval mode is the weaker one, because the better one needs a
-  dependency whose transitive advisories have no fix and which is therefore kept
-  out of production images.
+- **Known weak spots, measured:** the default retrieval mode is lexical, at
+  0.1111 on paraphrases, because the better modes need a dependency whose
+  transitive advisories have no upstream fix and which is therefore kept out of
+  production images. With `RETRIEVAL_MODE=dense` the same deployment reaches
+  0.6111 retrieval and 0.9667 intent classification. Notifications are a table
+  this service owns, not email or push.
 - **Remaining gaps:** no identity provider — `HR_EMPLOYEE_ID` selects a seeded
-  demo employee and proves nothing about who the user is; no notification on a
-  decision; intent routing still rule-based; production HR data integration,
-  managed MongoDB, managed secrets, cloud deployment, and policy data governance.
+  demo employee and proves nothing about who the user is; notifications are
+  in-process and lost on restart when Mongo is not configured; no email or push
+  delivery; production HR data integration, managed MongoDB, managed secrets,
+  cloud deployment, and policy data governance.
 - **Security posture:** `npm audit --omit=dev` reports zero vulnerabilities. Four
   high-severity advisories remain in devDependencies only (adm-zip and sharp, via
   onnxruntime-node, via the embeddings package) and have no fix available

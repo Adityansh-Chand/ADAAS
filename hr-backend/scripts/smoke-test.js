@@ -134,6 +134,51 @@ async function main() {
       (a) => a.reference_id === applied.body?.reference_id),
     `${(listed.body?.applications || []).length} application(s)`);
 
+  // --- intent classification ---
+  const intent = await request('/intent', {
+    method: 'POST',
+    body: JSON.stringify({ message: 'show my leave balance' }),
+  });
+  check('intent returns 200', intent.status === 200, `status ${intent.status}`);
+  check('intent classifies a balance query correctly',
+    intent.body?.intent === 'leaveBalance', JSON.stringify(intent.body));
+  check('intent reports which method decided',
+    ['rules', 'rules_fallback', 'embedding'].includes(intent.body?.method),
+    intent.body?.method);
+
+  // --- decisions produce notifications ---
+  const forDecision = await request('/leave-application', {
+    method: 'POST',
+    body: JSON.stringify({
+      employee_id: '1001',
+      request_text: 'apply for 1 day casual leave',
+    }),
+  });
+  const beforeDecision = (await request('/leave-balance?employee_id=1001')).body;
+  const decided = await request(
+    `/leave-applications/${forDecision.body?.reference_id}/decision`,
+    { method: 'POST', body: JSON.stringify({ decision: 'rejected', decided_by: '1002' }) },
+  );
+  check('a decision is accepted', decided.status === 200,
+    `status ${decided.status} ${JSON.stringify(decided.body)}`);
+  check('a rejection returns the days',
+    decided.body?.restored_balance === beforeDecision?.casual_leave_balance + 1,
+    `${beforeDecision?.casual_leave_balance} -> ${decided.body?.restored_balance}`);
+
+  const secondDecision = await request(
+    `/leave-applications/${forDecision.body?.reference_id}/decision`,
+    { method: 'POST', body: JSON.stringify({ decision: 'rejected', decided_by: '1002' }) },
+  );
+  check('deciding twice is refused', secondDecision.status === 409,
+    `status ${secondDecision.status}`);
+
+  const notices = await request('/notifications?employee_id=1001&unread=true');
+  check('the applicant is notified', (notices.body?.unread || 0) >= 1,
+    JSON.stringify(notices.body));
+  check('the notification names the decision',
+    /rejected/i.test(notices.body?.notifications?.[0]?.message || ''),
+    notices.body?.notifications?.[0]?.message);
+
   // --- report ---
   const failed = checks.filter((c) => !c.ok);
   for (const c of checks) {
