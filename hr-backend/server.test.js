@@ -781,9 +781,14 @@ test('a decision needs a valid verdict and a decider', async () => {
 const intentModule = require('./intent');
 
 function evalFile(name) {
+  return evalFileRaw(name).cases;
+}
+
+/** The whole fixture, not just its cases -- some carry metadata worth asserting on. */
+function evalFileRaw(name) {
   return JSON.parse(fs.readFileSync(
     path.resolve(__dirname, '..', 'eval', name), 'utf8',
-  )).cases;
+  ));
 }
 
 test('the intent endpoint classifies and reports which method decided', async () => {
@@ -807,9 +812,10 @@ test('the intent endpoint rejects an empty message', async () => {
 });
 
 test('the embedding classifier beats the rules on held-out phrasing', () => {
-  // The headline: 0.9667 against 0.5667 on eval/held_out_intent_queries_3.json,
-  // a set written before the classifier existed. `npm run eval:intent`
-  // reproduces it. Asserted here so a regression in either direction is caught.
+  // 0.9333 against 0.5667 on eval/held_out_intent_queries_3.json, a set written
+  // before the classifier existed, and 0.8000 against 0.3667 on set 4, written
+  // before the classifier was rewritten. `npm run eval:intent` reproduces both.
+  // Asserted here so a regression in either direction is caught.
   const store = denseRetrieval.loadVectors();
   const training = evalFile('intent_training.json');
   const heldOut = evalFile('held_out_intent_queries_3.json');
@@ -830,7 +836,65 @@ test('the embedding classifier beats the rules on held-out phrasing', () => {
   const embeddingAccuracy = embedding / heldOut.length;
   assert.ok(embeddingAccuracy > rulesAccuracy,
     `embedding ${embeddingAccuracy} should beat rules ${rulesAccuracy}`);
-  assert.ok(embeddingAccuracy >= 0.55, `embedding accuracy ${embeddingAccuracy}`);
+  assert.ok(embeddingAccuracy >= 0.88, `embedding accuracy ${embeddingAccuracy}`);
+});
+
+test('the classifier holds up on the set written before it was rewritten', () => {
+  // Set 4 exists because set 3 said it should: "if intent accuracy becomes the
+  // priority, the honest route is a fourth held-out set written before anything
+  // is re-picked". It was written first, then the classifier was changed, so
+  // this number was never available to fit against.
+  //
+  // It is the lowest of the held-out scores (0.8000 against 0.9333 on set 3) and
+  // that is the point of it -- it was written to be harder, with bare noun
+  // phrases, stated reasons and no verbs, and it found six real failures the
+  // other sets do not contain.
+  const store = denseRetrieval.loadVectors();
+  const classifier = intentModule.buildClassifier(
+    evalFile('intent_training.json'), store.queries,
+  );
+  const heldOut = evalFile('held_out_intent_queries_4.json');
+
+  let rules = 0;
+  let embedding = 0;
+  for (const c of heldOut) {
+    if (intentModule.routeByRules(c.q) === c.label) rules += 1;
+    if (intentModule.route(c.q, classifier, store.queries[c.q]).intent === c.label) {
+      embedding += 1;
+    }
+  }
+
+  assert.ok(embedding / heldOut.length >= 0.72,
+    `set 4 accuracy ${embedding / heldOut.length}`);
+  assert.ok(embedding > rules,
+    `embedding ${embedding} should beat rules ${rules} on set 4`);
+});
+
+test('fitting the classifier twice gives byte-identical predictions', () => {
+  // The linear model replaced k-NN, and k-NN had one property worth not losing
+  // quietly: there was nothing to fit, so there was nothing to be
+  // nondeterministic about. Gradient descent from a zero initialisation keeps
+  // that -- no seed, no shuffling, no randomness anywhere -- and this is the
+  // test that says so. If it ever fails, the committed accuracy figures have
+  // stopped being reproducible and every number in the README is provisional.
+  const store = denseRetrieval.loadVectors();
+  const training = evalFile('intent_training.json');
+  const examples = training
+    .map((c) => ({ label: c.label, vector: store.queries[c.q] }))
+    .filter((e) => e.vector);
+
+  const a = intentModule.fitLogisticRegression(examples);
+  const b = intentModule.fitLogisticRegression(examples);
+
+  for (const c of evalFile('held_out_intent_queries_3.json')) {
+    const v = store.queries[c.q];
+    if (!v) continue;
+    const pa = a.predict(v);
+    const pb = b.predict(v);
+    assert.equal(pa.label, pb.label);
+    assert.equal(pa.probability, pb.probability,
+      `probability drifted for ${JSON.stringify(c.q)}`);
+  }
 });
 
 test('the classifier declines rather than guessing on an unrelated message', () => {
@@ -847,6 +911,54 @@ test('the classifier declines rather than guessing on an unrelated message', () 
   assert.equal(result.confidence, 0);
 });
 
+test('the graded judgements never contradict the original gold labels', () => {
+  // The guard that lets graded relevance judgements be trusted at all. The same
+  // person who tuned the retriever wrote them, so the one protection that does
+  // not depend on their judgement is structural: the single gold label that
+  // predates the qrels must still be graded 2 in them. A gold quietly demoted to
+  // 1, or dropped, would let a wrong answer look like a labelling artefact.
+  const qrels = evalFileRaw('policy_qrels.json');
+  const kbIds = new Set(KB.map((e) => e.id));
+
+  for (const c of evalFileRaw('policy_queries.json').cases) {
+    const grades = qrels.judgements[c.q];
+    assert.ok(grades, `no judgements for ${JSON.stringify(c.q)}`);
+    assert.equal(grades[c.id], 2,
+      `gold ${c.id} is not graded 2 for ${JSON.stringify(c.q)}`);
+  }
+  for (const [q, grades] of Object.entries(qrels.judgements)) {
+    for (const [id, grade] of Object.entries(grades)) {
+      assert.ok(kbIds.has(id), `judged id ${id} is not in the corpus (${q})`);
+      assert.ok(grade === 1 || grade === 2, `grade ${grade} for ${id} (${q})`);
+    }
+  }
+});
+
+test('the rerank floor gates the answer without truncating the ranking', async () => {
+  // Regression test for a threshold doing two jobs. The floor used to filter
+  // every sub-floor candidate out of the list, which cost recall@5 on queries
+  // that were answered anyway -- 0.9444 instead of 1.0000 on the Set B dev half.
+  //
+  // Both halves of the contract are asserted, because fixing one by breaking the
+  // other would be easy: a pool whose best score clears the floor keeps all of
+  // its candidates, and a pool whose best score does not returns nothing at all.
+  const candidates = ['policy_001', 'policy_002', 'policy_003_cl'].map((id) => ({
+    entry: KB.find((e) => e.id === id),
+    score: 0.5,
+  }));
+
+  const above = await reranker.rerank('q', candidates, {
+    precomputed: { policy_001: 2.0, policy_002: -9.0, policy_003_cl: -9.0 },
+  });
+  assert.equal(above.length, 3, 'sub-floor candidates were dropped from the list');
+  assert.equal(above[0].entry.id, 'policy_001');
+
+  const below = await reranker.rerank('q', candidates, {
+    precomputed: { policy_001: -9.0, policy_002: -9.0, policy_003_cl: -9.0 },
+  });
+  assert.equal(below.length, 0, 'nothing cleared the floor, so nothing may be shown');
+});
+
 test('the training set is not a paraphrase of any held-out set', () => {
   // The real leakage test, and what the intent eval gates on. A high score on
   // unseen phrasing only means something if the phrasing is genuinely unseen.
@@ -855,7 +967,8 @@ test('the training set is not a paraphrase of any held-out set', () => {
 
   let worst = 0;
   for (const file of ['held_out_intent_queries.json',
-    'held_out_intent_queries_2.json', 'held_out_intent_queries_3.json']) {
+    'held_out_intent_queries_2.json', 'held_out_intent_queries_3.json',
+    'held_out_intent_queries_4.json']) {
     for (const c of evalFile(file)) {
       const v = store.queries[c.q];
       if (!v) continue;
@@ -989,7 +1102,17 @@ test('reranking cannot introduce a document retrieval did not return', async () 
   assert.deepEqual(returnedIds, shortlistIds);
 });
 
-test('the logit floor drops candidates the cross-encoder scored badly', async () => {
+test('the logit floor decides whether to answer, not which sources to show', async () => {
+  // This test previously asserted the opposite -- that a sub-floor candidate was
+  // dropped from the returned list -- and it was changed deliberately rather
+  // than worked around. The old behaviour used one threshold for two different
+  // questions, and it cost recall@5 on the Set B dev half (0.9444 instead of
+  // 1.0000) for queries that were answered anyway. See the note in rerank.js.
+  //
+  // What must not change is the abstention behaviour, and the second half of
+  // this test is the assertion that it did not: the condition for returning
+  // nothing is identical, because "every candidate is below the floor" and "the
+  // best candidate is below the floor" are the same statement.
   const shortlist = KB.slice(0, 3).map((entry) => ({ entry, score: 0.5 }));
   const floor = reranker.DEFAULT_MIN_LOGIT;
 
@@ -1001,8 +1124,10 @@ test('the logit floor drops candidates the cross-encoder scored badly', async ()
   };
 
   const out = await reranker.rerank('q', shortlist, { precomputed });
-  assert.equal(out.length, 1);
+  assert.equal(out.length, 3, 'the ranking must not be truncated by the floor');
   assert.equal(out[0].entry.id, KB[0].id);
+  // Still ordered by the cross-encoder, worst last.
+  assert.equal(out[2].entry.id, KB[2].id);
 
   // And everything below the floor means nothing, not the least-bad option.
   const allBad = Object.fromEntries(
