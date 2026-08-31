@@ -3,10 +3,23 @@
 /**
  * Sentence embeddings, computed locally.
  *
- * Model: sentence-transformers/all-MiniLM-L6-v2 (via the Xenova ONNX export),
- * 384 dimensions, mean-pooled and L2-normalised. Chosen because it runs on a
- * laptop with no API key, no account and no billing, which is the same
- * constraint every other dependency in this repository is held to.
+ * Model: BAAI/bge-small-en-v1.5 (via the Xenova ONNX export), 384 dimensions,
+ * mean-pooled and L2-normalised. Runs on a laptop with no API key, no account
+ * and no billing, which is the constraint every dependency here is held to.
+ *
+ * It replaced all-MiniLM-L6-v2, which was chosen as the floor of that constraint
+ * rather than the best thing satisfying it. `npm run bakeoff` measured five
+ * bi-encoders on the Set B dev half and this one won on both top-1 and MRR.
+ * bge-base-en-v1.5 -- 768 dimensions and roughly four times the download -- tied
+ * on top-1 and scored marginally *worse* on MRR, so the larger model is not
+ * being declined for cost reasons; it simply did not help.
+ *
+ * BGE IS ASYMMETRIC. It was trained with an instruction prefix on the query side
+ * and none on the passage side, and it loses accuracy if fed bare text on both.
+ * That is why `embedQuery` and `embedPassage` are separate functions instead of
+ * one `embed` with a comment asking callers to remember. Getting this wrong is
+ * silent: the vectors still have 384 dimensions and cosine still returns a
+ * plausible number.
  *
  * `@huggingface/transformers` is a devDependency, not a dependency, and is
  * loaded lazily. Two reasons:
@@ -22,8 +35,13 @@
  * RETRIEVAL_MODE. Everything else keeps working without it.
  */
 
-const MODEL_ID = 'Xenova/all-MiniLM-L6-v2';
+const MODEL_ID = 'Xenova/bge-small-en-v1.5';
 const DIMENSIONS = 384;
+
+// The instruction BGE was trained to see on the query side. Passages get no
+// prefix. This exact string is part of the model contract, not a stylistic
+// choice -- changing its wording changes every query vector.
+const QUERY_PREFIX = 'Represent this sentence for searching relevant passages: ';
 
 // Rounded before storage so committed vectors are byte-stable across platforms.
 // ONNX accumulates floating point differently on different CPUs, and without
@@ -100,8 +118,62 @@ async function embed(texts, { batchSize = BATCH_SIZE } = {}) {
   return out;
 }
 
-async function embedOne(text) {
-  return (await embed([text]))[0];
+/**
+ * Embed passages -- corpus documents. No prefix.
+ *
+ * Named for the role rather than taking a flag, so a call site cannot be read as
+ * correct while silently using the wrong side of an asymmetric model.
+ */
+async function embedPassages(texts, options) {
+  return embed(texts, options);
+}
+
+/** Embed queries -- what a user typed. Prefixed, per the model contract above. */
+async function embedQueries(texts, options) {
+  return embed(texts.map((t) => QUERY_PREFIX + t), options);
+}
+
+async function embedQuery(text) {
+  return (await embedQueries([text]))[0];
+}
+
+async function embedPassage(text) {
+  return (await embedPassages([text]))[0];
+}
+
+/**
+ * Embed utterances for comparison against other utterances -- the intent
+ * classifier's k-NN vote, where both sides are things a person might type.
+ *
+ * PREFIXED, on both sides, and this was written the other way round first.
+ *
+ * The reasoning for leaving the prefix off was that intent classification is a
+ * symmetric comparison, the prefix exists to make a short question look like
+ * something that retrieves a long document, and applying it to both sides
+ * describes neither. That argument is tidy and it is wrong. Measured on the two
+ * intent sets that are not held out -- the fitted set and the already-compromised
+ * held_out_2, chosen so held_out_3 stayed clean:
+ *
+ *   MiniLM, no prefix             0.7292 / 0.8750
+ *   bge-small, no prefix          0.6667 / 0.8750
+ *   bge-small, prefix both sides  0.7083 / 0.9583
+ *
+ * Prefixing both sides is still symmetric -- it moves both into the same region
+ * of the space, the region where this model discriminates most sharply, and being
+ * a question rather than a document is exactly what both sides have in common.
+ * The a-priori argument mistook "the same instruction on both sides" for
+ * "the asymmetric encoding applied wrongly".
+ *
+ * Kept as its own named function rather than folded into `embedQueries` so the
+ * intent call sites still say what they are doing, and so this note has somewhere
+ * to live.
+ */
+async function embedUtterances(texts, options) {
+  return embedQueries(texts, options);
+}
+
+async function embedUtterance(text) {
+  return (await embedUtterances([text]))[0];
 }
 
 /** Both vectors are already L2-normalised, so cosine is a dot product. */
@@ -126,9 +198,14 @@ module.exports = {
   DIMENSIONS,
   STORED_PRECISION,
   BATCH_SIZE,
+  QUERY_PREFIX,
   EmbeddingsUnavailable,
-  embed,
-  embedOne,
+  embedPassages,
+  embedQueries,
+  embedPassage,
+  embedQuery,
+  embedUtterances,
+  embedUtterance,
   cosine,
   isAvailable,
 };

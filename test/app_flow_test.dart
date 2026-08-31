@@ -19,7 +19,7 @@ void main() {
   Future<void> send(WidgetTester tester, String message) async {
     await tester.enterText(find.byType(TextField), message);
     await tester.pump();
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byKey(const Key('send')));
     // Let the request fail and the failure state land.
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 250));
@@ -92,10 +92,12 @@ void main() {
 
     await tester.enterText(find.byType(TextField), 'show my leave balance');
     await tester.pump();
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byKey(const Key('send')));
     await tester.pump();
 
-    final button = tester.widget<IconButton>(find.byType(IconButton));
+    // By key, not by type: the header now also holds a theme-mode button, so
+    // `find.byType(IconButton)` matches two widgets and would throw.
+    final button = tester.widget<IconButton>(find.byKey(const Key('send')));
     expect(button.onPressed, isNull);
 
     for (var i = 0; i < 8; i++) {

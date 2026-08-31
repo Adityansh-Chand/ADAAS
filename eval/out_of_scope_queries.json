@@ -1,0 +1,31 @@
+{
+  "about": "Queries the service should refuse to answer from this corpus. Used to calibrate and gate the abstention thresholds in hr-backend/dense.js. Retrieval that always returns its closest guess cannot be trusted; these are the cases where the honest answer is 'no company policy covers that'.",
+  "why_two_tiers": "The `easy` cases are plainly outside the domain and any sane threshold rejects them -- they are a smoke test, not a challenge. The `hard` cases are the real measure: HR-shaped questions about things this 26-policy corpus genuinely does not contain. A retriever that separates only the easy tier has learned to detect topic, not coverage.",
+  "cases": [
+    { "q": "how do I deploy a Kubernetes ingress controller", "tier": "easy" },
+    { "q": "what is the best restaurant in Hyderabad", "tier": "easy" },
+    { "q": "what is the capital of Brazil", "tier": "easy" },
+    { "q": "asdkjh qwe zxcvb nmpoiu", "tier": "easy" },
+    { "q": "how do I change the oil in a Honda Civic", "tier": "easy" },
+    { "q": "who won the football match last night", "tier": "easy" },
+    { "q": "write me a python script to sort a list", "tier": "easy" },
+    { "q": "what is the weather forecast for tomorrow", "tier": "easy" },
+    { "q": "recommend a good science fiction novel", "tier": "easy" },
+    { "q": "how many calories in a banana", "tier": "easy" },
+    { "q": "translate good morning into Japanese", "tier": "easy" },
+    { "q": "what time does the train to Chennai leave", "tier": "easy" },
+
+    { "q": "where can I park my car at the office", "tier": "hard" },
+    { "q": "how do I book a meeting room for tomorrow", "tier": "hard" },
+    { "q": "what is the company's stock ticker symbol", "tier": "hard" },
+    { "q": "can I bring my dog into the office", "tier": "hard" },
+    { "q": "is there a subsidised canteen in the building", "tier": "hard" },
+    { "q": "what is the policy on office music and headphones", "tier": "hard" },
+    { "q": "do we get a bonus if we refer a friend for a job", "tier": "hard" },
+    { "q": "how many days of paternity leave does the law require", "tier": "hard" },
+    { "q": "what is the notice period for a contractor rather than an employee", "tier": "hard" },
+    { "q": "can I sublet my company-provided accommodation", "tier": "hard" },
+    { "q": "which bank does the company use for payroll", "tier": "hard" },
+    { "q": "what happens to my shares if the company is acquired", "tier": "hard" }
+  ]
+}

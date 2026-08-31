@@ -9,10 +9,13 @@
     "test": "node --test server.test.js",
     "eval": "node scripts/eval_retrieval.js",
     "eval:gate": "node scripts/eval_retrieval.js --gate",
+    "eval:intent": "node scripts/eval_intent.js",
+    "eval:intent:gate": "node scripts/eval_intent.js --gate",
     "embed": "node scripts/build_embeddings.js",
     "embed:verify": "node scripts/build_embeddings.js --verify",
-    "eval:intent": "node scripts/eval_intent.js",
-    "eval:intent:gate": "node scripts/eval_intent.js --gate"
+    "rerank:build": "node scripts/build_rerank_scores.js",
+    "rerank:verify": "node scripts/build_rerank_scores.js --verify",
+    "bakeoff": "node scripts/bakeoff_retrieval.js"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The splash colour, held as a resource so the night variant can override it.
+
+  It must match `AppTheme.light().colorScheme.surface` in lib/theme/app_theme.dart.
+  If they diverge, the app flashes one colour and then repaints in another.
+-->
+<resources>
+    <color name="launch_background">#FFFFFFFF</color>
+</resources>

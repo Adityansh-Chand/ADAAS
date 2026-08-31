@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Must match `AppTheme.dark().colorScheme.surface`. -->
+<resources>
+    <color name="launch_background">#FF121515</color>
+</resources>
