@@ -4,5 +4,8 @@
   "knowledgeBase": {
     "entries": 26
   },
-  "llm": "none"
+  "llm": "none",
+  "retrieval": {
+    "mode": "lexical"
+  }
 }

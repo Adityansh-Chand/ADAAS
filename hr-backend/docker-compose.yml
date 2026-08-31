@@ -6,6 +6,7 @@ services:
     environment:
       PORT: 3000
       API_KEY: ${API_KEY:-}
+      RETRIEVAL_MODE: ${RETRIEVAL_MODE:-}
       LLM_PROVIDER: ${LLM_PROVIDER:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}

@@ -1,5 +1,6 @@
 {
   "answer": "I couldn't find a matching company policy for that question.",
   "sources": [],
+  "retrieval_mode": "lexical",
   "generated_by": "none"
 }

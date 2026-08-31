@@ -1,5 +1,6 @@
 import 'package:adaas/Features/Prompt/UI/create_prompt.dart';
 import 'package:flutter/material.dart';
+import 'package:adaas/services/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// End-to-end flow through the real screen, BLoC, router and repositories.
@@ -84,5 +85,16 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 250));
     }
+  });
+
+  testWidgets('the screen shows which employee it is acting as', (tester) async {
+    // A demo identity that is not displayed is indistinguishable from a
+    // hardcoded one. The employee id was previously a string literal inlined
+    // twice in the BLoC with no way to change or see it.
+    await tester.pumpWidget(const MaterialApp(home: CreatePromptScreen()));
+    await tester.pump();
+
+    expect(find.byKey(const Key('acting-as')), findsOneWidget);
+    expect(find.textContaining(AppConfig.employeeId), findsOneWidget);
   });
 }

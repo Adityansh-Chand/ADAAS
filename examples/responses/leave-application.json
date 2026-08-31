@@ -2,7 +2,7 @@
   "employee_id": "1001",
   "leave_type": "Casual Leave",
   "days": 1,
-  "reference_id": "LMS-04A15ABC",
+  "reference_id": "LMS-EXAMPLE",
   "status": "submitted",
   "remaining_after": 2,
   "message": "Submitted 1 day(s) of Casual Leave for approval. You have 2 day(s) remaining."

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:adaas/Model/chat_message_model.dart';
 import 'package:adaas/bloc/chat_bloc.dart';
+import 'package:adaas/services/app_config.dart';
 import 'package:adaas/widgets/leave_summary_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -101,19 +102,37 @@ class _CreatePromptScreenState extends State<CreatePromptScreen>
                   Column(
                     children: [
                       const SizedBox(height: 60),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            "ADAAS",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Sixtyfour',
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              "ADAAS",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Sixtyfour',
+                              ),
                             ),
-                          ),
+                            const Spacer(),
+                            // Which employee the app is acting as. Visible on
+                            // purpose: it is a demo identity set by
+                            // --dart-define, not authentication, and hiding that
+                            // would misrepresent it.
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                'employee ${AppConfig.employeeId}',
+                                key: const Key('acting-as'),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Expanded(
