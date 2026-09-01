@@ -20,7 +20,8 @@
     "bakeoff:margin": "node scripts/bakeoff_intent.js --stage=margin",
     "probe:abstention": "node scripts/probe_abstention.js",
     "probe:answerability": "node scripts/probe_answerability.js",
-    "annotate": "node scripts/annotate.js"
+    "annotate": "node scripts/annotate.js",
+    "seed:mongo": "node scripts/seed_mongo.js"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +34,7 @@
     "mongoose": "^9.0.0"
   },
   "devDependencies": {
-    "@huggingface/transformers": "^4.2.0"
+    "@huggingface/transformers": "^4.2.0",
+    "mongodb-memory-server": "^11.2.0"
   }
 }

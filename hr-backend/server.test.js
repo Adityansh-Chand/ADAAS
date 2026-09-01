@@ -310,13 +310,29 @@ test('leave application is persisted in the fallback store', async () => {
       employee_id: '1001',
       request_text: 'apply for 1 day annual leave',
     });
+    await postJson(baseUrl, '/leave-application', {
+      employee_id: '1002',
+      request_text: 'apply for 1 day annual leave',
+    });
 
-    const response = await fetch(`${baseUrl}/leave-applications`);
+    // employee_id is now required, and this test used to call the route without
+    // one -- which was how it passed while the handler returned everyone's
+    // applications. The test encoded the bug: the route is wrapped in an
+    // authorisation check on employee_id that the handler then ignored.
+    const missing = await fetch(`${baseUrl}/leave-applications`);
+    assert.equal(missing.status, 400);
+
+    const response = await fetch(`${baseUrl}/leave-applications?employee_id=1001`);
     const data = await response.json();
 
     assert.equal(response.status, 200);
     assert.ok(data.applications.length > 0);
     assert.ok(data.applications[0].reference_id);
+    // The listing must be scoped, not merely filtered-looking.
+    assert.ok(
+      data.applications.every((a) => a.employee_id === '1001'),
+      'another employee applications leaked into the response',
+    );
   });
 });
 
@@ -1059,6 +1075,310 @@ test('with no secret set, scoping is off and /health says so', async () => {
     const session = await postJson(baseUrl, '/session', { employee_id: '1001' });
     assert.equal(session.status, 409);
   });
+});
+
+// ---------------------------------------------------------------------------
+// The MongoDB path
+//
+// WHY THIS EXISTS, AND WHY IT DID NOT
+//
+// The README's second paragraph says "MongoDB is used when MONGODB_URI is
+// configured and seeded in-memory data otherwise". Nine call sites in server.js
+// branch on mongoUsable(), seven of them behavioural -- reading a balance,
+// writing one, creating an application, listing them, recording a decision,
+// storing a notification.
+//
+// Until this file, every one of the hundred-odd tests ran on the in-memory
+// fallback and not one exercised any of it. The Atlas cluster this project used
+// has been paused, so the path had not been run in a long time either. That is
+// the exact shape of claim this repository polices everywhere else: a documented
+// feature with no test, where nobody can say whether it works because nobody has
+// asked.
+//
+// mongodb-memory-server runs a real mongod as a devDependency. Not a mock and not
+// a fake driver: real mongoose models against a real server, so what passes here
+// is what would happen against Atlas. It is dev-only, so it does not reach the
+// production image -- the same rule the model tooling follows.
+//
+// Skipped rather than failed when the binary cannot be fetched, because an
+// offline checkout should still be able to run the suite. Skipping prints, so it
+// cannot be mistaken for passing.
+
+const { seed: seedMongo, DEMO_USAGE, syntheticEmployees } = require('./scripts/seed_mongo');
+
+let MongoMemoryServer = null;
+try {
+  ({ MongoMemoryServer } = require('mongodb-memory-server'));
+} catch {
+  // Left null; every test below reports the skip and returns.
+}
+
+const mongoose = require('mongoose');
+
+async function withMongo(fn) {
+  if (!MongoMemoryServer) {
+    console.log('    (skipped: mongodb-memory-server is not installed)');
+    return;
+  }
+  let mongod;
+  try {
+    mongod = await MongoMemoryServer.create();
+  } catch (error) {
+    console.log(`    (skipped: no mongod binary -- ${error.message.slice(0, 80)})`);
+    return;
+  }
+
+  const previous = process.env.MONGODB_URI;
+  const uri = mongod.getUri('adaas_test');
+  process.env.MONGODB_URI = uri;
+  try {
+    // The server connects at require time, so reconnecting is what puts it on
+    // the Mongo path for these tests. `app.__connectMongo` is exported for
+    // exactly this -- a test that cannot reach the real branch is not testing it.
+    const readyState = await app.__connectMongo();
+    assert.equal(readyState, 1, 'mongoose must be connected, not still connecting');
+
+    // Seeded, because a connected but EMPTY Mongo 404s every endpoint -- which is
+    // what a fresh deployment did before scripts/seed_mongo.js existed, and a
+    // test against an empty database would be measuring 404s.
+    await seedMongo({ employees: 4, uri });
+    await fn();
+  } finally {
+    await mongoose.connection.dropDatabase().catch(() => {});
+    await mongoose.disconnect().catch(() => {});
+    if (previous === undefined) delete process.env.MONGODB_URI;
+    else process.env.MONGODB_URI = previous;
+    await mongod.stop();
+  }
+}
+
+test('with Mongo connected, /health says mongodb rather than memory', async () => {
+  await withMongo(async () => {
+    await withServer(async (baseUrl) => {
+      const health = await (await fetch(`${baseUrl}/health`)).json();
+      assert.equal(health.dataSource, 'mongodb');
+    });
+  });
+});
+
+test('a balance is read from and written to Mongo, not the in-memory seed',
+  async () => {
+    // The branch that matters most: if this silently used the fallback, an
+    // application would appear to succeed and the stored balance would never move.
+    await withMongo(async () => {
+      await withServer(async (baseUrl) => {
+        const before = await (await fetch(
+          `${baseUrl}/leave-balance?employee_id=1001`,
+        )).json();
+        // The seeded value, which must be the same one the in-memory path uses --
+        // switching MONGODB_URI on and off must not change the numbers.
+        assert.equal(before.used.casual_leave, DEMO_USAGE[1001].casualLeaveUsed);
+
+        const applied = await postJson(baseUrl, '/leave-application', {
+          employee_id: '1001',
+          request_text: 'apply for 1 day casual leave',
+        });
+        assert.equal(applied.status, 200);
+
+        const after = await (await fetch(
+          `${baseUrl}/leave-balance?employee_id=1001`,
+        )).json();
+        assert.equal(
+          after.used.casual_leave,
+          DEMO_USAGE[1001].casualLeaveUsed + 1,
+          'the balance must move in Mongo, not just in the response',
+        );
+
+        // And it is genuinely in the collection, not in the fallback array.
+        const stored = await mongoose.connection
+          .collection('leavebalances').findOne({ employeeId: '1001' });
+        assert.ok(stored, 'no LeaveBalance document was written');
+        assert.equal(stored.casualLeaveUsed, DEMO_USAGE[1001].casualLeaveUsed + 1);
+      });
+    });
+  });
+
+test('an application is persisted and listed from Mongo', async () => {
+  await withMongo(async () => {
+    await withServer(async (baseUrl) => {
+      const applied = await (await postJson(baseUrl, '/leave-application', {
+        employee_id: '1002',
+        request_text: 'apply for 1 day casual leave',
+      })).json();
+      assert.ok(applied.reference_id, 'no reference id issued');
+
+      const listed = await (await fetch(
+        `${baseUrl}/leave-applications?employee_id=1002`,
+      )).json();
+      assert.equal(listed.applications.length, 1);
+      assert.equal(listed.applications[0].reference_id, applied.reference_id);
+
+      const stored = await mongoose.connection
+        .collection('leaveapplications').findOne({ referenceId: applied.reference_id });
+      assert.ok(stored, 'no LeaveApplication document was written');
+    });
+  });
+});
+
+test('a rejection returns the days to the balance stored in Mongo', async () => {
+  // The invariant the whole approval workflow rests on, checked against the
+  // database rather than against the response body.
+  await withMongo(async () => {
+    await withServer(async (baseUrl) => {
+      const applied = await (await postJson(baseUrl, '/leave-application', {
+        employee_id: '2001',
+        request_text: 'apply for 2 days casual leave',
+      })).json();
+
+      const seeded = syntheticEmployees(4)['2001'].casualLeaveUsed;
+      const midway = await mongoose.connection
+        .collection('leavebalances').findOne({ employeeId: '2001' });
+      assert.equal(midway.casualLeaveUsed, seeded + 2);
+
+      const decided = await postJson(
+        baseUrl, `/leave-applications/${applied.reference_id}/decision`,
+        { decision: 'rejected', decided_by: '9001' },
+      );
+      assert.equal(decided.status, 200);
+
+      const after = await mongoose.connection
+        .collection('leavebalances').findOne({ employeeId: '2001' });
+      assert.equal(after.casualLeaveUsed, seeded, 'a rejection must return the days');
+    });
+  });
+});
+
+test('Mongo holds many employees independently', async () => {
+  // The in-memory seed has two employees. A real deployment has as many as the
+  // organisation does, and this is the check that they do not share a document --
+  // a unique index on employeeId is easy to get wrong and the failure looks like
+  // one person's leave moving when another files.
+  await withMongo(async () => {
+    await withServer(async (baseUrl) => {
+      // The four synthetic employees the seeder wrote, plus the two demo ones.
+      const synthetic = syntheticEmployees(4);
+      const ids = Object.keys(synthetic);
+      const before = Object.fromEntries(
+        ids.map((id) => [id, synthetic[id].casualLeaveUsed]),
+      );
+
+      // One employee files twice, the rest once. If documents were shared -- a
+      // missing unique index is the usual cause -- one person's leave would move
+      // when another filed, and that is invisible with only two employees.
+      for (const id of ids) {
+        await postJson(baseUrl, '/leave-application', {
+          employee_id: id,
+          request_text: 'apply for 1 day casual leave',
+        });
+      }
+      await postJson(baseUrl, '/leave-application', {
+        employee_id: ids[0],
+        request_text: 'apply for 1 day casual leave',
+      });
+
+      for (const id of ids) {
+        const r = await (await fetch(`${baseUrl}/leave-balance?employee_id=${id}`)).json();
+        const expected = before[id] + (id === ids[0] ? 2 : 1);
+        assert.equal(r.used.casual_leave, expected,
+          `employee ${id} should have used ${expected}, not ${r.used.casual_leave}`);
+      }
+
+      const count = await mongoose.connection
+        .collection('leavebalances').countDocuments({});
+      assert.equal(count, ids.length + Object.keys(DEMO_USAGE).length,
+        'one document per employee, no sharing');
+    });
+  });
+});
+
+test('a connected but empty Mongo 404s everything, which is why the seeder exists',
+  async () => {
+    // The finding that produced scripts/seed_mongo.js. Nothing in this repository
+    // ever wrote an employee into Mongo, so pointing MONGODB_URI at a working but
+    // empty database made every endpoint 404 -- and it went unnoticed because
+    // every other test runs on the in-memory fallback.
+    //
+    // The 404 itself is correct: an unknown employee id must not silently receive
+    // a full entitlement. The gap was that there was no way to make one known.
+    if (!MongoMemoryServer) {
+      console.log('    (skipped: mongodb-memory-server is not installed)');
+      return;
+    }
+    let mongod;
+    try {
+      mongod = await MongoMemoryServer.create();
+    } catch (error) {
+      console.log(`    (skipped: no mongod binary -- ${error.message.slice(0, 60)})`);
+      return;
+    }
+    const previous = process.env.MONGODB_URI;
+    process.env.MONGODB_URI = mongod.getUri('adaas_empty');
+    try {
+      assert.equal(await app.__connectMongo(), 1);
+      await withServer(async (baseUrl) => {
+        const balance = await fetch(`${baseUrl}/leave-balance?employee_id=1001`);
+        assert.equal(balance.status, 404);
+        const applied = await postJson(baseUrl, '/leave-application', {
+          employee_id: '1001',
+          request_text: 'apply for 1 day casual leave',
+        });
+        assert.equal(applied.status, 404);
+      });
+
+      // And seeding makes the same database usable, which is the whole claim.
+      await seedMongo({ uri: process.env.MONGODB_URI });
+      await withServer(async (baseUrl) => {
+        const balance = await fetch(`${baseUrl}/leave-balance?employee_id=1001`);
+        assert.equal(balance.status, 200);
+      });
+    } finally {
+      await mongoose.connection.dropDatabase().catch(() => {});
+      await mongoose.disconnect().catch(() => {});
+      if (previous === undefined) delete process.env.MONGODB_URI;
+      else process.env.MONGODB_URI = previous;
+      await mongod.stop();
+    }
+  });
+
+test('the Mongo seed and the in-memory seed agree', () => {
+  // Two seed sets that drift apart is how "it works on my machine" is earned,
+  // and this project already had one instance of demo data contradicting the
+  // policy text it quoted. Switching MONGODB_URI on and off must not change the
+  // numbers a reviewer sees.
+  const inMemory = app.__seededUsage();
+  for (const [id, usage] of Object.entries(DEMO_USAGE)) {
+    assert.equal(usage.casualLeaveUsed, inMemory[id].casual_leave,
+      `employee ${id}: casual leave differs between the two seeds`);
+    assert.equal(
+      usage.combinedAnnualSickLeaveUsed, inMemory[id].combined_annual_sick_leave,
+      `employee ${id}: combined leave differs between the two seeds`,
+    );
+  }
+  assert.deepEqual(
+    Object.keys(DEMO_USAGE).sort(), Object.keys(inMemory).sort(),
+    'the two seeds must cover the same employees',
+  );
+});
+
+test('falling back to memory is a reported state, not a silent one', async () => {
+  // The other half of the claim. With no MONGODB_URI the service must run on
+  // seeded data AND say so -- a deployment that thinks it is persisting and is
+  // not is the worst of the three outcomes.
+  const previous = process.env.MONGODB_URI;
+  delete process.env.MONGODB_URI;
+  try {
+    await mongoose.disconnect().catch(() => {});
+    await withServer(async (baseUrl) => {
+      const health = await (await fetch(`${baseUrl}/health`)).json();
+      assert.equal(health.dataSource, 'memory');
+      const balance = await (await fetch(
+        `${baseUrl}/leave-balance?employee_id=1001`,
+      )).json();
+      assert.ok(balance.casual_leave_balance <= ENTITLEMENTS.casual_leave.days);
+    });
+  } finally {
+    if (previous !== undefined) process.env.MONGODB_URI = previous;
+  }
 });
 
 // ---------------------------------------------------------------------------

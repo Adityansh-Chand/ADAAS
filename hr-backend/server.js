@@ -41,7 +41,13 @@ if (secretsFromFiles.length) {
 
 const app = express();
 const port = process.env.PORT || 3000;
-const mongoURI = process.env.MONGODB_URI;
+// Read at call time rather than captured at module load. The capture was not
+// wrong in production -- the variable does not change while a process runs -- but
+// it made the Mongo path untestable: a test cannot point the service at a
+// temporary server if the URI was frozen before the test existed. Nine call sites
+// branched on mongoUsable() and none of them had a test, which is how a
+// documented feature ends up with nobody able to say whether it works.
+const mongoURI = () => process.env.MONGODB_URI;
 let mongoReady = false;
 const startedAt = Date.now();
 const counters = {
@@ -226,13 +232,13 @@ function asyncHandler(handler) {
 }
 
 async function connectMongo() {
-  if (!mongoURI) {
+  if (!mongoURI()) {
     console.log('MONGODB_URI not set; using in-memory HR demo data.');
     return;
   }
 
   try {
-    await mongoose.connect(mongoURI);
+    await mongoose.connect(mongoURI());
     mongoReady = true;
     console.log('MongoDB Connected');
   } catch (err) {
@@ -748,19 +754,71 @@ app.post('/leave-applications/:reference/decision', requireApiKey,
     });
   }));
 
+/**
+ * One wire shape for an application, whichever store it came from.
+ *
+ * The Mongo documents are camelCase because that is the schema; the API is
+ * snake_case because that is the contract every other endpoint uses and what the
+ * Flutter client reads. Translating here rather than at the call sites means a
+ * third store would have one place to conform to -- and it is why `_id` and
+ * `__v`, which are Mongo's business and not the client's, do not leak.
+ */
+function shapeApplication(doc) {
+  return {
+    employee_id: doc.employeeId,
+    leave_type: doc.leaveType,
+    days: doc.days,
+    reference_id: doc.referenceId,
+    status: doc.status,
+    request_text: doc.requestText,
+    created_at: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+    decided_by: doc.decidedBy,
+    decided_at: doc.decidedAt ? new Date(doc.decidedAt).toISOString() : undefined,
+  };
+}
+
 app.get('/leave-applications', requireApiKey, session.attachPrincipal,
   session.requireSelfOrApprover((req) => req.query.employee_id),
   asyncHandler(async (req, res) => {
-  if (mongoUsable()) {
-    const applications = await LeaveApplication.find()
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
-    res.json({ applications });
+  // TWO BUGS LIVED HERE, AND MONGO TESTS FOUND BOTH
+  //
+  // 1. Neither branch filtered by employee_id. `LeaveApplication.find()` with no
+  //    filter returned every application from every employee, and the in-memory
+  //    branch did the same. The route is wrapped in requireSelfOrApprover, which
+  //    checks the query parameter -- so the guard passed on the caller's own id
+  //    and the handler then returned everyone's leave history. An authorisation
+  //    check the handler ignores is not an authorisation check.
+  //
+  // 2. The two branches returned different shapes. Mongo returned raw lean
+  //    documents -- `referenceId`, `employeeId`, plus `_id` and `__v` -- while the
+  //    fallback returned `reference_id` and `employee_id`. A client reading
+  //    `reference_id` worked on the in-memory path and silently got `undefined`
+  //    with a database configured. The API contract must not depend on which store
+  //    is behind it.
+  //
+  // Neither was visible while every test ran on the fallback and the one live
+  // database had not been connected to in months.
+  const employeeId = req.query.employee_id;
+  if (!employeeId) {
+    res.status(400).json({ error: 'employee_id is required' });
     return;
   }
 
-  res.json({ applications: fallbackLeaveApplications.slice(-50).reverse() });
+  if (mongoUsable()) {
+    const documents = await LeaveApplication.find({ employeeId: String(employeeId) })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json({ applications: documents.map(shapeApplication) });
+    return;
+  }
+
+  res.json({
+    applications: fallbackLeaveApplications
+      .filter((a) => a.employee_id === String(employeeId))
+      .slice(-50)
+      .reverse(),
+  });
 }));
 
 // ---------------------------------------------------------------------------
@@ -987,6 +1045,31 @@ module.exports.classifyIntent = classifyIntent;
  * across cases in a single process, so tests pass or fail depending on the order
  * they happen to run in -- which is its own kind of test that cannot be trusted.
  */
+// Test seam. Reconnecting is the only way to exercise the Mongo branches: the
+// service connects once at startup, so a test that merely sets MONGODB_URI would
+// still be measuring the in-memory fallback and passing.
+//
+// It disconnects first and then waits for readyState 1, and both matter. Calling
+// mongoose.connect() while a previous connection is still settling leaves
+// readyState at 2 -- connecting -- and mongoUsable() then reports false, so a test
+// would silently measure the fallback while believing it had Mongo. That is the
+// failure this seam existed to prevent, and the first version of it reproduced it.
+// The in-memory seed, exposed so a test can assert that it and
+// scripts/seed_mongo.js agree. Two seed sets that drift apart change the numbers
+// a reviewer sees depending on whether MONGODB_URI happens to be set.
+module.exports.__seededUsage = () => SEEDED_LEAVE_USAGE();
+
+module.exports.__connectMongo = async () => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect().catch(() => {});
+  }
+  await connectMongo();
+  for (let i = 0; i < 50 && mongoose.connection.readyState !== 1; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return mongoose.connection.readyState;
+};
+
 module.exports.__resetDemoData = () => {
   fallbackLeaveApplications.length = 0;
   notificationStore.__reset(process.env.NOTIFICATIONS_PATH);

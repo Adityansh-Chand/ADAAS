@@ -734,7 +734,7 @@ remaining is derived, for the same reason.
 | `GET /metrics` | Counters, uptime, corpus size, retrieval mode. |
 | `GET /leave-balance?employee_id=1001` | Entitlement, used, and remaining. |
 | `POST /leave-application` | Validated against entitlement and balance; decrements it. |
-| `GET /leave-applications` | Recent applications with their status. |
+| `GET /leave-applications?employee_id=` | That employee's recent applications with their status. `employee_id` is required and the listing is scoped to it -- it used to return everyone's. |
 | `POST /leave-applications/:reference/decision` | Approve or reject. A rejection returns the days to the balance. |
 | `POST /intent` | Classifies a message. Reports whether the classifier or the rules decided. |
 | `GET /notifications?employee_id=1001` | Decisions the employee has not been shown. |
