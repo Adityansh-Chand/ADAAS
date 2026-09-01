@@ -975,20 +975,40 @@ move the headline, or bootstrap confidence intervals printed next to every numbe
 so the noise floor is visible. Set A should also be replaced: it is scored against
 its own answer key and is gated only as a smoke test that the vectors load.
 
-### 5. A fifth held-out intent set, before the next intent change
+### 5. Action safety, where the rule baseline still wins
 
-There are four sets: 1 is burned, 2 is compromised, 3 and 4 are clean and both were
-read this round, and set 5 makes three clean and two spent. `held_out_3` is back
-to 0.9667, the figure it scored before the embedding model changed. The next change
-to intent needs a set written before it, in that order — the rule that produced set
-4, and then set 5 when a screenshot found a failure class no fixture covered.
+Eight of the 36 policy questions are still routed to a leave action, five of them
+on labels nobody disputes. The rule-based router misroutes three. A fitted model
+beating a rule-based one on average while losing on the axis that carries the
+cost — `applyLeave` writes to a real leave balance — is the honest summary, and it
+is the open item with the clearest product consequence.
+
+The obvious fix does not work: requiring the classifier and the rules to agree
+before taking an action would block genuine leave requests, because the rules score
+0.3667 on held-out set 4 and would veto most of them. Measured before it was
+written rather than after.
+
+**Done looks like:** either a classifier that matches the rules on this axis
+without losing the 0.9667 and 0.9722 it wins elsewhere, or an asymmetric decision
+rule with a cost model behind it — an action requiring more evidence than an
+answer, with the threshold set by measurement rather than taste. The probe is also
+n=36 and moves 2.8 points per case, so a larger one is a prerequisite for telling
+a real improvement from noise.
+
+### 6. A sixth held-out intent set, before the next intent change
+
+Five sets exist: 1 is burned, 2 is compromised, and 3, 4 and 5 were all read this
+round, so all three are now spent for selection purposes. `held_out_3` is back to
+0.9667, the figure it scored before the embedding model changed. The next change to
+intent needs a set written before it, in that order — the rule that produced set 4,
+and then set 5 when a screenshot found a failure class no fixture covered.
 
 Set 4 is the one that has not moved: 0.8000 across two rounds of work, and its six
 failures are mostly genuine boundary cases rather than the distribution gap set 5
 was written for. It is the hardest of the three and the most honest single number
 the classifier has.
 
-### 6. The default retrieval mode is still the weakest one
+### 7. The default retrieval mode is still the weakest one
 
 `lexical`, at 0.1111 on paraphrases, because `@huggingface/transformers` carries
 transitive high-severity advisories (adm-zip, sharp, via onnxruntime-node) with no
@@ -1000,7 +1020,7 @@ reports which mode is live and why.
 a separate service so the advisories are not in the API image's dependency tree at
 all. The second is the real answer and is not built.
 
-### 7. Identity, persistence and delivery
+### 8. Identity, persistence and delivery
 
 - **No identity provider.** `HR_EMPLOYEE_ID` selects a seeded demo employee. It
   proves the app can act as different people; it proves nothing about who the user
@@ -1010,6 +1030,23 @@ all. The second is the real answer and is not built.
 - **No production HR integration**, managed MongoDB, managed secrets, cloud
   deployment, or policy data governance. The corpus is a committed JSON file with
   no owner, no review cycle and no versioning beyond git.
+
+### 9. Two smaller things, recorded so they are not rediscovered
+
+- **The answer bubble labels five documents as "Sources".** It prints the policy
+  it answered from, then lists everything retrieval returned under a second
+  heading. A reader can reasonably conclude all five informed the answer, and only
+  the first did. Visible in `docs/screenshots/02-policy-answer-light.png`. The fix
+  is a wording change — "also retrieved" rather than "sources" — and it is listed
+  rather than done because it is a claim about what the system did, which is the
+  category this project is most careful about.
+- **Nothing verifies the committed screenshots still match the app.** They are
+  one command to regenerate and no test compares them, which is exactly the rot
+  the capture script's own header warns about. CI cannot close this cleanly:
+  headless font rasterisation differs between this machine and a Linux runner, so
+  a pixel diff would fail on every run for reasons unrelated to the UI. The
+  practical guard is regenerating them whenever the screen changes, and the honest
+  statement is that it is a manual step.
 
 ## Reviewer Status
 
@@ -1047,9 +1084,10 @@ all. The second is the real answer and is not built.
   answerability detection in the generation layer, which is the only thing left
   that could move the hard abstention tier; error bars, since 18-query report
   halves mean one case is worth 5.6 points; a fifth held-out intent set before the
-  next intent change; moving the model dependency out of the API image so the
-  default mode need not be the weakest one; and identity, notification delivery and
-  production data governance, none of which exist.
+  next intent change; action safety, where the rule baseline still beats the fitted
+  classifier 33 of 36 to 28; moving the model dependency out of the API image so
+  the default mode need not be the weakest one; and identity, notification delivery
+  and production data governance, none of which exist.
 - **Security posture:** `npm audit --omit=dev` reports zero vulnerabilities. Four
   high-severity advisories remain in devDependencies only (adm-zip and sharp, via
   onnxruntime-node, via the embeddings package) and have no fix available
