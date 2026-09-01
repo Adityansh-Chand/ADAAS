@@ -13,6 +13,15 @@ configured and seeded in-memory data otherwise. An LLM is used when
 text when it is not. The whole thing runs end to end on a laptop with no cloud
 account, no API key and no billing.
 
+That last constraint is the one that shapes everything else here. Every reported
+number is reproducible from a fresh clone, which rules out LLM-as-judge for
+anything this repository claims — and that turns out to determine which questions
+can be answered at all. [docs/RESEARCH.md](docs/RESEARCH.md) states the question and
+the three falsifiable claims that answer it; [docs/RELATED_WORK.md](docs/RELATED_WORK.md)
+positions the work against published literature and concludes that nothing in the
+retrieval is novel. Three of the predictions on those pages were wrong, and the
+wrong values are still there.
+
 ## What it looks like
 
 Regenerate with `node tool/capture_screenshots.js`, which drives the real app in
@@ -34,7 +43,7 @@ returned, and the reference id was minted by the request that produced it.
 > These screenshots earned their place before they were ever committed. The first
 > capture run asked *"Can I work from my house a few days a week?"* and the app
 > filed a five-day casual leave application. See
-> [Intent classification](#intent-classification-two-methods-on-five-sets) — no
+> [Intent classification](#intent-classification-two-methods-on-six-sets) — no
 > evaluation had ever caught it, and there is now a gate that does.
 
 ## Setup
@@ -71,13 +80,14 @@ flutter pub get
 
 ### Verify the checkout
 
-Seven commands. All seven should pass before you trust anything else.
+Eight commands. All eight should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm test               # 101 backend tests
+npm test               # 121 backend tests
 npm run eval           # lexical, dense, hybrid and reranked on identical splits
 npm run eval:intent    # rules vs the embedding classifier
+npm run eval:answers   # the answer layer: verifier sensitivity, 150 mutations
 npm run embed:verify   # committed embeddings still match the corpus
 npm run rerank:verify  # committed cross-encoder logits still match the corpus
 cd ..
@@ -85,8 +95,19 @@ flutter analyze        # no issues
 flutter test           # 47 Flutter tests, incl. theme contrast gates
 ```
 
-Only `embed:verify` and `rerank:verify` need the model weights. The two evals read
-committed fixtures, so they run in seconds with no download.
+Only `embed:verify` and `rerank:verify` need the model weights. The three evals
+read committed fixtures, so they run in seconds with no download.
+
+Two more that do need a model, and are worth running once:
+
+```bash
+cd hr-backend && npm run eval:answers:nli   # what entailment adds, ~10 minutes
+cd baselines && npm install && npm run bench # LangChain and LlamaIndex, same split
+```
+
+The second is the one to run if you only run one. It is the only measurement here
+that compares this project against something it did not build, and it is the reason
+several claims in this README are smaller than they were.
 
 ### Turning on dense retrieval and reranking
 
@@ -597,6 +618,261 @@ classifier's weakest non-training set, which is why the bakeoff selects on it.
 The rules are kept rather than deleted. They are the baseline the classifier has
 to beat, and they run when the classifier declines.
 
+### The answer layer, and the guard in front of it
+
+Thirteen retrieval gates and seven intent gates measured which document came back.
+Until `npm run eval:answers` existed, nothing measured what the employee reads.
+
+That was the largest gap left, and the worse of the two failure modes: a retrieval
+miss announces itself as *I could not find a matching company policy*, which is
+honest and actionable. A generated answer stating the wrong entitlement announces
+nothing and gets acted on.
+
+It survived this long because of an accident of the default configuration. With no
+`LLM_PROVIDER`, the answer is the retrieved policy's own text returned verbatim, so
+it cannot contradict its source — and that is the mode every number in this
+repository was produced in. Stage 1 of the eval **asserts that property rather than
+measuring it**, because measuring an identity gives a meaningless 1.0000 and a
+reader who saw it would reasonably conclude the generative path had been checked.
+
+#### What is actually claimed
+
+Scoring faithfulness needs real generations, which need an API key, which would
+make the number depend on a vendor, a model version and a sampling temperature —
+unreproducible from a fresh clone and unrunnable in CI. So the question was
+inverted. Instead of *how faithful are our answers*, which needs generations:
+**can this check detect an unfaithful answer**, which needs only unfaithful
+answers — and those can be built from the corpus deterministically, in known
+classes, with known ground truth.
+
+That answers a narrow question completely instead of a broad one badly. **It
+measures the sensitivity of the verifier, not the faithfulness of the system.**
+Nothing below establishes the second, and stage 4 says so on every run.
+
+#### Sensitivity: 150 mutations, seven classes
+
+| class | detected | predicted |
+|---|---|---|
+| control — **unmutated corpus answers flagged** | **0 / 26** | 0 |
+| `changed_number` | 1.0000 | 0.90 |
+| `entitlement_swap` | 1.0000 | 0.80 |
+| `fabricated_citation` | 1.0000 | 0.90 |
+| `swapped_number` | 0.2737 | 0.60 — **missed** |
+| `negated_requirement` | 0.0000 | 0.0 |
+| `imported_clause` | 0.0000 | 0.0 |
+| `dropped_condition` | 0.0000 | 0.0 |
+| **exact checks overall** | **0.3867** | |
+| **with entailment added** | **0.5467** | |
+
+Three classes are invisible to every exact check *by construction* and were
+declared so before measuring. They are in the suite for exactly that reason: a
+detection rate computed only over catchable mutations is a number that cannot fail.
+
+The control matters more than any row above it. A verifier that flags true policy
+text has no usable operating point and would make every other figure here
+meaningless — so any finding against the 26 real answers fails outright, at any
+time, and that gate is an absolute rather than a floor.
+
+#### The prediction that was wrong, and why it stays wrong in the file
+
+`swapped_number` was predicted at 0.60 and measured 0.2737. The prediction assumed
+a swapped figure would usually land on a different leave pool where the
+authoritative entitlement table could catch it. It does not: the corpus writes
+entitlements as a bare *Entitlement: N days per year*, with the leave type in the
+document title rather than the sentence, so there is nothing inside the sentence to
+bind the number to. And the swap target is by construction a real corpus figure, so
+it is present in the context and the unsupported-number check cannot see it either.
+
+`PREDICTIONS` and `FLOORS` are **separate objects** in
+`hr-backend/scripts/eval_answers.js`, because the first version used one field for
+both and that conflation is a trap. A prediction quietly edited to match its
+measurement is worthless; a CI gate set above the measured value leaves the build
+red forever. Predictions are frozen with their original values and the reason they
+failed; floors sit at the measured value and are what CI enforces.
+
+#### Two defects the gate found in its own harness
+
+- **The quantity extractor required the unit to follow the number directly**, and
+  silently missed three load-bearing figures — the 2-consecutive-day cap on casual
+  leave, the 3-day medical certificate threshold, and the 3-day absence that counts
+  as job abandonment. An answer could have changed any of them to any value and no
+  check would have noticed. The allowed modifier list is deliberately **closed**
+  rather than a wildcard: `3+ late entries/month` and `9:00 AM – 6:00 PM` parse as
+  quantities under a wildcard, and a false quantity is worse than a missed one
+  because it fires on true text.
+- **The mutation generator picked one swap target per document by `Set` iteration
+  order.** Widening the extractor added six figures to the corpus pool, changed
+  which swap each policy got, and moved the reported detection rate from 0.3077 to
+  0.0000 — *with no check changing*. A rate that swings thirty points on an
+  unrelated edit is not measuring the detector. Every same-unit alternative is now
+  enumerated, which is why the suite is 150 mutations rather than 56.
+
+#### What entailment adds, and a result that runs against common practice
+
+`npm run eval:answers -- --nli` measures two signals crossed with two premise
+constructions. Thresholds are quantiles of the 26 **true** answers only, so no
+detector ever saw a mutation.
+
+| detector | 0 FP | 1 FP | 2 FP | 3 FP | threshold at 0 FP |
+|---|---|---|---|---|---|
+| entailment, concatenated | 0.0667 | 0.0800 | 0.0867 | 0.0867 | 0.0019 |
+| contradiction, concatenated | 0.1933 | 0.2600 | 0.3467 | 0.4333 | 0.9009 |
+| entailment, per document | 0.0067 | 0.0667 | 0.0667 | 0.0733 | 0.0022 |
+| contradiction, per document | **0.2533** | 0.3000 | 0.3400 | 0.3533 | **0.0708** |
+
+**Contradiction beats entailment three to four times over**, at every budget and in
+every construction. Entailment tops out at 0.0867 and is near-useless here. That is
+worth stating plainly because entailment probability is the signal groundedness
+checks are normally built on — and no true answer in this corpus scores above 0.0703
+entailment against its own source. The same forward pass answers *does the source
+say the opposite* perfectly usefully.
+
+**The concatenated premise contradicts itself.** The most-contradicted *true*
+sentence in the corpus is `policy_003_el_sl`'s "Can be carried forward within
+limits" at 0.9009 — and the model is right, because the same premise also contains
+`policy_003_cl` saying leave cannot be carried forward. Two true statements about
+two leave types, concatenated into one self-contradicting premise; the three
+next-highest are the same family for the same reason. Scoring per document drops
+the zero-false-positive threshold by a factor of twelve.
+
+This is a fault in how groundedness is usually computed rather than a quirk of this
+corpus: **any retriever doing its job on a policy corpus returns the near-duplicate
+family**, so the premise contradicts itself by construction. Twelve of these 26
+documents belong to two such families. [SummaC](https://aclanthology.org/2022.tacl-1.10/)
+found the mirror image of this on the hypothesis side, and
+[docs/RELATED_WORK.md](docs/RELATED_WORK.md) positions the result as corroboration
+rather than discovery.
+
+Per-document is **not** uniformly better and the report does not claim it is: it
+wins at zero false positives and loses from one onwards. Zero is the defensible
+operating point for a request-path check, so that is where the claim is scoped.
+
+A second designed refinement failed outright. *Contradiction against the sentence's
+own best-supporting document* was expected to beat both aggregations and is the
+worst of five at 0.0133 — because the argmax selecting that document runs over
+entailment scores near 0.01 that carry no signal, so the document is effectively
+arbitrary.
+
+#### In the request path
+
+`hr-backend/answers.js` runs three exact checks — no model, microseconds — on
+**model-written answers only**:
+
+- **`unsupported_number`** — a quantity in the answer that is absent from the
+  retrieved context. Twenty-six of the corpus's figures are load-bearing, and an
+  answer claiming five casual days against a four-day entitlement is wrong in a way
+  an employee will act on.
+- **`entitlement_conflict`** — a quantity bound to the wrong leave pool. This
+  exists separately because the first check cannot see it: dense retrieval pulls the
+  whole leave family, so *18 days of casual leave* quotes the context accurately and
+  is still false.
+- **`fabricated_citation`** — a source named in the answer that was never
+  retrieved. The prompt asks the model to cite, so it will, and a fabricated
+  citation is what makes a wrong answer look verified.
+
+Two design decisions worth stating:
+
+**A finding does not suppress the answer.** Sensitivity is 0.3867; turning a false
+positive into a refusal to answer would make the guard worse than not having one.
+What it does is refuse to be silent — the verdict is in the response, the finding
+names which check fired, and `answers_verified_total` / `answers_flagged_total`
+count it in `/metrics`.
+
+**The entailment signal is deliberately not in the request path.** It needs a 70MB
+cross-encoder and one model call per sentence per retrieved document, which does not
+belong in front of somebody waiting on a leave balance. The split is on cost, and
+the size of the concession is a measured number rather than an assumption: 0.3867
+against 0.5467.
+
+### The off-the-shelf comparison, and what it cost this project's claims
+
+Every number above this section compared ADAAS to ADAAS. `baselines/` scores
+LangChain and LlamaIndex on the identical report split, with the identical gold
+labels, graded judgements, scorer and seeded bootstrap — the scorer is imported, not
+reimplemented.
+
+ADAAS was built without either framework because the author did not know they
+existed. That is a bad reason to have made a choice, and until this benchmark there
+was no way to tell which choice it was.
+
+| system | index text | top-1 | recall@5 | MRR | nDCG@5 |
+|---|---|---|---|---|---|
+| `lc-default` | answer only | 0.5556 | 1.0000 | 0.7102 | 0.8215 |
+| `lc-same-model` | answer only | 0.6111 | 0.9444 | 0.7194 | 0.7725 |
+| `lc-same-text` | ADAAS passage | 0.7222 | 1.0000 | 0.8287 | 0.8287 |
+| `lc-same-everything` | ADAAS passage | 0.7222 | 1.0000 | 0.8287 | 0.8287 |
+| `li-default` | answer only | 0.5000 | 1.0000 | 0.6778 | 0.7992 |
+| `li-same-text` | ADAAS passage | 0.7222 | 1.0000 | 0.8472 | 0.8139 |
+| `adaas-dense` | ADAAS passage | 0.7222 | 1.0000 | 0.8287 | 0.8174 |
+| `adaas-reranked` | ADAAS passage | **0.8333** | 1.0000 | **0.9074** | **0.8747** |
+
+Where the difference comes from, in top-1:
+
+| | |
+|---|---|
+| the embedding model, bge-small over MiniLM | +0.0556 |
+| the **12 curated keywords per policy** | **+0.1111** |
+| turning off LangChain's default chunking | 0.0000 |
+| **ADAAS retrieval code over LangChain's** | **0.0000** |
+| the cross-encoder reranker | +0.1111 |
+
+Read that column downward. It is not flattering and it is the most useful thing in
+this README:
+
+1. **The hand-written dense path is exactly a framework default.** Four
+   configurations tie at top-1 0.7222 and recall@5 1.0000, and the LangChain rows
+   match ADAAS's MRR to four decimals. Not approximately — identically.
+   `dense.js` was reproducible by twenty lines of LangChain.
+2. **The embedding model was worth one query in eighteen**, and it *lost* on
+   nDCG@5 (0.8215 → 0.7725) and on how often the top result is relevant at all
+   (0.8333 → 0.7222). Two rounds of this project went into selecting it.
+3. **The largest single contribution is the curated keyword lists** — hand-written
+   domain knowledge, not retrieval engineering, and nothing any default recipe
+   provides.
+4. **LangChain's default chunking is a no-op here.** 26 documents in, 26 chunks
+   out, identical scores either way, because every policy is shorter than the
+   1000-character default. The step most RAG tutorials open with does nothing on
+   this corpus.
+5. **The reranker is the only component no framework reproduced** — and even it is
+   not separated at n = 18: [-0.3889, 0.1667] spans zero.
+
+The prediction written into `baselines/bench.js` before running it was that the
+embedding model would explain the gap, on the reasoning that *we picked a better
+model* is a smaller claim than *we built a better retriever*. The real answer is
+smaller still, and the prediction stays in the file.
+
+#### Two bugs in the benchmark, both flattering, both fixed
+
+The first run had the baselines losing by 17 points across the board. **That table
+was wrong.** It wrote its own copy of the passage text — question, category, answer —
+assuming it matched `build_embeddings.js`, which also includes the twelve curated
+keywords. Every baseline was scored over a strictly poorer view of the corpus,
+missing a hand-written signal ADAAS was using. `policyText` is now exported and both
+sides import the one definition.
+
+The second, the same way: the ADAAS rows initially ignored the cosine floor and the
+logit gate, ranking all 26 documents and collecting discounted gain from positions
+the service would never return. It read nDCG@5 0.8834 against the 0.8747
+`npm run eval` publishes. `assertMatchesPublished()` now **throws** rather than
+printing any ADAAS row that disagrees with `npm run eval`.
+
+Both errors ran in the flattering direction — which is the direction a self-run
+comparison is most likely to take and least likely to notice.
+
+#### What the install itself cost
+
+Recorded as part of an honest build-versus-buy answer, not as a complaint.
+`@langchain/community` will not install at all: it requires `@langchain/core`
+`^1.1.38` while pulling 0.3.80 through `@getzep/zep-cloud`, so the embedding adapter
+is written against `@langchain/core` directly. `MemoryVectorStore`, which every
+LangChain tutorial imports from `langchain/vectorstores/memory`, now lives in
+`@langchain/classic`. Reaching the documented starting point took four packages and
+39 transitive dependencies; LlamaIndex took 96. ADAAS runs on four production
+dependencies.
+
+All of it is isolated in `baselines/` with its own `package.json`, so none of it
+reaches the service, its tests, or its image.
+
 ### How the evaluation is kept honest
 
 - **Two sets per component**, split into dev and report halves. Every tunable was
@@ -847,7 +1123,7 @@ it drops below AA — see Tests.
 
 ## Tests
 
-**148 total: 101 backend, 47 Flutter.** `flutter analyze` clean.
+**168 total: 121 backend, 47 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
@@ -858,6 +1134,28 @@ The ones worth knowing about:
   badge at 2.79:1, both since darkened. It also caught that `expect` stops at the
   first failure, which had hidden the second one. Reintroducing a white ink on the
   light failure ground fails it at 1.10:1.
+- **Every real corpus answer must pass every faithfulness check** against its own
+  retrieved context. This is the control gate as a unit test rather than only
+  inside the eval: a verifier that flags true policy text has no usable operating
+  point, and it is the one failure that would make every detection rate in
+  `eval/answer_report.json` meaningless, since a check that fires on everything
+  detects every mutation.
+- **The mutation suite must be deterministic**, and every mutation must actually
+  change the answer it mutates. Both were written after the suite silently stopped
+  measuring the detector: the generator picked one swap target per document by
+  `Set` iteration order, so widening the quantity extractor moved a reported
+  detection rate thirty points with no check changing. A mutation identical to its
+  original also scores as an undetected unfaithful answer, dragging the rate down
+  while testing nothing.
+- **A model-written answer is verified and a bad one is flagged, end to end.**
+  Runs against a stubbed provider, so no key and no network. It asserts both
+  halves of the design: that a verdict appears at all for a generated answer, and
+  that a finding does **not** suppress the answer — at 0.3867 sensitivity, turning
+  a false positive into a refusal to answer would make the guard worse than not
+  having it.
+- **The extractive path must return no verdict at all.** With no `LLM_PROVIDER`
+  the answer *is* the retrieved text, so reporting it as grounded would tell a
+  reader the generative path had been checked when it has not been.
 - **Reranking cannot invent a result.** It reorders the shortlist retrieval
   returned and nothing else, so the service keeps the ability to say it found
   nothing; a reranker scoring all 26 documents would always have a best guess.
@@ -956,11 +1254,18 @@ behind a `prefers-color-scheme` media query.
 
 ## What is still open
 
-Every item that stood here has been worked. Four are closed, three produced a
+Every item that stood here has been worked. Eight are closed, three produced a
 measured negative result and shipped nothing, one is closed as far as anyone
 inside this project can close it, and two are narrower than they were. What each
 attempt cost and returned is below, because an attempt that failed is more useful
 to a later reader than the goal it was aiming at.
+
+The four most recently closed are the four that a reader from outside would have
+asked for first, and closing them cost this project some of its claims: an
+external baseline showed the hand-written retrieval contributes nothing over a
+framework default, and the answer-layer work found two defects in its own harness
+before it found anything about the system. Both are recorded in full rather than
+summarised, because the corrections are the part worth reading.
 
 Four of what remains is deliberately not being closed here — see
 [Reserved for the capstone](#reserved-for-the-capstone). "Still open" and
@@ -969,6 +1274,54 @@ apart: one is work nobody has done, the other is work being kept because the
 person who built the thing cannot honestly be the one to settle it.
 
 ### Closed
+
+- **The answer layer is measured.** It was not, at all — thirteen retrieval gates and
+  seven intent gates all scored which document came back, and nothing scored what the
+  employee reads. `npm run eval:answers` now measures the verifier's sensitivity
+  against 150 deterministically unfaithful answers in seven classes, with the 26 true
+  corpus answers as a zero-false-positive control: 0.3867 on exact checks, 0.5467 with
+  entailment, 0 / 26 false positives. Three exact checks run in the request path and
+  report into `/metrics`.
+
+  The claim is narrow on purpose and stated in those words on every run: this is the
+  **sensitivity of the verifier**, not the faithfulness of the system. The second
+  needs real generations, which need an API key, which would make the number depend
+  on a vendor and a temperature. Stage 4 reports that the generative path has never
+  been exercised. Full numbers, three failed predictions and two defects the gate
+  found in its own harness are above under
+  [The answer layer](#the-answer-layer-and-the-guard-in-front-of-it).
+- **There is now an external baseline.** Every number in this repository compared
+  ADAAS to ADAAS, which cannot distinguish *we built something good* from *we
+  reinvented a default and measured it carefully*. `baselines/` scores LangChain and
+  LlamaIndex on the identical split with the identical imported scorer.
+
+  The finding is the least flattering one here and the most useful:
+  **ADAAS's hand-written dense retrieval contributes exactly zero against a framework
+  default**, to four decimals on every metric. The embedding model was worth one query
+  in eighteen and lost graded relevance. LangChain's default chunking is a no-op. What
+  did move the number is the twelve curated keywords per policy (+0.1111) and the
+  cross-encoder (+0.1111, interval spanning zero). See
+  [The off-the-shelf comparison](#the-off-the-shelf-comparison-and-what-it-cost-this-projects-claims).
+- **There is a stated research question**, in [docs/RESEARCH.md](docs/RESEARCH.md):
+  which parts of a RAG assistant determine measurable quality on a small
+  near-duplicate-dense corpus, and whether that can be established with no dependency
+  on a commercial model provider. Three falsifiable claims, each mapped to the
+  measurement that tested it. Three of the predictions on that page were wrong, and
+  the wrong values stay recorded with the reason.
+
+  Without a question declared in advance, every measurement is free to become evidence
+  for whatever it happened to show, and a reader cannot tell a designed experiment from
+  a favourable one after the fact.
+- **The work is positioned against published literature**, in
+  [docs/RELATED_WORK.md](docs/RELATED_WORK.md). Every citation verified against the
+  published record. The conclusion it reaches about this project is that **nothing in
+  the retrieval is novel** and the benchmark shows most of it is a framework default;
+  what may be worth a reader's attention is the evaluation protocol, and even that is
+  largely the careful application of practices the IR community has asked for since
+  [Voorhees & Buckley (2002)](https://dl.acm.org/doi/10.1145/564376.564432) and
+  [Armstrong et al. (2009)](https://dl.acm.org/doi/10.1145/1645953.1646031) — the
+  latter describing exactly the failure mode this repository was in until
+  `baselines/` existed.
 
 - **Error bars.** `npm run eval` and `npm run eval:intent` print 95% bootstrap
   intervals beside every score, seeded so they reproduce, plus paired comparisons
@@ -1152,7 +1505,21 @@ part, not an obstacle to route around.
 
 Connects to: SQuAD 2.0 unanswerability, BEIR, and the RAG groundedness
 literature — where a system scoring well on answerable questions and hallucinating
-on unanswerable ones is a known and unsolved failure mode.
+on unanswerable ones is a known and unsolved failure mode. Positioned against the
+specific papers in [docs/RELATED_WORK.md](docs/RELATED_WORK.md), including RGB,
+which evaluates this axis under the name *negative rejection* and reports it among
+the weakest capabilities it measures.
+
+One detail worth carrying into the capstone, because it narrows the question. The
+NLI model that failed as an abstention signal is the **same** model that works as a
+contradiction detector in the answer layer — 0.2533 detection at zero false
+positives, and 0.8333 on negated requirements at a looser premise construction. So
+the failure is not that the model cannot read. It is that *the corpus discusses
+this* and *the corpus answers this* are the same question to any similarity
+measure, while *the source says the opposite* is a different question the same
+model answers usefully. Whether unanswerability can be reformulated as a
+contradiction rather than a similarity is a sharper question than the one this item
+started with, and it is now supported by a measurement in the other direction.
 
 **2. How much of the graded score is annotator noise.**
 
@@ -1230,11 +1597,15 @@ genuinely unknown.
   production image can run dense retrieval without carrying the advisory-bearing
   dependency; honest failure reporting; bounded timeouts; readiness that can
   report unready; a light/dark themed client with contrast gated in CI; seven UI
-  screenshots generated from the running app; Docker/Compose/K8s config; CI
-  covering tests, thirteen retrieval quality gates (two of them on graded nDCG),
-  six intent gates plus a leakage ceiling, embedding and reranker verification,
-  the smoke test, a container that is started and queried, and Flutter
-  analyze/tests.
+  screenshots generated from the running app; a faithfulness verifier on
+  model-written answers, reported in the response and counted in `/metrics`;
+  Docker/Compose/K8s config; CI covering tests, thirteen retrieval quality gates
+  (two of them on graded nDCG), six intent gates plus a leakage ceiling, four
+  answer-layer gates that can fail — of eight declared, since the four classes
+  measured at 0.0000 are floored at zero and so are recorded rather than
+  enforced — embedding and
+  reranker verification, the smoke test, a container that is started and queried,
+  and Flutter analyze/tests.
 - **Known weak spots, measured:** retrieval reaches 0.8333 top-1 and nDCG@5
   0.8747, but **the gain over plain dense is two queries and does not reach
   significance** on the 18-case report half — the bootstrap interval on the
@@ -1251,6 +1622,28 @@ genuinely unknown.
   corpus does not answer (2 of 12) — now a measured limit rather than an asserted
   one, after a third signal was built, tested and rejected. Notifications are a
   table this service owns, not email or push.
+- **The claims are smaller than they were, and deliberately so.** `baselines/`
+  scores LangChain and LlamaIndex on the identical split with the identical
+  imported scorer, and the result is that **this project's hand-written dense
+  retrieval contributes exactly zero over a framework default** — four
+  configurations tie at top-1 0.7222 and recall@5 1.0000, with MRR matching to
+  four decimals. The embedding model was worth one query in eighteen and lost
+  graded relevance; LangChain's default chunking is a no-op here. What did move the
+  number is the twelve curated keyword lists (+0.1111) and the cross-encoder
+  (+0.1111, interval spanning zero). A reviewer should read that table before any
+  other in this repository.
+- **The answer layer is measured, and the claim direction is narrow.**
+  `npm run eval:answers` reports verifier **sensitivity** — 0.3867 on exact checks,
+  0.5467 with entailment, 0 of 26 false positives on true policy text — against 150
+  deterministically unfaithful answers. It does **not** measure system
+  faithfulness: that needs real generations and an API key, and the generative path
+  has never been exercised. Three predictions on that page were wrong and stay
+  recorded with their original values.
+- **There is a stated research question and a related-work positioning**, in
+  [docs/RESEARCH.md](docs/RESEARCH.md) and
+  [docs/RELATED_WORK.md](docs/RELATED_WORK.md). The latter concludes that nothing
+  in this project's retrieval is novel, and names the two papers that describe the
+  failure mode this repository was in until the external baseline existed.
 - **Identity, delivery, secrets and corpus governance are now built**, and each is
   described by what it does *not* do as well as what it does: token verification
   without a login flow, email without push or a directory, file-mounted secrets

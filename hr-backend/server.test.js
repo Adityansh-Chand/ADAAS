@@ -2244,3 +2244,237 @@ test('the passage the cross-encoder scores includes the question field', async (
   assert.ok(text.includes(KB[0].question));
   assert.ok(text.includes(KB[0].answer));
 });
+
+// ---------------------------------------------------------------------------
+// The answer layer
+//
+// Everything above this point tests the machinery that decides WHICH policy
+// comes back. These test what the employee reads, which nothing verified until
+// answers.js existed. The distinction matters more than it sounds: a retrieval
+// miss announces itself as "no matching policy", and a generated answer with the
+// wrong entitlement announces nothing at all.
+
+const answersModule = require('./answers');
+
+test('the quantity extractor finds numbers behind a modifier', () => {
+  // The gate found this, not inspection. The first version required the unit to
+  // follow the number directly and silently missed three load-bearing figures:
+  // the 2-consecutive-day cap on casual leave, the 3-day medical certificate
+  // threshold, and the 3-day absence that counts as job abandonment. Any of them
+  // could have been changed to any value with no check noticing.
+  const found = answersModule.quantities(
+    'Maximum of 2 consecutive days allowed. Sick leave >3 consecutive days '
+    + 'requires a certificate. Reimbursed within 10 working days.',
+  ).map((q) => `${q.value} ${q.unit}`);
+  assert.deepEqual(found, ['2 day', '3 day', '10 day']);
+});
+
+test('the quantity extractor does not invent quantities from clock times', () => {
+  // The other half, and the reason the modifier list is closed rather than a
+  // wildcard. A false quantity is worse than a missed one: it fires on true
+  // policy text, and the control gate forbids that outright.
+  const text = 'Core operating hours are typically 9:00 AM - 6:00 PM. '
+    + '3+ late entries/month may result in warnings.';
+  assert.deepEqual(answersModule.quantities(text), []);
+});
+
+test('a number absent from the context is reported as unsupported', () => {
+  const context = 'Source: Leave Policy\nPolicy Details: Entitlement: 4 days per year.';
+  const verdict = answersModule.verify(
+    'You get 5 days of casual leave per year.', { context, sources: [] },
+  );
+  assert.equal(verdict.grounded, false);
+  assert.ok(verdict.findings.some((f) => f.check === 'unsupported_number'));
+});
+
+test('a REAL number bound to the wrong entitlement is still caught', () => {
+  // The case that justifies entitlementConflicts existing separately from the
+  // unsupported-number check. 18 is a genuine corpus figure and is almost always
+  // in the retrieved context, because dense retrieval pulls the whole leave
+  // family -- so "18 days of casual leave" quotes the context accurately and is
+  // still false. A check that only asked "is this number present" would pass it.
+  const context = 'Source: Leave Policy\nPolicy Details: Casual: 4 days per year. '
+    + 'Combined annual/sick: 18 days per year.';
+  const verdict = answersModule.verify(
+    'You are entitled to 18 days of casual leave per year.',
+    { context, sources: [] },
+  );
+  assert.equal(verdict.grounded, false);
+  const conflict = verdict.findings.find((f) => f.check === 'entitlement_conflict');
+  assert.ok(conflict, 'the wrong-pool binding was not reported');
+  assert.match(conflict.detail, /policy_003_cl says 4/);
+  // And specifically NOT as an unsupported number, because 18 is supported.
+  assert.ok(!verdict.findings.some((f) => f.check === 'unsupported_number'));
+});
+
+test('a sentence naming two leave types is not guessed at', () => {
+  // With both leave types in one sentence there is no basis for binding a number
+  // to either, and reporting a conflict would be a guess. Across a whole answer
+  // both types and both figures co-occur constantly.
+  const context = 'Policy Details: Casual: 4 days. Combined: 18 days.';
+  const verdict = answersModule.verify(
+    'Casual leave and sick leave together give you 18 days per year.',
+    { context, sources: [] },
+  );
+  assert.ok(!verdict.findings.some((f) => f.check === 'entitlement_conflict'));
+});
+
+test('a cited source that was never retrieved is reported', () => {
+  const verdict = answersModule.verify(
+    'Casual leave is 4 days. Source: Employee Handbook Addendum, Section 47.3',
+    {
+      context: 'Policy Details: Entitlement: 4 days per year.',
+      sources: ['Leave Policy, Section 3.0'],
+    },
+  );
+  assert.ok(verdict.findings.some((f) => f.check === 'fabricated_citation'));
+});
+
+test('a genuinely retrieved source is not reported as fabricated', () => {
+  const source = 'Corporate Code of Conduct, Section 1.0';
+  const verdict = answersModule.verify(
+    `Confidential information must not be disclosed. Source: ${source}`,
+    { context: `Source: ${source}\nPolicy Details: ...`, sources: [source] },
+  );
+  assert.ok(!verdict.findings.some((f) => f.check === 'fabricated_citation'));
+});
+
+test('every real corpus answer passes every check against its own context', () => {
+  // The control gate, as a unit test rather than only inside the eval. A verifier
+  // that flags true policy text has no usable operating point, and it is the one
+  // failure that would make everything in eval/answer_report.json meaningless --
+  // a check that fires on everything detects every mutation.
+  const dense = require('./dense');
+  const store = dense.loadVectors();
+  const { contextFor } = require('./scripts/eval_answers');
+  for (const entry of KB) {
+    const { context, sources } = contextFor(entry.id, KB, store);
+    const verdict = answersModule.verify(entry.answer, { context, sources });
+    assert.equal(
+      verdict.grounded, true,
+      `${entry.id} was flagged: ${JSON.stringify(verdict.findings)}`,
+    );
+    assert.equal(verdict.verbatim, true, `${entry.id} is not verbatim in its own context`);
+  }
+});
+
+test('the mutation suite is deterministic and covers every declared class', () => {
+  // Regenerated from the corpus on every run rather than stored, so it cannot
+  // drift from the policy text -- which means it has to be reproducible or the
+  // reported detection rates move for no reason. They already did once: the
+  // generator picked one swap target per document by Set iteration order, and an
+  // unrelated widening of the quantity extractor moved swapped_number detection
+  // by 30 points with no check changing.
+  const { buildMutations, PREDICTIONS } = require('./scripts/eval_answers');
+  const first = buildMutations(KB);
+  const second = buildMutations(KB);
+  assert.deepEqual(first, second, 'the mutation suite is not deterministic');
+  assert.ok(first.length > 100, `only ${first.length} mutations generated`);
+
+  const classes = new Set(first.map((m) => m.cls));
+  for (const cls of Object.keys(PREDICTIONS)) {
+    assert.ok(classes.has(cls), `${cls} has a declared prediction but no mutations`);
+  }
+  for (const cls of classes) {
+    assert.ok(PREDICTIONS[cls], `${cls} has mutations but no declared prediction`);
+  }
+});
+
+test('every mutation actually changes the answer it mutates', () => {
+  // A mutation identical to the original is scored as an undetected unfaithful
+  // answer: it drags the reported rate down while testing nothing. The
+  // dropped_condition class is the one at risk, since it works by removing a
+  // sentence that may not be present.
+  const { buildMutations } = require('./scripts/eval_answers');
+  const byId = new Map(KB.map((e) => [e.id, e]));
+  for (const m of buildMutations(KB)) {
+    const original = byId.get(m.policyId);
+    if (!original) continue;
+    // Written from scratch rather than derived, so there is nothing to compare.
+    if (m.cls === 'entitlement_swap') continue;
+    assert.notEqual(
+      m.answer, original.answer,
+      `${m.cls} on ${m.policyId} did not change anything: ${m.note}`,
+    );
+  }
+});
+
+test('the extractive path returns no verification verdict', async () => {
+  // With no LLM_PROVIDER the answer IS the retrieved policy text, so there is
+  // nothing to verify. Returning a grounded verdict on an identity would tell a
+  // reader the generative path had been checked when it has not been, which is
+  // the specific misreading this whole section exists to prevent.
+  await withServer(async (baseUrl) => {
+    const body = await (await postJson(baseUrl, '/chat', {
+      message: 'How many casual leave days do I get?',
+    })).json();
+    assert.equal(body.generated_by, 'knowledge_base');
+    assert.equal(
+      body.verified, undefined,
+      'the extractive path must not report a verification verdict',
+    );
+  });
+});
+
+test('a model-written answer is verified, and a bad one is flagged', async () => {
+  // The guard in the request path, exercised end to end against a stubbed
+  // provider so no key and no network are involved. Two things are asserted: that
+  // a verdict appears at all for a generated answer, and that a finding does NOT
+  // suppress the answer -- the exact checks have a measured sensitivity of 0.3867
+  // and turning a false positive into a refusal to answer would make the guard
+  // worse than not having one.
+  const previous = {
+    provider: process.env.LLM_PROVIDER,
+    key: process.env.LLM_API_KEY,
+    base: process.env.LLM_BASE_URL,
+  };
+  const realFetch = globalThis.fetch;
+  process.env.LLM_PROVIDER = 'openai';
+  process.env.LLM_API_KEY = 'test-key-not-a-real-one';
+  process.env.LLM_BASE_URL = 'http://127.0.0.1:9';
+
+  globalThis.fetch = async (url, options) => {
+    if (String(url).startsWith('http://127.0.0.1:9')) {
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [{
+            message: {
+              content: 'You are entitled to 99 days of casual leave per year. '
+                + 'Source: Imaginary Manual, Section 12.5',
+            },
+          }],
+        }),
+      };
+    }
+    return realFetch(url, options);
+  };
+
+  try {
+    await withServer(async (baseUrl) => {
+      const body = await (await postJson(baseUrl, '/chat', {
+        message: 'How many casual leave days do I get?',
+      })).json();
+      assert.equal(body.generated_by, 'openai');
+      assert.ok(body.verified, 'a generated answer must carry a verdict');
+      assert.equal(body.verified.grounded, false);
+      const checks = body.verified.findings.map((f) => f.check);
+      assert.ok(checks.includes('unsupported_number'), JSON.stringify(checks));
+      assert.ok(checks.includes('fabricated_citation'), JSON.stringify(checks));
+      // The answer is still returned. Flagging is not refusing.
+      assert.match(body.answer, /99 days/);
+
+      const metrics = await (await fetch(`${baseUrl}/metrics`)).json();
+      assert.ok(metrics.counters.answers_verified_total >= 1);
+      assert.ok(metrics.counters.answers_flagged_total >= 1);
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+    if (previous.provider === undefined) delete process.env.LLM_PROVIDER;
+    else process.env.LLM_PROVIDER = previous.provider;
+    if (previous.key === undefined) delete process.env.LLM_API_KEY;
+    else process.env.LLM_API_KEY = previous.key;
+    if (previous.base === undefined) delete process.env.LLM_BASE_URL;
+    else process.env.LLM_BASE_URL = previous.base;
+  }
+});

@@ -488,6 +488,146 @@ npm test 2>&1 | grep -i corpus
 Missing fields, duplicate ids, unknown categories and a digest that no longer
 matches all fail, and a mutation test proves each of them *can* fail.
 
+## 9f. Is the answer actually true?
+
+Every check up to here asked whether the right *policy* came back. This one asks
+about the text the employee reads, which nothing measured until `answers.js`
+existed.
+
+Start with why it looked like a solved problem. In the default configuration:
+
+```bash
+curl -s -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"message":"How many casual leave days do I get?"}' | python -m json.tool
+```
+
+`"generated_by": "knowledge_base"` and **no `verified` field at all.** That absence
+is deliberate. With no `LLM_PROVIDER` the answer *is* the retrieved policy text
+returned verbatim, so it cannot contradict its source — there is nothing to verify,
+and reporting a grounded verdict on an identity would tell you the generative path
+had been checked when it has not been.
+
+Turn a model on and the field appears. There is no key in a fresh clone, so the
+demonstration is the suite:
+
+```bash
+cd hr-backend && node --test server.test.js 2>&1 | grep -iE "verif|quantit|entitlement|citation|mutation"
+```
+
+Nine tests, including one that stubs a provider returning *"You are entitled to 99
+days of casual leave per year. Source: Imaginary Manual, Section 12.5"* and asserts
+two things: that both the fabricated number and the fabricated citation are
+reported, and that the answer **is still returned anyway**. Flagging is not
+refusing — sensitivity is 0.3867, and turning a false positive into a refusal to
+answer would make the guard worse than not having one.
+
+### The check that is not obvious
+
+```bash
+cd hr-backend && node -e "
+const a = require('./answers');
+const ctx = 'Policy Details: Casual: 4 days per year. Combined annual/sick: 18 days per year.';
+console.log(JSON.stringify(a.verify('You are entitled to 18 days of casual leave per year.', { context: ctx, sources: [] }), null, 1));
+"
+```
+
+`entitlement_conflict`, and **not** `unsupported_number`. That is the point: 18 is a
+real figure and is almost always in the retrieved context, because dense retrieval
+pulls the whole near-duplicate leave family. So *18 days of casual leave* quotes the
+context accurately and is still false, and a check that only asked "is this number
+present" would pass it.
+
+### How well does it work
+
+```bash
+npm run eval:answers
+```
+
+Reports detection against 150 deterministically unfaithful answers in seven
+classes, with the 26 true corpus answers as a control.
+
+Read the **control** row first: `0/26`. A verifier that flags true policy text has
+no usable operating point and every rate beside it would be meaningless.
+
+Then read the three classes at `0.0000` — `negated_requirement`,
+`imported_clause`, `dropped_condition`. Those were declared undetectable *before*
+measuring and are in the suite for exactly that reason: a detection rate computed
+only over catchable mutations is a number that cannot fail.
+
+Then read `swapped_number` at 0.2737 against a prediction of 0.60, printed with the
+reason the prediction was wrong. `PREDICTIONS` and `FLOORS` are separate objects in
+`scripts/eval_answers.js` — a prediction edited to match its measurement is
+worthless, and a CI gate above the measured value leaves the build red forever.
+
+```bash
+npm run eval:answers:nli
+```
+
+Takes about ten minutes and needs a 70MB model. Two findings worth the wait, both
+running against how groundedness is normally implemented:
+
+**Contradiction beats entailment three to four times over**, at every
+false-positive budget. No true answer in this corpus scores above 0.0703 entailment
+against its own source — the question "is this supported" gets an unusable answer
+from a model that answers "does the source say the opposite" perfectly well on the
+same forward pass.
+
+**The concatenated context contradicts itself.** The most-contradicted *true*
+sentence in the corpus is `policy_003_el_sl`'s "Can be carried forward within
+limits" at 0.9009 — correctly, because the same premise also contains
+`policy_003_cl` saying leave cannot be carried forward. Two true statements about
+two leave types, concatenated into one self-contradicting premise. Scoring per
+document drops the usable threshold by a factor of twelve.
+
+Stage 4 will say **NOT RUN**. That is the honest state of the generative path, and
+it is the distinction the whole section rests on: this measures whether the guard
+can catch an unfaithful answer, which is not the claim that the answers are
+faithful.
+
+## 9g. Does any of this beat twenty lines of LangChain?
+
+The question every number above avoids, because every number above compares ADAAS
+to ADAAS.
+
+```bash
+cd baselines && npm install && npm run bench
+```
+
+LangChain and LlamaIndex on the identical report split, with the identical gold
+labels, graded judgements and scorer — imported from `hr-backend/scripts`, not
+reimplemented. Six configurations, each isolating one variable.
+
+The row to look at is `lc-same-everything` against `adaas-dense`:
+
+```
+lc-same-everything  adaas   26  0.7222  1.0000  0.8287  0.8287
+adaas-dense         adaas   26  0.7222  1.0000  0.8287  0.8174
+```
+
+Top-1 and recall@5 identical, MRR identical to four decimals. **The hand-written
+dense retrieval path contributes exactly nothing over a LangChain default.**
+
+Then read the attribution block the script prints:
+
+```
++0.0556  the embedding model (bge-small over MiniLM)
++0.1111  the 12 curated keywords per policy
+ 0.0000  turning off LangChain default chunking
+ 0.0000  ADAAS retrieval code over LangChain's
++0.1111  the cross-encoder reranker
+```
+
+The largest contribution is hand-written keyword lists — domain knowledge, not
+retrieval engineering. The embedding model was worth one query in eighteen and
+*lost* on nDCG@5. Chunking, which most RAG tutorials open with, is a no-op here
+because every policy is shorter than the 1000-character default.
+
+The script also **refuses to print** an ADAAS row that disagrees with
+`npm run eval`. That guard exists because the first version of the benchmark had
+two bugs, both flattering: it built its own copy of the passage text and omitted
+the curated keywords from the baselines only, and it scored ADAAS without the
+cosine floor and logit gate. Both ran in the direction a self-run comparison is
+most likely to take and least likely to notice.
+
 ## Flutter walkthrough
 
 Terminal 1:

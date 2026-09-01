@@ -291,7 +291,17 @@ async function main() {
   console.log('\nembeddings match the committed file.');
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// Guarded, because this file is now also imported. `policyText` is the single
+// definition of what gets embedded for a policy, and baselines/bench.js needs it:
+// the off-the-shelf comparison built its own copy first and got it wrong -- it
+// omitted the keywords field, which handicapped every baseline by a signal ADAAS
+// was using. A comparison of two retrievers over two different views of the
+// corpus measures nothing, so there is one definition and both sides import it.
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+module.exports = { policyText, digest };

@@ -1,0 +1,1503 @@
+{
+  "about": "A record of the mutation suite for review. NOT the input: scripts/eval_answers.js regenerates these from the corpus every run so they cannot drift out of step with the policy text.",
+  "classes": {
+    "negated_requirement": {
+      "predicted": 0,
+      "why": "no exact check reads meaning; declared undetectable in advance"
+    },
+    "changed_number": {
+      "predicted": 0.9,
+      "why": "the failure an employee acts on, and the number is absent from the corpus"
+    },
+    "swapped_number": {
+      "predicted": 0.6,
+      "why": "expected the entitlement binding to catch most of them",
+      "outcome": "WRONG. Measured 0.2737. The prediction assumed a swapped number would usually land on a different leave pool, where the authoritative table could catch it. Mostly it does not: the corpus states its entitlements as a bare \"Entitlement: N days per year\" with the leave type named in the document title rather than in the sentence, so there is nothing inside the sentence to bind the number to. And the swap target is by construction a real corpus figure, so it is present in the context and the unsupported-number check cannot see it either. The 27% that are caught are the cases where the swap happened to land inside a sentence that does name a leave type. Catching the rest needs a fact bound to the document that asserts it, which means reading; stage 3 measures what a model-based check recovers. Two earlier numbers for this class are worth recording because of what they exposed: 0.3077, then 0.0000 after an unrelated widening of the quantity extractor. No check changed between those two runs. The generator had been picking one swap target per document by Set iteration order, so adding six figures to the corpus pool silently changed the test. A rate that moves 30 points on an edit to something else is not measuring the detector, and the fix -- enumerate every same-unit alternative -- is why the suite is now 150 mutations rather than 56."
+    },
+    "dropped_condition": {
+      "predicted": 0,
+      "why": "omission: everything the answer says is true"
+    },
+    "entitlement_swap": {
+      "predicted": 0.8,
+      "why": "the authoritative table is right there and the sentence names the leave type"
+    },
+    "imported_clause": {
+      "predicted": 0,
+      "why": "every word is real corpus text, just from the wrong policy"
+    },
+    "fabricated_citation": {
+      "predicted": 0.9,
+      "why": "a fake citation makes a wrong answer look checked"
+    }
+  },
+  "mutations": [
+    {
+      "id": "m001",
+      "cls": "negated_requirement",
+      "policyId": "policy_001",
+      "answer": "Objective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must not maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m002",
+      "cls": "changed_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 10 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "9 hours -> 10 hours (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m003",
+      "cls": "changed_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (10 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "8 hours -> 10 hours (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m004",
+      "cls": "changed_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 2 hours break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "1 hour -> 2 hours (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m005",
+      "cls": "changed_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >5 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 5 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m006",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >10 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m007",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >18 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m008",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 1 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "9 hours -> 1 hours (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m009",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >2 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m010",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >30 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m011",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >4 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m012",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >60 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m013",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 8 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "9 hours -> 8 hours (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m014",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >90 days may be treated as job abandonment.",
+      "note": "3 consecutive days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m015",
+      "cls": "swapped_number",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (9 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "8 hours -> 9 hours (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m016",
+      "cls": "negated_requirement",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must not be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m017",
+      "cls": "dropped_condition",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "note": "removed: \"Late arrival beyond grace periods is recorded; 3+ late entries/month m...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m018",
+      "cls": "changed_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 5 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 5 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m019",
+      "cls": "changed_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 5 days allowed at a time. Prior approval is required whenever possible.",
+      "note": "2 consecutive days -> 5 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m020",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 10 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m021",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 18 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m022",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 2 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m023",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 30 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m024",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 3 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m025",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 4 days allowed at a time. Prior approval is required whenever possible.",
+      "note": "2 consecutive days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m026",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 60 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m027",
+      "cls": "swapped_number",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 90 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "note": "4 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m028",
+      "cls": "changed_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 19 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 19 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m029",
+      "cls": "changed_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >5 days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "3 consecutive days -> 5 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m030",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 10 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m031",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >18 days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "3 consecutive days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m032",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 2 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m033",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 30 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m034",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 3 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m035",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 4 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m036",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 60 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m037",
+      "cls": "swapped_number",
+      "policyId": "policy_003_el_sl",
+      "answer": "Entitlement: 90 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "note": "18 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m038",
+      "cls": "changed_number",
+      "policyId": "policy_003_mat",
+      "answer": "Entitlement: 27 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "note": "26 weeks -> 27 weeks (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m039",
+      "cls": "changed_number",
+      "policyId": "policy_003_mat",
+      "answer": "Entitlement: 26 weeks as per statutory norms. Can be availed up to 9 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "note": "8 weeks -> 9 weeks (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m040",
+      "cls": "changed_number",
+      "policyId": "policy_003_mat",
+      "answer": "Entitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <4 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "note": "3 months -> 4 months (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m041",
+      "cls": "swapped_number",
+      "policyId": "policy_003_mat",
+      "answer": "Entitlement: 26 weeks as per statutory norms. Can be availed up to 26 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "note": "8 weeks -> 26 weeks (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m042",
+      "cls": "swapped_number",
+      "policyId": "policy_003_mat",
+      "answer": "Entitlement: 8 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "note": "26 weeks -> 8 weeks (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m043",
+      "cls": "changed_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 11 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 11 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m044",
+      "cls": "changed_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 4 months before or after childbirth/adoption.",
+      "note": "3 months -> 4 months (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m045",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 18 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m046",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 2 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m047",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 30 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m048",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 3 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m049",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 4 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m050",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 60 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m051",
+      "cls": "swapped_number",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 90 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "note": "10 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m052",
+      "cls": "negated_requirement",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must not be availed within 3 months before or after childbirth/adoption.",
+      "note": "\"Must\" -> \"Must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m053",
+      "cls": "dropped_condition",
+      "policyId": "policy_003_pat",
+      "answer": "Entitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments.",
+      "note": "removed: \"Must be availed within 3 months before or after childbirth/adoption....\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m054",
+      "cls": "changed_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-61 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 61 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m055",
+      "cls": "changed_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 5 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "3 days -> 5 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m056",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-10 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m057",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-18 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m058",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-2 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m059",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-30 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m060",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-3 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m061",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-4 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m062",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 60 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "3 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m063",
+      "cls": "swapped_number",
+      "policyId": "policy_003_other",
+      "answer": "LWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-90 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "note": "60 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m064",
+      "cls": "negated_requirement",
+      "policyId": "policy_004",
+      "answer": "Objective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m065",
+      "cls": "changed_number",
+      "policyId": "policy_006",
+      "answer": "Objective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 6 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "note": "5 years -> 6 years (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m066",
+      "cls": "dropped_condition",
+      "policyId": "policy_006",
+      "answer": "Objective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Salary structure follows statutory tax rules.",
+      "note": "removed: \"Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 yea...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m067",
+      "cls": "changed_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–91 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 91 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m068",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–10 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m069",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–18 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m070",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–2 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m071",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–30 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m072",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–3 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m073",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–4 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m074",
+      "cls": "swapped_number",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–60 days Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "90 day -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m075",
+      "cls": "negated_requirement",
+      "policyId": "policy_007",
+      "answer": "Objective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must not conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m076",
+      "cls": "negated_requirement",
+      "policyId": "policy_009",
+      "answer": "Objective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m077",
+      "cls": "dropped_condition",
+      "policyId": "policy_009",
+      "answer": "Objective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval.",
+      "note": "removed: \"Confidentiality obligations continue even after resignation or termina...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m078",
+      "cls": "changed_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–91 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 91 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m079",
+      "cls": "changed_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 31 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "30 days -> 31 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m080",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–10 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m081",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–18 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m082",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–2 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m083",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–30 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m084",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–3 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m085",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–4 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m086",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–60 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "90 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m087",
+      "cls": "swapped_number",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 90 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "30 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m088",
+      "cls": "negated_requirement",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must not return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m089",
+      "cls": "dropped_condition",
+      "policyId": "policy_011",
+      "answer": "Objective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "note": "removed: \"Full and final (F&F) settlement processed within 30 days after clearan...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m090",
+      "cls": "changed_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 5 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 5 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m091",
+      "cls": "changed_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 11 days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "10 working days -> 11 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m092",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 10 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m093",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 18 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m094",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 2 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m095",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 30 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m096",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 3 days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "10 working days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m097",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 4 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m098",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 60 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m099",
+      "cls": "swapped_number",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 90 days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "note": "3 working days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m100",
+      "cls": "dropped_condition",
+      "policyId": "policy_012",
+      "answer": "Objective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible.",
+      "note": "removed: \"If dissatisfied, escalation to HR leadership or business head is allow...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m101",
+      "cls": "negated_requirement",
+      "policyId": "policy_013",
+      "answer": "Objective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must not ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m102",
+      "cls": "negated_requirement",
+      "policyId": "policy_014",
+      "answer": "Objective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is optional.",
+      "note": "\"is mandatory\" -> \"is optional\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m103",
+      "cls": "changed_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 11 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 11 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m104",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 18 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m105",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 2 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m106",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 30 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m107",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 3 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m108",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 4 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m109",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 60 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m110",
+      "cls": "swapped_number",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 90 days. Fake or inflated claims lead to disciplinary action.",
+      "note": "10 working days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m111",
+      "cls": "negated_requirement",
+      "policyId": "policy_015",
+      "answer": "Objective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must not be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m112",
+      "cls": "changed_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (31 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 31 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m113",
+      "cls": "changed_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (61 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "60 days -> 61 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m114",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (10 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m115",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (18 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m116",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (2 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m117",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (30 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "60 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m118",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (3 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m119",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (4 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m120",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (60 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m121",
+      "cls": "swapped_number",
+      "policyId": "policy_016_insurance",
+      "answer": "Objective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (90 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "note": "30 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m122",
+      "cls": "negated_requirement",
+      "policyId": "policy_016_workplace_support",
+      "answer": "On-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must not be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m123",
+      "cls": "dropped_condition",
+      "policyId": "policy_016_workplace_support",
+      "answer": "On-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment.",
+      "note": "removed: \"Emergency Response: Security/Admin will transport employees to the nea...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m124",
+      "cls": "changed_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-31 days).",
+      "note": "30 days -> 31 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m125",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-10 days).",
+      "note": "30 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m126",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-18 days).",
+      "note": "30 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m127",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-2 days).",
+      "note": "30 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m128",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-3 days).",
+      "note": "30 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m129",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-4 days).",
+      "note": "30 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m130",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-60 days).",
+      "note": "30 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m131",
+      "cls": "swapped_number",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-90 days).",
+      "note": "30 days -> 90 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m132",
+      "cls": "changed_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 91 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 91 days (absent from the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m133",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 10 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 10 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m134",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 18 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 18 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m135",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 2 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 2 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m136",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 30 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 30 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m137",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 3 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 3 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m138",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 4 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 4 days (real, from elsewhere in the corpus)",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number"
+      ]
+    },
+    {
+      "id": "m139",
+      "cls": "swapped_number",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 60 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "90 days -> 60 days (real, from elsewhere in the corpus)",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m140",
+      "cls": "negated_requirement",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must not be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "\"must\" -> \"must not\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m141",
+      "cls": "dropped_condition",
+      "policyId": "policy_016_maternity_critical",
+      "answer": "Maternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "note": "removed: \"Newborns are covered from birth (hospitalization) and must be added to...\"",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m142",
+      "cls": "entitlement_swap",
+      "policyId": "policy_003_cl",
+      "answer": "You are entitled to 18 days of casual leave per year.",
+      "note": "combined pool figure presented as the casual entitlement",
+      "detected_exact": true,
+      "findings_exact": [
+        "entitlement_conflict"
+      ]
+    },
+    {
+      "id": "m143",
+      "cls": "entitlement_swap",
+      "policyId": "policy_003_el_sl",
+      "answer": "Your combined annual and sick leave entitlement is 4 days per year.",
+      "note": "casual figure presented as the combined entitlement",
+      "detected_exact": true,
+      "findings_exact": [
+        "entitlement_conflict"
+      ]
+    },
+    {
+      "id": "m144",
+      "cls": "entitlement_swap",
+      "policyId": "policy_003_cl",
+      "answer": "Casual leave: employees are granted 12 days per year and may take them consecutively.",
+      "note": "a plausible round number, absent from the corpus",
+      "detected_exact": true,
+      "findings_exact": [
+        "unsupported_number",
+        "entitlement_conflict"
+      ]
+    },
+    {
+      "id": "m145",
+      "cls": "imported_clause",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible. Objective: Ensure smooth offboarding.",
+      "note": "grafted from policy_011",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m146",
+      "cls": "imported_clause",
+      "policyId": "policy_002",
+      "answer": "Objective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment. Objective: Ensure smooth offboarding.",
+      "note": "grafted from policy_011",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m147",
+      "cls": "imported_clause",
+      "policyId": "policy_016_claims",
+      "answer": "Cashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days). Objective: Ensure smooth offboarding.",
+      "note": "grafted from policy_011",
+      "detected_exact": false,
+      "findings_exact": []
+    },
+    {
+      "id": "m148",
+      "cls": "fabricated_citation",
+      "policyId": "policy_003_cl",
+      "answer": "Entitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible. Source: Employee Handbook Addendum, Section 47.3",
+      "note": "cites a document that does not exist",
+      "detected_exact": true,
+      "findings_exact": [
+        "fabricated_citation"
+      ]
+    },
+    {
+      "id": "m149",
+      "cls": "fabricated_citation",
+      "policyId": "policy_013",
+      "answer": "Objective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property. Source: Employee Handbook Addendum, Section 47.3",
+      "note": "cites a document that does not exist",
+      "detected_exact": true,
+      "findings_exact": [
+        "fabricated_citation"
+      ]
+    },
+    {
+      "id": "m150",
+      "cls": "fabricated_citation",
+      "policyId": "policy_009",
+      "answer": "Objective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination. Source: Employee Handbook Addendum, Section 47.3",
+      "note": "cites a document that does not exist",
+      "detected_exact": true,
+      "findings_exact": [
+        "fabricated_citation"
+      ]
+    }
+  ]
+}

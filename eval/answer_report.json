@@ -1,0 +1,334 @@
+{
+  "about": "Answer-layer evaluation. Stage 2 and 3 measure the SENSITIVITY of the faithfulness verifier against deterministically generated unfaithful answers. They do not measure the faithfulness of the system: that needs real generations, which need an API key, which would make the number unreproducible. Stage 4 records whether the generative path was run.",
+  "generated_by": "npm run eval:answers",
+  "predictions": {
+    "changed_number": {
+      "predicted": 0.9,
+      "why": "the failure an employee acts on, and the number is absent from the corpus"
+    },
+    "swapped_number": {
+      "predicted": 0.6,
+      "why": "expected the entitlement binding to catch most of them",
+      "outcome": "WRONG. Measured 0.2737. The prediction assumed a swapped number would usually land on a different leave pool, where the authoritative table could catch it. Mostly it does not: the corpus states its entitlements as a bare \"Entitlement: N days per year\" with the leave type named in the document title rather than in the sentence, so there is nothing inside the sentence to bind the number to. And the swap target is by construction a real corpus figure, so it is present in the context and the unsupported-number check cannot see it either. The 27% that are caught are the cases where the swap happened to land inside a sentence that does name a leave type. Catching the rest needs a fact bound to the document that asserts it, which means reading; stage 3 measures what a model-based check recovers. Two earlier numbers for this class are worth recording because of what they exposed: 0.3077, then 0.0000 after an unrelated widening of the quantity extractor. No check changed between those two runs. The generator had been picking one swap target per document by Set iteration order, so adding six figures to the corpus pool silently changed the test. A rate that moves 30 points on an edit to something else is not measuring the detector, and the fix -- enumerate every same-unit alternative -- is why the suite is now 150 mutations rather than 56."
+    },
+    "entitlement_swap": {
+      "predicted": 0.8,
+      "why": "the authoritative table is right there and the sentence names the leave type"
+    },
+    "fabricated_citation": {
+      "predicted": 0.9,
+      "why": "a fake citation makes a wrong answer look checked"
+    },
+    "negated_requirement": {
+      "predicted": 0,
+      "why": "no exact check reads meaning; declared undetectable in advance"
+    },
+    "imported_clause": {
+      "predicted": 0,
+      "why": "every word is real corpus text, just from the wrong policy"
+    },
+    "dropped_condition": {
+      "predicted": 0,
+      "why": "omission: everything the answer says is true"
+    }
+  },
+  "regression_floors": {
+    "false_positives": {
+      "max": 0,
+      "why": "a guard that flags true policy text is unusable"
+    },
+    "changed_number": {
+      "min": 1
+    },
+    "swapped_number": {
+      "min": 0,
+      "why": "invisible to exact checks; see the prediction outcome"
+    },
+    "entitlement_swap": {
+      "min": 1
+    },
+    "fabricated_citation": {
+      "min": 1
+    },
+    "negated_requirement": {
+      "min": 0,
+      "why": "declared undetectable, and is"
+    },
+    "imported_clause": {
+      "min": 0,
+      "why": "declared undetectable, and is"
+    },
+    "dropped_condition": {
+      "min": 0,
+      "why": "declared undetectable, and is"
+    }
+  },
+  "extractive": {
+    "cases": 18,
+    "verbatim_and_grounded": 18,
+    "graded": 18,
+    "answered": 15,
+    "partial": 1,
+    "unanswered": 2,
+    "mean_normalised_grade": 0.8611111111111112
+  },
+  "mutation": {
+    "control_false_positives": 0,
+    "control_total": 26,
+    "per_class": {
+      "changed_number": {
+        "total": 26,
+        "detected": 26,
+        "rate": 1,
+        "predicted": 0.9,
+        "prediction_held": true
+      },
+      "dropped_condition": {
+        "total": 8,
+        "detected": 0,
+        "rate": 0,
+        "predicted": 0,
+        "prediction_held": true
+      },
+      "entitlement_swap": {
+        "total": 3,
+        "detected": 3,
+        "rate": 1,
+        "predicted": 0.8,
+        "prediction_held": true
+      },
+      "fabricated_citation": {
+        "total": 3,
+        "detected": 3,
+        "rate": 1,
+        "predicted": 0.9,
+        "prediction_held": true
+      },
+      "imported_clause": {
+        "total": 3,
+        "detected": 0,
+        "rate": 0,
+        "predicted": 0,
+        "prediction_held": true
+      },
+      "negated_requirement": {
+        "total": 12,
+        "detected": 0,
+        "rate": 0,
+        "predicted": 0,
+        "prediction_held": true
+      },
+      "swapped_number": {
+        "total": 95,
+        "detected": 26,
+        "rate": 0.2736842105263158,
+        "predicted": 0.6,
+        "prediction_held": false
+      }
+    }
+  },
+  "entailment": {
+    "skipped": false,
+    "model": "Xenova/nli-deberta-v3-xsmall",
+    "premise": "per retrieved document, not the concatenated context",
+    "signal": "least-over-documents contradiction OR best-over-documents entailment",
+    "findings": [
+      "contradiction outscores entailment 3-4x at every budget and construction; entailment tops out at 0.0867 and is near-useless, which matters because entailment probability is what groundedness checks are normally built on",
+      "the concatenated premise contradicts itself on near-duplicate families, setting a false-positive floor that puts the 0-FP threshold at 0.9009; per-document scoring drops it to 0.0708, a factor of twelve",
+      "per-document is NOT uniformly better: it wins at 0 FP (0.2533 vs 0.1933) and loses from 1 FP onwards (0.3533 vs 0.4333 at 3 FP)",
+      "PREDICTION MISSED: contradiction against the best-supporting document was designed here as the formulation that should beat both, and is the worst of the five at 0.0133. The argmax that selects the document runs over entailment scores of about 0.01 that carry no signal, so the document is effectively arbitrary and the score against it is noise."
+    ],
+    "entail_threshold": 0.0022151153203227598,
+    "contra_threshold": 0.0707535152587069,
+    "control_concatenated": {
+      "entail_min": 0.0018600853576245286,
+      "entail_max": 0.0703100158616051,
+      "contra_max": 0.9009079053482387,
+      "contra_min": 0.003906644525093675
+    },
+    "control_per_document": {
+      "entail_min": 0.0022151153203227598,
+      "entail_max": 0.9924596718816068,
+      "contra_max": 0.0707535152587069,
+      "contra_min": 0.000953374906501183,
+      "aligned_max": 0.9681628938502157,
+      "aligned_min": 0.000953374906501183
+    },
+    "sweeps": {
+      "entail_concat": [
+        {
+          "allowed_false_positives": 0,
+          "threshold": 0.0018600853576245286,
+          "detected": 10
+        },
+        {
+          "allowed_false_positives": 1,
+          "threshold": 0.0025489379161821586,
+          "detected": 12
+        },
+        {
+          "allowed_false_positives": 2,
+          "threshold": 0.00287187622942559,
+          "detected": 13
+        },
+        {
+          "allowed_false_positives": 3,
+          "threshold": 0.0028730938764677575,
+          "detected": 13
+        }
+      ],
+      "contra_concat": [
+        {
+          "allowed_false_positives": 0,
+          "threshold": 0.9009079053482387,
+          "detected": 29
+        },
+        {
+          "allowed_false_positives": 1,
+          "threshold": 0.8653297652106489,
+          "detected": 39
+        },
+        {
+          "allowed_false_positives": 2,
+          "threshold": 0.7563746365406658,
+          "detected": 52
+        },
+        {
+          "allowed_false_positives": 3,
+          "threshold": 0.6262602621975444,
+          "detected": 65
+        }
+      ],
+      "entail_perdoc": [
+        {
+          "allowed_false_positives": 0,
+          "threshold": 0.0022151153203227598,
+          "detected": 1
+        },
+        {
+          "allowed_false_positives": 1,
+          "threshold": 0.003217472254184557,
+          "detected": 10
+        },
+        {
+          "allowed_false_positives": 2,
+          "threshold": 0.0033744365396907896,
+          "detected": 10
+        },
+        {
+          "allowed_false_positives": 3,
+          "threshold": 0.004106954722144221,
+          "detected": 11
+        }
+      ],
+      "contra_perdoc_least": [
+        {
+          "allowed_false_positives": 0,
+          "threshold": 0.0707535152587069,
+          "detected": 38
+        },
+        {
+          "allowed_false_positives": 1,
+          "threshold": 0.051444541061580626,
+          "detected": 45
+        },
+        {
+          "allowed_false_positives": 2,
+          "threshold": 0.04894064455706448,
+          "detected": 51
+        },
+        {
+          "allowed_false_positives": 3,
+          "threshold": 0.048930605471428835,
+          "detected": 53
+        }
+      ],
+      "contra_aligned": [
+        {
+          "allowed_false_positives": 0,
+          "threshold": 0.9681628938502157,
+          "detected": 2
+        },
+        {
+          "allowed_false_positives": 1,
+          "threshold": 0.8590294766586987,
+          "detected": 22
+        },
+        {
+          "allowed_false_positives": 2,
+          "threshold": 0.853337856873968,
+          "detected": 22
+        },
+        {
+          "allowed_false_positives": 3,
+          "threshold": 0.7217990208239526,
+          "detected": 27
+        }
+      ]
+    },
+    "per_class": {
+      "changed_number": {
+        "total": 26,
+        "exact": 1,
+        "nli": 0.19230769230769232,
+        "either": 1,
+        "nli_only": 0
+      },
+      "dropped_condition": {
+        "total": 8,
+        "exact": 0,
+        "nli": 0,
+        "either": 0,
+        "nli_only": 0
+      },
+      "entitlement_swap": {
+        "total": 3,
+        "exact": 1,
+        "nli": 0.6666666666666666,
+        "either": 1,
+        "nli_only": 0
+      },
+      "fabricated_citation": {
+        "total": 3,
+        "exact": 1,
+        "nli": 0,
+        "either": 1,
+        "nli_only": 0
+      },
+      "imported_clause": {
+        "total": 3,
+        "exact": 0,
+        "nli": 0.3333333333333333,
+        "either": 0.3333333333333333,
+        "nli_only": 1
+      },
+      "negated_requirement": {
+        "total": 12,
+        "exact": 0,
+        "nli": 0.3333333333333333,
+        "either": 0.3333333333333333,
+        "nli_only": 4
+      },
+      "swapped_number": {
+        "total": 95,
+        "exact": 0.2736842105263158,
+        "nli": 0.2736842105263158,
+        "either": 0.47368421052631576,
+        "nli_only": 19
+      }
+    },
+    "overall": {
+      "total": 150,
+      "exact": 0.38666666666666666,
+      "nli": 0.25333333333333335,
+      "either": 0.5466666666666666,
+      "nli_only": 24
+    },
+    "from_a_previous_run": true,
+    "note": "Not re-measured by this run. Stage 3 needs a model and is skipped by default and in CI; run `npm run eval:answers:nli` to refresh it."
+  },
+  "live": {
+    "run": false,
+    "reason": "not_configured"
+  }
+}
