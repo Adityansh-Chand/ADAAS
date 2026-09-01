@@ -267,6 +267,22 @@ async function main() {
   }).catch(() => null);
   console.log('done');
 
+  // Notifications are durable now, so a backend that has served a smoke test
+  // carries its notices into the screenshots -- the first run after persistence
+  // landed produced a policy answer with two stale "WHILE YOU WERE AWAY" cards
+  // from an earlier test above it. Refuse rather than capture that: an image
+  // showing another run's leftovers is exactly the stale artifact this script
+  // exists to prevent.
+  const metrics = await fetch(`${API}/metrics`).then((r) => r.json()).catch(() => null);
+  const stored = metrics && metrics.notifications && metrics.notifications.stored;
+  if (stored) {
+    throw new Error(
+      `the backend is holding ${stored} notification(s) from an earlier run, which `
+      + 'would appear in the screenshots. Stop it, delete '
+      + `${metrics.notifications.path}, and start it again.`,
+    );
+  }
+
   const chrome = CHROME_CANDIDATES.find((p) => fs.existsSync(p));
   if (!chrome) throw new Error('no Chrome or Edge binary found');
 

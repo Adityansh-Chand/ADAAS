@@ -239,6 +239,45 @@ const DEFAULT_L2 = 1e-2;
 // dressed up as a confidence gate that works.
 const DEFAULT_MIN_CONFIDENCE = 0.10;
 
+// ASYMMETRY: an action needs more evidence than an answer.
+//
+// The two mistakes this classifier can make do not cost the same. Calling a
+// leave request a policy question produces a worse answer, and the employee asks
+// again. Calling a policy question a leave request makes the service *do*
+// something -- applyLeave writes to a real leave balance, leaveBalance returns
+// someone's figures. A screenshot caught the first kind of that failure: asked
+// whether they could work from home a few days a week, the app filed five days of
+// casual leave.
+//
+// Treating those as equally bad is a choice, and it was made by default rather
+// than deliberately, because softmax argmax has no notion of what a label costs.
+// So the argmax stands for policyQuestion and has to clear a margin for an
+// action: the winning action class must beat policyQuestion's probability by
+// this much, or the message is answered instead of acted on.
+//
+// Calibrated on dev by `npm run bakeoff:margin`, which sweeps it and prints what
+// each value costs on the leave intents -- because this trade is real, and the
+// tempting number is the wrong one. The sweep, dev only:
+//
+//   margin   policy questions kept   leave intents kept   dev accuracy
+//   0        28/36  0.7778           45/45  1.0000        0.9306
+//   0.10     31/36  0.8611           45/45  1.0000        0.9861
+//   0.20     31/36  0.8611           41/45  0.9111        0.9306
+//   0.45     35/36  0.9722           18/45  0.4000        0.6250
+//
+// 0.10 is not a compromise between the two columns, it dominates: three more
+// policy questions answered instead of acted on, no genuine leave request lost,
+// and the best overall dev accuracy of any value tried. Above it the trade turns
+// sharply -- at 0.45 the app keeps nearly every question but files fewer than half
+// the leave requests it is asked to file, which is a worse product and would have
+// looked like a win against action safety alone.
+//
+// Zero reproduces the previous behaviour exactly and is in the sweep so the
+// baseline is visible rather than assumed.
+const DEFAULT_ACTION_MARGIN = 0.10;
+
+const ACTION_INTENTS = new Set(['applyLeave', 'leaveBalance']);
+
 function cosine(a, b) {
   let sum = 0;
   for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i];
@@ -341,6 +380,7 @@ function fitLogisticRegression(examples, options = {}) {
  */
 function buildClassifier(trainingCases, vectors, options = {}) {
   const minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
+  const actionMargin = options.actionMargin ?? DEFAULT_ACTION_MARGIN;
 
   const examples = [];
   const missing = [];
@@ -352,6 +392,7 @@ function buildClassifier(trainingCases, vectors, options = {}) {
 
   return {
     minConfidence,
+    actionMargin,
     examples,
     missing,
     model: examples.length ? fitLogisticRegression(examples, options) : null,
@@ -390,19 +431,42 @@ function classify(classifier, queryVector) {
 
   const prediction = classifier.model.predict(queryVector);
 
+  // The asymmetric step. An action must out-score answering by the margin; below
+  // it the message is answered instead, which is the recoverable mistake.
+  // `demoted` is reported rather than hidden, so a caller and the metrics can see
+  // how often this fires -- a guard that silently changes decisions is a guard
+  // nobody can audit.
+  const margin = classifier.actionMargin ?? DEFAULT_ACTION_MARGIN;
+  let label = prediction.label;
+  let demoted = false;
+  if (ACTION_INTENTS.has(label) && margin > 0) {
+    const gap = prediction.probabilities[label]
+      - (prediction.probabilities.policyQuestion || 0);
+    if (gap < margin) {
+      label = 'policyQuestion';
+      demoted = true;
+    }
+  }
+
   let topSimilarity = -1;
   for (const e of classifier.examples) {
     const similarity = cosine(queryVector, e.vector);
     if (similarity > topSimilarity) topSimilarity = similarity;
   }
 
-  const confidence = prediction.probability * Math.max(0, topSimilarity);
+  // Confidence reports the class actually chosen, not the argmax it replaced --
+  // a confidence attached to a label the service did not use would be a number
+  // about nothing.
+  const chosenProbability = prediction.probabilities[label];
+  const confidence = chosenProbability * Math.max(0, topSimilarity);
 
   return {
-    intent: confidence >= classifier.minConfidence ? prediction.label : null,
-    candidate: prediction.label,
+    intent: confidence >= classifier.minConfidence ? label : null,
+    candidate: label,
+    argmax: prediction.label,
+    demotedToAnswer: demoted,
     confidence,
-    probability: prediction.probability,
+    probability: chosenProbability,
     probabilities: prediction.probabilities,
     topSimilarity,
   };
@@ -439,6 +503,8 @@ module.exports = {
   DEFAULT_LEARNING_RATE,
   DEFAULT_L2,
   DEFAULT_MIN_CONFIDENCE,
+  DEFAULT_ACTION_MARGIN,
+  ACTION_INTENTS,
   normalise,
   stemAll,
   routeByRules,

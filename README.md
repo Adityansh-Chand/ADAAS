@@ -27,7 +27,9 @@ returned, and the reference id was minted by the request that produced it.
 | ![Leave balance table](docs/screenshots/03-leave-balance-light.png) | ![Leave filed, dark theme](docs/screenshots/04-apply-leave-dark.png) |
 | **Leave balance**, live from the API. 4 and 18 are the entitlements a test asserts against the policy text. | **A filed application**, dark theme, with the reference id the backend issued. |
 | ![An out-of-scope question refused](docs/screenshots/05-abstention-dark.png) | ![Mobile width](docs/screenshots/06-mobile-light.png) |
-| **Refusing to answer.** No company policy covers Kubernetes, and it says so rather than returning its closest guess. | **390x844.** The table keeps its column alignment; `07-mobile-dark.png` is the same width in dark. |
+| **Refusing to answer.** No company policy covers Kubernetes, and it says so rather than returning its closest guess. | **390x844.** The table keeps its column alignment at mobile width. |
+| ![Mobile, dark theme](docs/screenshots/07-mobile-dark.png) | |
+| **The same width in dark**, answering a question about what the medical plan excludes. | `node tool/check_screenshots.js` verifies every image is present, valid and referenced. It cannot verify they still match the app — that is a manual rerun, and the note in the script says why. |
 
 > These screenshots earned their place before they were ever committed. The first
 > capture run asked *"Can I work from my house a few days a week?"* and the app
@@ -73,14 +75,14 @@ Seven commands. All seven should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm test               # 73 backend tests
+npm test               # 82 backend tests
 npm run eval           # lexical, dense, hybrid and reranked on identical splits
 npm run eval:intent    # rules vs the embedding classifier
 npm run embed:verify   # committed embeddings still match the corpus
 npm run rerank:verify  # committed cross-encoder logits still match the corpus
 cd ..
 flutter analyze        # no issues
-flutter test           # 45 Flutter tests, incl. theme contrast gates
+flutter test           # 47 Flutter tests, incl. theme contrast gates
 ```
 
 Only `embed:verify` and `rerank:verify` need the model weights. The two evals read
@@ -151,6 +153,10 @@ seeded data with no LLM.
 | `API_KEY` | HR data and chat endpoints are unauthenticated |
 | `RETRIEVAL_MODE` | `lexical` -- the weaker mode; see the table above |
 | `LLM_PROVIDER` | policy answers come straight from the retrieved policy text |
+| `SESSION_SECRET` | **no per-employee authorization** -- every endpoint accepts any `employee_id`. `/health` reports `authorization: none` |
+| `MODEL_SERVICE_URL` | models load in-process, which needs the optional devDependency; set it to use `model-service/` instead |
+| `NOTIFY_WEBHOOK_URL` | decisions are recorded and stored, but nothing is sent anywhere |
+| `NOTIFICATIONS_PATH` | `hr-backend/.data/notifications.json` |
 | `PORT` | 3000 |
 | `KB_PATH` | resolves to `assets/hr_knowledge_base.json` |
 
@@ -170,6 +176,33 @@ would ask. `npm run eval` reproduces this, with every miss listed.
 | dense (bge-small-en-v1.5) | 0.7222 | 1.0000 | 0 of 18 |
 | hybrid (reciprocal rank fusion) | 0.7222 | 1.0000 | 0 of 18 |
 | **reranked (dense + cross-encoder)** | **0.8333** | **1.0000** | **0 of 18** |
+
+#### The headline gain is two queries, and it does not reach significance
+
+Added after the fact, and it corrects this section rather than decorating it.
+`npm run eval` now prints 95% bootstrap intervals and paired comparisons on
+identical queries:
+
+| Method | Set B top-1 | nDCG@5 |
+|---|---|---|
+| lexical | 0.1111 [0.0000, 0.2778] | 0.1015 [0.0000, 0.2585] |
+| dense | 0.7222 [0.5000, 0.8889] | 0.8174 [0.7110, 0.9096] |
+| **reranked** | **0.8333 [0.6667, 1.0000]** | **0.8747 [0.8053, 0.9389]** |
+
+Paired on the report half, **reranked minus dense is +0.1111 top-1 with an
+interval of [-0.1667, 0.3889]** — it contains zero. On nDCG it is +0.0574
+[-0.0201, 0.1474], which also contains zero. So the improvement from 0.7222 to
+0.8333 is **two queries out of eighteen and is not statistically separated**.
+
+Pooled over both halves, n=36, the nDCG difference does separate: +0.0763
+[0.0285, 0.1262]. That pooling includes the dev half the reranker was chosen on,
+so it is printed under a label saying exactly that. The defensible reading is
+that the reranker improves the ordering measurably and the top-1 headline is
+under-powered — and reranked against lexical separates comfortably either way
+(+0.7222 [0.5000, 0.8889]).
+
+This is what error bars were for. The numbers were reported correctly and read as
+differences when several of them were resolution.
 
 #### The diagnosis came from two numbers, not from trying things
 
@@ -810,7 +843,7 @@ it drops below AA — see Tests.
 
 ## Tests
 
-**118 total: 73 backend, 45 Flutter.** `flutter analyze` clean.
+**129 total: 82 backend, 47 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
@@ -919,134 +952,121 @@ behind a `prefers-color-scheme` media query.
 
 ## What is still open
 
-Ordered by how much each would change what this project can honestly claim, not
-by how hard it is. Every item is a measured gap rather than a wish list, and each
-says what would count as done.
+Every item that stood here has been worked. Four are closed, three produced a
+measured negative result and shipped nothing, one is closed as far as anyone
+inside this project can close it, and two are narrower than they were. What each
+attempt cost and returned is below, because an attempt that failed is more useful
+to a later reader than the goal it was aiming at.
 
-### 1. Relevance judgements written by someone with no stake in the score
+### Closed
 
-`eval/policy_qrels.json` exists now, and the previous "highest-value next step" is
-closed — but it was closed by the person who tuned the retriever, who had already
-seen the printed miss list for several report-half cases. The strict gates,
-the gold-must-be-graded-2 validator and printing both metrics side by side
-constrain that; they do not remove it.
+- **Error bars.** `npm run eval` and `npm run eval:intent` print 95% bootstrap
+  intervals beside every score, seeded so they reproduce, plus paired comparisons
+  on identical queries. This immediately corrected something this project had been
+  saying: **reranked against dense is NOT statistically separated on the clean
+  18-case report half** — +0.1111 top-1, interval [-0.1667, 0.3889]. Pooled over 36
+  cases the nDCG difference does separate (+0.0763, [0.0285, 0.1262]), so the
+  ordering gain is real; the top-1 headline is two queries and was never
+  established.
+- **Action safety.** An action now has to out-score answering by a margin, because
+  the two mistakes do not cost the same: answering a request is recoverable, acting
+  on a question writes to a leave balance. Calibrated on dev by
+  `npm run bakeoff:margin`, which prints what each value costs — at margin 0.45 the
+  app keeps 35 of 36 questions and files fewer than half the leave requests it is
+  asked to file, which would have looked like a win against action safety alone.
+  0.10 dominates: 28/36 to **31/36** questions kept, no genuine leave request lost,
+  and the best dev accuracy of any value tried. `held_out_3` reached **1.0000** as
+  a side effect.
+- **A sixth held-out intent set.** `eval/held_out_intent_queries_6.json`, written
+  before the margin existed, general rather than targeted, and deliberately
+  containing four cases that mix a question with a request. It reads **0.7667**,
+  the lowest of the clean sets. The leakage gate caught one case in it that
+  paraphrased a training example at 0.9478 — the second time that check has caught
+  a fixture written by the person who also wrote the check.
+- **The model dependency is out of the API image.** `model-service/` is a separate
+  package exposing `/embed` and `/rerank`; the API talks to it over HTTP when
+  `MODEL_SERVICE_URL` is set. The advisory-carrying package now lives in one
+  container that holds no HR data, needs no database, and can be given no egress.
+  `RETRIEVAL_MODE=reranked` is deployable rather than local-only, and `/health`
+  reports `model_source` so `service` and `local` are distinguishable. Verified end
+  to end: a query absent from every fixture is embedded remotely and retrieved
+  correctly.
 
-**Done looks like:** a second set of judgements produced by someone who has not
-seen a ranking, with inter-annotator agreement reported. Disagreement between the
-two sets is the interesting output — it puts a number on how much of the current
-score is judgement noise.
+### Attempted, measured, not shipped
 
-### 2. Something that reads, for the last three retrieval errors
+- **A reranker that reads.** Late interaction, ColBERT-style MaxSim over token
+  vectors — `npm run bakeoff -- --stage=late`. It **ties** the cross-encoder on
+  top-1 (0.8889) using only the encoder already loaded, and loses on MRR (0.9352
+  against 0.9444). Fusing the two changes nothing. Nothing shipped, though it is
+  worth recording that a method needing no extra model matched a 271 MB one on
+  top-1. What was **not** tried is a generative reranker: it needs an LLM, and
+  every metric reported here is reproducible without one. That constraint is the
+  reason, and it is a real limit on this item rather than an excuse.
+- **Answerability.** `npm run probe:answerability` runs NLI entailment over
+  (passage, "this policy states the answer to: *question*"). The direction is
+  right — in-scope median 0.0266 against 0.0012 for the hard tier — and it fails
+  the declared bar completely: the highest threshold that keeps all 36 genuine
+  questions rejects **0 of 12**, because the weakest genuine question ("how long do
+  I have to hand in my taxi receipts", which its gold policy plainly answers) sits
+  below almost every hard negative.
+- **Four signals have now failed on the same twelve questions**: dense cosine,
+  cross-encoder logit, term coverage, NLI entailment. The hard tier stays at 2 of
+  12. What remains is a reader — a generation layer saying "the policy covers
+  paternity leave but does not state statutory minimums" — and reporting that would
+  make the number depend on a vendor and a sampling temperature. This is the one
+  open item with no path that respects the project's other constraints.
 
-Top-1 is 0.8333 and the three misses are all near-duplicate confusions with the
-gold at rank 2 or 3 (paternity vs maternity, confidentiality vs performance,
-chemotherapy vs the exclusions annex). This is not a retrieval gap: every
-bi-encoder measured scores recall@5 1.0000, so the gold is always in the pool, and
-eleven ways of re-weighting the pool changed nothing. Four more cross-encoders were
-tried and five of seven are worse than no reranking at all.
+### Closed as far as it can be from inside
 
-**Done looks like:** a listwise or generative reranker that sees the whole
-candidate set at once and can reason about what distinguishes two documents in the
-same family — measured on the dev half like everything else, and reported even if
-it loses, which on this evidence is likely.
+- **Relevance judgements from an unconflicted annotator.** `npm run annotate`
+  produces a genuinely blind sheet: 294 contested pairs, with policy ids, existing
+  grades, gold labels and retrieval output all withheld, rows shuffled with a fixed
+  seed, and the row-to-document key written to a **separate file** the annotator
+  does not receive. `--agree` reports raw agreement, Cohen's kappa, and the 2-vs-0
+  disagreements that actually move a score. Exercised end to end against a
+  synthetic second annotator.
 
-### 3. Answerability, which is what the hard abstention tier actually needs
+  **This does not make the judgements independent, and nothing written from inside
+  could.** What it removes is every other obstacle: the sheet, the blinding and the
+  arithmetic all exist, so a second opinion is now an afternoon of reading. The
+  item stays open until someone else does that reading.
 
-Three signals have now been tried on the same twelve HR-shaped questions the
-corpus does not answer — document cosine, cross-encoder logit, term-level
-coverage — and all three fail on them, because all three measure similarity and
-the distinction is not one of similarity. 2 of 12 is a measured ceiling for this
-class of approach, not a tuning gap.
+### Narrower than it was
 
-**Done looks like:** the generation layer saying "the policy covers paternity leave
-but does not state statutory minimums" rather than retrieval trying to detect it,
-plus a fixture of expected refusals so that behaviour can be gated. That fixture
-does not exist, and without it the improvement would be unmeasurable.
+- **Identity.** Still no identity provider — `/session` will mint a token for any
+  employee id, because there is nothing here to authenticate anyone against. But
+  the *authorisation* bug underneath it is fixed, and it never needed one: employee
+  1001 could read 1002's balance by editing a query string, and nothing stopped it.
+  Signed session tokens now carry a subject and a role, and every employee-scoped
+  route checks the request against them. Opt-in via `SESSION_SECRET`, like
+  `API_KEY`, and `/health` reports `authorization: none` when it is off, so the
+  weak state is visible rather than assumed.
+- **Notifications.** Durable by default now, written through to a file, so a
+  restart with no MongoDB configured no longer loses every decision anyone was told
+  about — which was the default path rather than an edge case. Delivery is an
+  outbound webhook when `NOTIFY_WEBHOOK_URL` is set. That is a seam, **not** email
+  or push: it hands the notification to something that knows how to reach a person,
+  and that something is not in this repository. Delivery cannot fail a decision,
+  since the approval has already moved a balance, so failures are counted in
+  `/metrics` rather than rolled back.
+- **Error bars are printed; the sample is still small.** 18-query report halves, 26
+  documents, and a 36-case action-safety probe that moves 2.8 points per case. The
+  intervals make that legible. They do not make it go away, and a larger corpus and
+  query set remains the only real fix.
 
-### 4. Error bars, which currently swamp small differences
+### Still open, unchanged
 
-26 documents, 36 Set B queries, 18 per report half. **One query moves a score by
-5.6 points.** Several findings above — hybrid losing to dense on MRR, one reranker
-beating another — sit inside that. They are reported as measured and should be read
-as directional.
-
-**Done looks like:** a corpus and query set large enough that a single case does not
-move the headline, or bootstrap confidence intervals printed next to every number
-so the noise floor is visible. Set A should also be replaced: it is scored against
-its own answer key and is gated only as a smoke test that the vectors load.
-
-### 5. Action safety, where the rule baseline still wins
-
-Eight of the 36 policy questions are still routed to a leave action, five of them
-on labels nobody disputes. The rule-based router misroutes three. A fitted model
-beating a rule-based one on average while losing on the axis that carries the
-cost — `applyLeave` writes to a real leave balance — is the honest summary, and it
-is the open item with the clearest product consequence.
-
-The obvious fix does not work: requiring the classifier and the rules to agree
-before taking an action would block genuine leave requests, because the rules score
-0.3667 on held-out set 4 and would veto most of them. Measured before it was
-written rather than after.
-
-**Done looks like:** either a classifier that matches the rules on this axis
-without losing the 0.9667 and 0.9722 it wins elsewhere, or an asymmetric decision
-rule with a cost model behind it — an action requiring more evidence than an
-answer, with the threshold set by measurement rather than taste. The probe is also
-n=36 and moves 2.8 points per case, so a larger one is a prerequisite for telling
-a real improvement from noise.
-
-### 6. A sixth held-out intent set, before the next intent change
-
-Five sets exist: 1 is burned, 2 is compromised, and 3, 4 and 5 were all read this
-round, so all three are now spent for selection purposes. `held_out_3` is back to
-0.9667, the figure it scored before the embedding model changed. The next change to
-intent needs a set written before it, in that order — the rule that produced set 4,
-and then set 5 when a screenshot found a failure class no fixture covered.
-
-Set 4 is the one that has not moved: 0.8000 across two rounds of work, and its six
-failures are mostly genuine boundary cases rather than the distribution gap set 5
-was written for. It is the hardest of the three and the most honest single number
-the classifier has.
-
-### 7. The default retrieval mode is still the weakest one
-
-`lexical`, at 0.1111 on paraphrases, because `@huggingface/transformers` carries
-transitive high-severity advisories (adm-zip, sharp, via onnxruntime-node) with no
-upstream fix, and it is therefore a devDependency kept out of production images.
-`RETRIEVAL_MODE=reranked` reaches 0.8333 on the same deployment, and `/health`
-reports which mode is live and why.
-
-**Done looks like:** either an upstream fix, or moving embedding and reranking into
-a separate service so the advisories are not in the API image's dependency tree at
-all. The second is the real answer and is not built.
-
-### 8. Identity, persistence and delivery
-
-- **No identity provider.** `HR_EMPLOYEE_ID` selects a seeded demo employee. It
-  proves the app can act as different people; it proves nothing about who the user
-  is. Every endpoint that should be authorised per-employee currently is not.
-- **Notifications are in-process without Mongo** and lost on restart. They are a
-  table this service owns, deliberately — no email, no push, no delivery guarantee.
-- **No production HR integration**, managed MongoDB, managed secrets, cloud
-  deployment, or policy data governance. The corpus is a committed JSON file with
-  no owner, no review cycle and no versioning beyond git.
-
-### 9. Two smaller things, recorded so they are not rediscovered
-
-- **The answer bubble labels five documents as "Sources".** It prints the policy
-  it answered from, then lists everything retrieval returned under a second
-  heading. A reader can reasonably conclude all five informed the answer, and only
-  the first did. Visible in `docs/screenshots/02-policy-answer-light.png`. The fix
-  is a wording change — "also retrieved" rather than "sources" — and it is listed
-  rather than done because it is a claim about what the system did, which is the
-  category this project is most careful about.
-- **Nothing verifies the committed screenshots still match the app.** They are
-  one command to regenerate and no test compares them, which is exactly the rot
-  the capture script's own header warns about. CI cannot close this cleanly:
-  headless font rasterisation differs between this machine and a Linux runner, so
-  a pixel diff would fail on every run for reasons unrelated to the UI. The
-  practical guard is regenerating them whenever the screen changes, and the honest
-  statement is that it is a manual step.
+- **The corpus has no owner.** A committed JSON file, no review cycle, no
+  versioning beyond git.
+- **No production HR integration**, managed MongoDB, managed secrets, or cloud
+  deployment.
+- **Nothing verifies the screenshots still match the app.**
+  `node tool/check_screenshots.js` checks that they exist, are valid PNGs, are not
+  blank canvases, and that the README and the capture script agree on the set. It
+  cannot check that they are current: headless font rasterisation differs between
+  this machine and a Linux runner, so a pixel diff would fail on every run for
+  reasons unconnected to the UI. Regenerating them when the screen changes is a
+  manual step, and saying so is the honest position.
 
 ## Reviewer Status
 
@@ -1055,39 +1075,45 @@ all. The second is the real answer and is not built.
 - **Quickstart:** `cd hr-backend && npm ci && npm test && npm start`, then
   `npm run smoke` and `npm run eval` in a second terminal.
 - **Demo path:** `DEMO.md`.
-- **What works:** eleven endpoints; validated leave applications that move
+- **What works:** twelve endpoints; validated leave applications that move
   balances; an approval workflow where a rejection returns the days; policy
   retrieval in four modes with cited sources; abstention on out-of-scope
-  questions; honest failure reporting; bounded timeouts; readiness that can report
-  unready; a light/dark themed client with contrast gated in CI;
-  Docker/Compose/K8s config; CI covering tests, thirteen retrieval quality gates
-  (including two on graded nDCG), three intent gates plus a leakage ceiling,
-  embedding and reranker verification, the smoke test, a container that is started
-  and queried, and Flutter analyze/tests.
-- **Known weak spots, measured:** the default retrieval mode is lexical, at
-  0.1111 on paraphrases, because the better modes need a dependency whose
-  transitive advisories have no upstream fix and which is therefore kept out of
-  production images. With `RETRIEVAL_MODE=reranked` the same deployment reaches
-  0.8333 retrieval top-1 (nDCG@5 0.8747) and 0.9667 / 0.8000 / 0.9722 intent
-  accuracy on the three clean held-out sets. Retrieval top-1 did **not** move this
-  round; what moved was intent and the quality of the measurement. Eight of 36
-  policy questions are still routed to a leave action, where the rule baseline
-  misroutes three — measured, gated, and better than the 14 it started at. Abstention works on plainly
+  questions; per-employee authorization behind signed session tokens; durable
+  notifications with an outbound webhook seam; a separate model service so the
+  production image can run dense retrieval without carrying the advisory-bearing
+  dependency; honest failure reporting; bounded timeouts; readiness that can
+  report unready; a light/dark themed client with contrast gated in CI; seven UI
+  screenshots generated from the running app; Docker/Compose/K8s config; CI
+  covering tests, thirteen retrieval quality gates (two of them on graded nDCG),
+  five intent gates plus a leakage ceiling, embedding and reranker verification,
+  the smoke test, a container that is started and queried, and Flutter
+  analyze/tests.
+- **Known weak spots, measured:** retrieval reaches 0.8333 top-1 and nDCG@5
+  0.8747, but **the gain over plain dense is two queries and does not reach
+  significance** on the 18-case report half — the bootstrap interval on the
+  difference contains zero, and that is printed rather than buried. Intent reads
+  1.0000 / 0.8000 / 0.9444 / 0.7667 on the four clean held-out sets; set 6, the
+  newest and most general, is the honest one at 0.7667. Five of 36 policy
+  questions are still routed to a leave action, where the rule baseline misroutes
+  three — the fitted model still loses to rules on the axis that carries the cost.
+  Abstention rejects 12 of 12 plainly off-domain questions and 2 of 12 HR-shaped
+  ones the corpus does not answer; four different signals have now failed on that
+  same tier. `SESSION_SECRET` is opt-in, so a deployment that forgets it is
+  unauthenticated — `/health` reports that state rather than hiding it. Abstention works on plainly
   off-domain questions (12 of 12) and mostly fails on HR-shaped questions the
   corpus does not answer (2 of 12) — now a measured limit rather than an asserted
   one, after a third signal was built, tested and rejected. Notifications are a
   table this service owns, not email or push.
-- **Remaining gaps:** enumerated with what would count as done in
-  [What is still open](#what-is-still-open). The short version, in order:
-  relevance judgements written by someone with no stake in the score; a reranker
-  that reads rather than scores, for the last three near-duplicate errors;
-  answerability detection in the generation layer, which is the only thing left
-  that could move the hard abstention tier; error bars, since 18-query report
-  halves mean one case is worth 5.6 points; a fifth held-out intent set before the
-  next intent change; action safety, where the rule baseline still beats the fitted
-  classifier 33 of 36 to 28; moving the model dependency out of the API image so
-  the default mode need not be the weakest one; and identity, notification delivery
-  and production data governance, none of which exist.
+- **Remaining gaps:** every item previously listed here has been worked, and
+  [What is still open](#what-is-still-open) now records what each attempt returned
+  rather than what it was aiming at. What genuinely remains: relevance judgements
+  from an annotator with no stake in the score (the blind sheet and the agreement
+  arithmetic exist; the second reader does not); answerability for the hard
+  abstention tier, which four signals have failed at and which needs a reader
+  rather than a scorer; a real identity provider behind `/session`, which mints a
+  token for any employee id it is asked for; email or push behind the notification
+  webhook; a corpus with an owner and a review cycle; and a larger corpus, since
+  18-query halves put several reported differences inside their own error bars.
 - **Security posture:** `npm audit --omit=dev` reports zero vulnerabilities. Four
   high-severity advisories remain in devDependencies only (adm-zip and sharp, via
   onnxruntime-node, via the embeddings package) and have no fix available

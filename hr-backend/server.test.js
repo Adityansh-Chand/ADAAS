@@ -936,10 +936,10 @@ test('a policy question is never routed to a leave action', () => {
     if (decided.intent !== 'policyQuestion') routedToAnAction += 1;
   }
 
-  // 0.75, matching the gate in eval_intent.js -- see the note there on why a
+  // 0.78, matching the gate in eval_intent.js -- see the note there on why a
   // 36-case probe cannot carry a tighter floor.
   const safe = 1 - (routedToAnAction / 36);
-  assert.ok(safe >= 0.75,
+  assert.ok(safe >= 0.78,
     `${routedToAnAction} of 36 policy questions routed to a leave action `
     + `(${safe.toFixed(4)} safe)`);
 
@@ -955,6 +955,230 @@ test('a policy question is never routed to a leave action', () => {
   assert.ok(correct / balanced.length >= 0.80,
     `held-out set 5 accuracy ${(correct / balanced.length).toFixed(4)} -- `
     + 'action safety must not be bought by refusing to act at all');
+});
+
+// ---------------------------------------------------------------------------
+// Authorization
+// ---------------------------------------------------------------------------
+
+const sessionModule = require('./session');
+
+async function withSessions(fn) {
+  const original = process.env.SESSION_SECRET;
+  process.env.SESSION_SECRET = 'test-secret-not-a-real-one';
+  try {
+    await fn();
+  } finally {
+    if (original === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = original;
+  }
+}
+
+test('one employee cannot read another employee leave balance', async () => {
+  // The bug this closes, and it did not need an identity provider to exist:
+  // HR_EMPLOYEE_ID chose which employee the app displayed, and then every
+  // endpoint accepted whatever employee_id the request carried. Editing a query
+  // string was enough to read someone else's record.
+  await withSessions(async () => {
+    await withServer(async (baseUrl) => {
+      const token = sessionModule.issue('1001');
+
+      const own = await fetch(`${baseUrl}/leave-balance?employee_id=1001`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      assert.equal(own.status, 200);
+
+      const other = await fetch(`${baseUrl}/leave-balance?employee_id=1002`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      assert.equal(other.status, 403);
+      assert.match((await other.json()).error, /Not permitted/);
+    });
+  });
+});
+
+test('an approver may act for another employee, an employee may not', async () => {
+  // The exemption is the reason `role` exists: approving someone else's leave is
+  // an approver's whole function, so the rule cannot simply be "subject must
+  // match" or the approval workflow stops working.
+  await withSessions(async () => {
+    await withServer(async (baseUrl) => {
+      const approver = sessionModule.issue('9001', 'approver');
+      const response = await fetch(`${baseUrl}/leave-balance?employee_id=1002`, {
+        headers: { Authorization: `Bearer ${approver}` },
+      });
+      assert.equal(response.status, 200);
+    });
+  });
+});
+
+test('a tampered, expired or missing token is refused', async () => {
+  await withSessions(async () => {
+    await withServer(async (baseUrl) => {
+      const good = sessionModule.issue('1001');
+
+      const none = await fetch(`${baseUrl}/leave-balance?employee_id=1001`);
+      assert.equal(none.status, 401);
+
+      // Flip the last character of the signature.
+      const last = good.slice(-1) === 'a' ? 'b' : 'a';
+      const tampered = good.slice(0, -1) + last;
+      const bad = await fetch(`${baseUrl}/leave-balance?employee_id=1001`, {
+        headers: { Authorization: `Bearer ${tampered}` },
+      });
+      assert.equal(bad.status, 401);
+
+      // Expiry is enforced, not decorative.
+      const expired = sessionModule.issue('1001', 'employee', -60);
+      assert.equal(sessionModule.verify(expired), null);
+    });
+  });
+});
+
+test('a forged payload without the signature is refused', async () => {
+  // The attack a hand-rolled token invites: rewrite the claims, keep the shape.
+  await withSessions(async () => {
+    const forged = `${Buffer.from(JSON.stringify({
+      sub: '9999', role: 'approver', exp: Math.floor(Date.now() / 1000) + 3600,
+    })).toString('base64url')}.not-a-signature`;
+    assert.equal(sessionModule.verify(forged), null);
+  });
+});
+
+test('with no secret set, scoping is off and /health says so', async () => {
+  // The documented demo mode. It is a real weakness, and the point of asserting
+  // it is that the weakness is *reported* rather than silently assumed.
+  delete process.env.SESSION_SECRET;
+  await withServer(async (baseUrl) => {
+    const health = await (await fetch(`${baseUrl}/health`)).json();
+    assert.equal(health.authorization, 'none');
+
+    const other = await fetch(`${baseUrl}/leave-balance?employee_id=1002`);
+    assert.equal(other.status, 200, 'demo mode deliberately does not scope');
+
+    const session = await postJson(baseUrl, '/session', { employee_id: '1001' });
+    assert.equal(session.status, 409);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Where the models live
+// ---------------------------------------------------------------------------
+
+const modelClient = require('./model_client');
+
+test('a configured model service becomes the only source, with no silent fallback',
+  async () => {
+    // The property worth protecting. Two sources that can substitute for each
+    // other without saying so is how a deployment ends up serving vectors from a
+    // different model than it reports -- and the committed vectors are verified
+    // against one specific model, so the swap would be invisible and wrong.
+    //
+    // This machine HAS the local package, which is what makes the test
+    // meaningful: with MODEL_SERVICE_URL pointing at nothing, the local model
+    // must not quietly take over.
+    const original = process.env.MODEL_SERVICE_URL;
+    process.env.MODEL_SERVICE_URL = 'http://127.0.0.1:1';
+    try {
+      assert.equal(modelClient.activeSource(), 'service');
+      await assert.rejects(
+        () => modelClient.embedQueries(['anything']),
+        (error) => {
+          assert.equal(error.name, 'ModelSourceUnavailable');
+          assert.match(error.message, /unreachable/);
+          return true;
+        },
+      );
+    } finally {
+      if (original === undefined) delete process.env.MODEL_SERVICE_URL;
+      else process.env.MODEL_SERVICE_URL = original;
+    }
+  });
+
+test('the model source is reported rather than inferred', async () => {
+  // /health used to say which retrieval mode was live but not where the vectors
+  // came from, so "dense" meant two different deployments -- one with an
+  // in-process model, one talking to a service -- and nothing distinguished them.
+  await withServer(async (baseUrl) => {
+    const health = await (await fetch(`${baseUrl}/health`)).json();
+    assert.ok(['service', 'local', 'none'].includes(health.retrieval.model_source),
+      `unexpected model_source ${health.retrieval.model_source}`);
+  });
+});
+
+test('the model service startup check catches a model mismatch', async () => {
+  // The failure this exists to catch is quiet: a service upgraded to a different
+  // encoder returns vectors of the right shape that no longer compare with the
+  // committed ones, and retrieval is merely worse. Better to refuse at startup.
+  const original = process.env.MODEL_SERVICE_URL;
+  const fake = require('node:http').createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      embedding_model: 'some/other-encoder',
+      rerank_model: modelClient.RERANK_MODEL_ID,
+    }));
+  });
+  await new Promise((resolve) => fake.listen(0, resolve));
+  process.env.MODEL_SERVICE_URL = `http://127.0.0.1:${fake.address().port}`;
+  try {
+    const result = await modelClient.checkService();
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /model mismatch/);
+    assert.match(result.reason, /some\/other-encoder/);
+  } finally {
+    if (original === undefined) delete process.env.MODEL_SERVICE_URL;
+    else process.env.MODEL_SERVICE_URL = original;
+    await new Promise((resolve) => fake.close(resolve));
+  }
+});
+
+test('the model service speaks the shape the client expects', async () => {
+  // A contract test across the process boundary, without loading a model: the
+  // service is required in-process and its request validation is exercised. It
+  // is the argument shapes that drift, not the arithmetic.
+  //
+  // Skipped rather than failed when model-service/node_modules is absent. It is
+  // a separate package with its own dependencies -- that separation is the whole
+  // point of it -- so a checkout that has only run `npm ci` in hr-backend cannot
+  // load it. Skipping loudly is right here; silently passing would not be, which
+  // is why this prints.
+  let service;
+  try {
+    service = require('../model-service/server');
+  } catch (error) {
+    if (error.code !== 'MODULE_NOT_FOUND') throw error;
+    console.log('    (skipped: run `npm ci` in model-service/ to exercise this)');
+    return;
+  }
+  const server = service.listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const health = await (await fetch(`${base}/health`)).json();
+    // The three constants that must agree across the boundary.
+    assert.equal(health.embedding_model, modelClient.MODEL_ID);
+    assert.equal(health.rerank_model, modelClient.RERANK_MODEL_ID);
+    assert.equal(health.query_prefix, embeddingsModule.QUERY_PREFIX);
+
+    // bge is asymmetric, so `kind` is required and an unknown value is refused
+    // rather than defaulted -- getting the side wrong is silent and costs
+    // accuracy.
+    const bad = await fetch(`${base}/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: ['x'], kind: 'sideways' }),
+    });
+    assert.equal(bad.status, 400);
+
+    const noTexts = await fetch(`${base}/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: [], kind: 'query' }),
+    });
+    assert.equal(noTexts.status, 400);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('the graded judgements never contradict the original gold labels', () => {
@@ -1014,7 +1238,8 @@ test('the training set is not a paraphrase of any held-out set', () => {
   let worst = 0;
   for (const file of ['held_out_intent_queries.json',
     'held_out_intent_queries_2.json', 'held_out_intent_queries_3.json',
-    'held_out_intent_queries_4.json', 'held_out_intent_queries_5.json']) {
+    'held_out_intent_queries_4.json', 'held_out_intent_queries_5.json',
+    'held_out_intent_queries_6.json']) {
     for (const c of evalFile(file)) {
       const v = store.queries[c.q];
       if (!v) continue;

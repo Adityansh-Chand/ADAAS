@@ -1,0 +1,1178 @@
+{
+  "r0001": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_003_el_sl"
+  },
+  "r0002": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0003": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_011"
+  },
+  "r0004": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_003_mat"
+  },
+  "r0005": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_mental_health"
+  },
+  "r0006": {
+    "query": "Can I work from my house a few days a week?",
+    "id": "policy_012"
+  },
+  "r0007": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_012"
+  },
+  "r0008": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_001"
+  },
+  "r0009": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_insurance"
+  },
+  "r0010": {
+    "query": "When do I get paid each month?",
+    "id": "policy_016_insurance"
+  },
+  "r0011": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_insurance"
+  },
+  "r0012": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_003_cl"
+  },
+  "r0013": {
+    "query": "What happens if I steal from the company?",
+    "id": "policy_008"
+  },
+  "r0014": {
+    "query": "Am I obliged to keep quiet about the project after I leave?",
+    "id": "policy_008"
+  },
+  "r0015": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_007"
+  },
+  "r0016": {
+    "query": "What happens if I steal from the company?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0017": {
+    "query": "What are my targets assessed against at year end?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0018": {
+    "query": "What happens if I use software that is not approved?",
+    "id": "policy_002"
+  },
+  "r0019": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_exclusions"
+  },
+  "r0020": {
+    "query": "Am I allowed to smoke in the building?",
+    "id": "policy_010"
+  },
+  "r0021": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_exclusions"
+  },
+  "r0022": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_003_cl"
+  },
+  "r0023": {
+    "query": "I am resigning, how much notice must I give?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0024": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_012"
+  },
+  "r0025": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_insurance"
+  },
+  "r0026": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_003_el_sl"
+  },
+  "r0027": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0028": {
+    "query": "Do I have to give back my laptop when I quit?",
+    "id": "policy_015"
+  },
+  "r0029": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_005"
+  },
+  "r0030": {
+    "query": "When do I get paid each month?",
+    "id": "policy_001"
+  },
+  "r0031": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_003_other"
+  },
+  "r0032": {
+    "query": "How long do I have to hand in my taxi receipts?",
+    "id": "policy_016_exclusions"
+  },
+  "r0033": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_016_workplace_support"
+  },
+  "r0034": {
+    "query": "When do I get paid each month?",
+    "id": "policy_003_el_sl"
+  },
+  "r0035": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_mental_health"
+  },
+  "r0036": {
+    "query": "Do I have to give back my laptop when I quit?",
+    "id": "policy_016_mental_health"
+  },
+  "r0037": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_mental_health"
+  },
+  "r0038": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_003_pat"
+  },
+  "r0039": {
+    "query": "Do I have to give back my laptop when I quit?",
+    "id": "policy_010"
+  },
+  "r0040": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_009"
+  },
+  "r0041": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_003_mat"
+  },
+  "r0042": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_insurance"
+  },
+  "r0043": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_mental_health"
+  },
+  "r0044": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_014"
+  },
+  "r0045": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_claims"
+  },
+  "r0046": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_002"
+  },
+  "r0047": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_004"
+  },
+  "r0048": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_005"
+  },
+  "r0049": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_004"
+  },
+  "r0050": {
+    "query": "I am resigning, how much notice must I give?",
+    "id": "policy_016_mental_health"
+  },
+  "r0051": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_012"
+  },
+  "r0052": {
+    "query": "How late can I arrive before it is a problem?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0053": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_exclusions"
+  },
+  "r0054": {
+    "query": "How late can I arrive before it is a problem?",
+    "id": "policy_016_claims"
+  },
+  "r0055": {
+    "query": "Will the company pay for a course I want to do?",
+    "id": "policy_007"
+  },
+  "r0056": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_insurance"
+  },
+  "r0057": {
+    "query": "What happens if I use software that is not approved?",
+    "id": "policy_014"
+  },
+  "r0058": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0059": {
+    "query": "Am I allowed to smoke in the building?",
+    "id": "policy_003_pat"
+  },
+  "r0060": {
+    "query": "Can I accept a gift from a supplier?",
+    "id": "policy_010"
+  },
+  "r0061": {
+    "query": "Am I obliged to keep quiet about the project after I leave?",
+    "id": "policy_009"
+  },
+  "r0062": {
+    "query": "Where do I report a fire hazard in the office?",
+    "id": "policy_016_claims"
+  },
+  "r0063": {
+    "query": "What happens if I use software that is not approved?",
+    "id": "policy_001"
+  },
+  "r0064": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0065": {
+    "query": "How long do I have to hand in my taxi receipts?",
+    "id": "policy_008"
+  },
+  "r0066": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0067": {
+    "query": "Can I work from my house a few days a week?",
+    "id": "policy_002"
+  },
+  "r0068": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_004"
+  },
+  "r0069": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0070": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_005"
+  },
+  "r0071": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_003_mat"
+  },
+  "r0072": {
+    "query": "Will the company pay for a course I want to do?",
+    "id": "policy_002"
+  },
+  "r0073": {
+    "query": "How do I get money back after a business trip?",
+    "id": "policy_014"
+  },
+  "r0074": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_003_pat"
+  },
+  "r0075": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_012"
+  },
+  "r0076": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_003_cl"
+  },
+  "r0077": {
+    "query": "How long do I have to hand in my taxi receipts?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0078": {
+    "query": "Is there money for a professional certification?",
+    "id": "policy_002"
+  },
+  "r0079": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_exclusions"
+  },
+  "r0080": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0081": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_003_mat"
+  },
+  "r0082": {
+    "query": "What time am I supposed to start in the morning?",
+    "id": "policy_016_mental_health"
+  },
+  "r0083": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_mental_health"
+  },
+  "r0084": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_001"
+  },
+  "r0085": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0086": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_exclusions"
+  },
+  "r0087": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_001"
+  },
+  "r0088": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0089": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_003_other"
+  },
+  "r0090": {
+    "query": "Can I accept a gift from a supplier?",
+    "id": "policy_001"
+  },
+  "r0091": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0092": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_006"
+  },
+  "r0093": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0094": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_003_el_sl"
+  },
+  "r0095": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_insurance"
+  },
+  "r0096": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0097": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_005"
+  },
+  "r0098": {
+    "query": "What time am I supposed to start in the morning?",
+    "id": "policy_004"
+  },
+  "r0099": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_insurance"
+  },
+  "r0100": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_006"
+  },
+  "r0101": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_003_other"
+  },
+  "r0102": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_003_cl"
+  },
+  "r0103": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_exclusions"
+  },
+  "r0104": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_006"
+  },
+  "r0105": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_003_el_sl"
+  },
+  "r0106": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_002"
+  },
+  "r0107": {
+    "query": "Can I work from my house a few days a week?",
+    "id": "policy_009"
+  },
+  "r0108": {
+    "query": "What happens if I steal from the company?",
+    "id": "policy_003_other"
+  },
+  "r0109": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_exclusions"
+  },
+  "r0110": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_mental_health"
+  },
+  "r0111": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_claims"
+  },
+  "r0112": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0113": {
+    "query": "What are my targets assessed against at year end?",
+    "id": "policy_003_mat"
+  },
+  "r0114": {
+    "query": "What happens if I use software that is not approved?",
+    "id": "policy_008"
+  },
+  "r0115": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_003_cl"
+  },
+  "r0116": {
+    "query": "What are my targets assessed against at year end?",
+    "id": "policy_007"
+  },
+  "r0117": {
+    "query": "What happens if I use software that is not approved?",
+    "id": "policy_016_exclusions"
+  },
+  "r0118": {
+    "query": "What is a PIP and when do I get one?",
+    "id": "policy_003_pat"
+  },
+  "r0119": {
+    "query": "Where do I report a fire hazard in the office?",
+    "id": "policy_007"
+  },
+  "r0120": {
+    "query": "Am I obliged to keep quiet about the project after I leave?",
+    "id": "policy_001"
+  },
+  "r0121": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_003_cl"
+  },
+  "r0122": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0123": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0124": {
+    "query": "Is there money for a professional certification?",
+    "id": "policy_003_mat"
+  },
+  "r0125": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_005"
+  },
+  "r0126": {
+    "query": "What time am I supposed to start in the morning?",
+    "id": "policy_013"
+  },
+  "r0127": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_003_mat"
+  },
+  "r0128": {
+    "query": "What is a PIP and when do I get one?",
+    "id": "policy_003_el_sl"
+  },
+  "r0129": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_claims"
+  },
+  "r0130": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0131": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_007"
+  },
+  "r0132": {
+    "query": "How late can I arrive before it is a problem?",
+    "id": "policy_002"
+  },
+  "r0133": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_claims"
+  },
+  "r0134": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_claims"
+  },
+  "r0135": {
+    "query": "How do I get money back after a business trip?",
+    "id": "policy_010"
+  },
+  "r0136": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_exclusions"
+  },
+  "r0137": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_003_pat"
+  },
+  "r0138": {
+    "query": "Can I accept a gift from a supplier?",
+    "id": "policy_003_pat"
+  },
+  "r0139": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_009"
+  },
+  "r0140": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_010"
+  },
+  "r0141": {
+    "query": "Can I accept a gift from a supplier?",
+    "id": "policy_016_exclusions"
+  },
+  "r0142": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_mental_health"
+  },
+  "r0143": {
+    "query": "Is there money for a professional certification?",
+    "id": "policy_014"
+  },
+  "r0144": {
+    "query": "How do I get money back after a business trip?",
+    "id": "policy_007"
+  },
+  "r0145": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_003_el_sl"
+  },
+  "r0146": {
+    "query": "What time am I supposed to start in the morning?",
+    "id": "policy_008"
+  },
+  "r0147": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_exclusions"
+  },
+  "r0148": {
+    "query": "I am resigning, how much notice must I give?",
+    "id": "policy_011"
+  },
+  "r0149": {
+    "query": "Will the company pay for a course I want to do?",
+    "id": "policy_014"
+  },
+  "r0150": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_006"
+  },
+  "r0151": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_010"
+  },
+  "r0152": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_002"
+  },
+  "r0153": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0154": {
+    "query": "Where do I report a fire hazard in the office?",
+    "id": "policy_001"
+  },
+  "r0155": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_005"
+  },
+  "r0156": {
+    "query": "I am resigning, how much notice must I give?",
+    "id": "policy_015"
+  },
+  "r0157": {
+    "query": "What happens if I steal from the company?",
+    "id": "policy_001"
+  },
+  "r0158": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_003_other"
+  },
+  "r0159": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_013"
+  },
+  "r0160": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_013"
+  },
+  "r0161": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_003_cl"
+  },
+  "r0162": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0163": {
+    "query": "What time am I supposed to start in the morning?",
+    "id": "policy_002"
+  },
+  "r0164": {
+    "query": "Can I accept a gift from a supplier?",
+    "id": "policy_005"
+  },
+  "r0165": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0166": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_003_pat"
+  },
+  "r0167": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0168": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_003_pat"
+  },
+  "r0169": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_007"
+  },
+  "r0170": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_010"
+  },
+  "r0171": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0172": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_016_mental_health"
+  },
+  "r0173": {
+    "query": "What happens if I use software that is not approved?",
+    "id": "policy_004"
+  },
+  "r0174": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_003_el_sl"
+  },
+  "r0175": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_008"
+  },
+  "r0176": {
+    "query": "Will the company pay for a course I want to do?",
+    "id": "policy_008"
+  },
+  "r0177": {
+    "query": "When do I get paid each month?",
+    "id": "policy_006"
+  },
+  "r0178": {
+    "query": "Am I allowed to smoke in the building?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0179": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_insurance"
+  },
+  "r0180": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_014"
+  },
+  "r0181": {
+    "query": "Can I work from my house a few days a week?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0182": {
+    "query": "How do I get money back after a business trip?",
+    "id": "policy_016_claims"
+  },
+  "r0183": {
+    "query": "I am resigning, how much notice must I give?",
+    "id": "policy_016_insurance"
+  },
+  "r0184": {
+    "query": "How do I get money back after a business trip?",
+    "id": "policy_015"
+  },
+  "r0185": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_mental_health"
+  },
+  "r0186": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_003_pat"
+  },
+  "r0187": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0188": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_003_pat"
+  },
+  "r0189": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_009"
+  },
+  "r0190": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_003_cl"
+  },
+  "r0191": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_003_mat"
+  },
+  "r0192": {
+    "query": "Will the company pay for a course I want to do?",
+    "id": "policy_003_pat"
+  },
+  "r0193": {
+    "query": "What is a PIP and when do I get one?",
+    "id": "policy_006"
+  },
+  "r0194": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_016_claims"
+  },
+  "r0195": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_006"
+  },
+  "r0196": {
+    "query": "How many days off do I get each year?",
+    "id": "policy_010"
+  },
+  "r0197": {
+    "query": "Can I work from my house a few days a week?",
+    "id": "policy_004"
+  },
+  "r0198": {
+    "query": "Where do I report a fire hazard in the office?",
+    "id": "policy_010"
+  },
+  "r0199": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0200": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_006"
+  },
+  "r0201": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_016_exclusions"
+  },
+  "r0202": {
+    "query": "What happens if I steal from the company?",
+    "id": "policy_016_mental_health"
+  },
+  "r0203": {
+    "query": "Is there money for a professional certification?",
+    "id": "policy_016_insurance"
+  },
+  "r0204": {
+    "query": "What is a PIP and when do I get one?",
+    "id": "policy_015"
+  },
+  "r0205": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_001"
+  },
+  "r0206": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_010"
+  },
+  "r0207": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_001"
+  },
+  "r0208": {
+    "query": "How long do I have to hand in my taxi receipts?",
+    "id": "policy_016_claims"
+  },
+  "r0209": {
+    "query": "Where do I report a fire hazard in the office?",
+    "id": "policy_009"
+  },
+  "r0210": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_003_mat"
+  },
+  "r0211": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_009"
+  },
+  "r0212": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_claims"
+  },
+  "r0213": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_claims"
+  },
+  "r0214": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_exclusions"
+  },
+  "r0215": {
+    "query": "How late can I arrive before it is a problem?",
+    "id": "policy_003_cl"
+  },
+  "r0216": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_001"
+  },
+  "r0217": {
+    "query": "Am I allowed to put company files on my own USB?",
+    "id": "policy_008"
+  },
+  "r0218": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_002"
+  },
+  "r0219": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_mental_health"
+  },
+  "r0220": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_004"
+  },
+  "r0221": {
+    "query": "When do I get paid each month?",
+    "id": "policy_005"
+  },
+  "r0222": {
+    "query": "What happens if I steal from the company?",
+    "id": "policy_005"
+  },
+  "r0223": {
+    "query": "Am I obliged to keep quiet about the project after I leave?",
+    "id": "policy_013"
+  },
+  "r0224": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_claims"
+  },
+  "r0225": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_005"
+  },
+  "r0226": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_003_other"
+  },
+  "r0227": {
+    "query": "Am I allowed to smoke in the building?",
+    "id": "policy_016_exclusions"
+  },
+  "r0228": {
+    "query": "How late can I arrive before it is a problem?",
+    "id": "policy_010"
+  },
+  "r0229": {
+    "query": "Do I have to give back my laptop when I quit?",
+    "id": "policy_013"
+  },
+  "r0230": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_016_claims"
+  },
+  "r0231": {
+    "query": "Am I obliged to keep quiet about the project after I leave?",
+    "id": "policy_012"
+  },
+  "r0232": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_016_workplace_support"
+  },
+  "r0233": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0234": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0235": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_claims"
+  },
+  "r0236": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_016_insurance"
+  },
+  "r0237": {
+    "query": "Are eye tests and dental visits paid for?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0238": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0239": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_003_pat"
+  },
+  "r0240": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_012"
+  },
+  "r0241": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_009"
+  },
+  "r0242": {
+    "query": "My wife is having a baby, what am I entitled to?",
+    "id": "policy_003_el_sl"
+  },
+  "r0243": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_003_mat"
+  },
+  "r0244": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0245": {
+    "query": "Am I allowed to smoke in the building?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0246": {
+    "query": "Can I accept a gift from a supplier?",
+    "id": "policy_008"
+  },
+  "r0247": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0248": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_016_claims"
+  },
+  "r0249": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_003_other"
+  },
+  "r0250": {
+    "query": "What is a PIP and when do I get one?",
+    "id": "policy_007"
+  },
+  "r0251": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_006"
+  },
+  "r0252": {
+    "query": "How long do I have to hand in my taxi receipts?",
+    "id": "policy_015"
+  },
+  "r0253": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_005"
+  },
+  "r0254": {
+    "query": "Am I obliged to keep quiet about the project after I leave?",
+    "id": "policy_016_mental_health"
+  },
+  "r0255": {
+    "query": "Do I have to give back my laptop when I quit?",
+    "id": "policy_012"
+  },
+  "r0256": {
+    "query": "What are my targets assessed against at year end?",
+    "id": "policy_010"
+  },
+  "r0257": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_006"
+  },
+  "r0258": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_012"
+  },
+  "r0259": {
+    "query": "Someone is making inappropriate jokes about me",
+    "id": "policy_008"
+  },
+  "r0260": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0261": {
+    "query": "Will the company pay for a course I want to do?",
+    "id": "policy_003_cl"
+  },
+  "r0262": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_002"
+  },
+  "r0263": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_exclusions"
+  },
+  "r0264": {
+    "query": "What time am I supposed to start in the morning?",
+    "id": "policy_001"
+  },
+  "r0265": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_010"
+  },
+  "r0266": {
+    "query": "What are my targets assessed against at year end?",
+    "id": "policy_006"
+  },
+  "r0267": {
+    "query": "Is there money for a professional certification?",
+    "id": "policy_007"
+  },
+  "r0268": {
+    "query": "Is there a nurse on site if I hurt myself?",
+    "id": "policy_015"
+  },
+  "r0269": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_005"
+  },
+  "r0270": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_insurance"
+  },
+  "r0271": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_007"
+  },
+  "r0272": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_insurance"
+  },
+  "r0273": {
+    "query": "What are my targets assessed against at year end?",
+    "id": "policy_002"
+  },
+  "r0274": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_claims"
+  },
+  "r0275": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_opd_wellness"
+  },
+  "r0276": {
+    "query": "I am burnt out and need someone to talk to",
+    "id": "policy_015"
+  },
+  "r0277": {
+    "query": "Does the company pay for my hospital bills?",
+    "id": "policy_006"
+  },
+  "r0278": {
+    "query": "Can I work from my house a few days a week?",
+    "id": "policy_013"
+  },
+  "r0279": {
+    "query": "Is there money for a professional certification?",
+    "id": "policy_009"
+  },
+  "r0280": {
+    "query": "Is a plastic surgery procedure covered?",
+    "id": "policy_003_pat"
+  },
+  "r0281": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_003_cl"
+  },
+  "r0282": {
+    "query": "Do I pay upfront at the hospital or does the insurer?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0283": {
+    "query": "Can I tell a friend which clients we work with?",
+    "id": "policy_006"
+  },
+  "r0284": {
+    "query": "I need two days off for a family errand",
+    "id": "policy_010"
+  },
+  "r0285": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_003_el_sl"
+  },
+  "r0286": {
+    "query": "Do I get extra days for adopting a child as the father?",
+    "id": "policy_003_el_sl"
+  },
+  "r0287": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_002"
+  },
+  "r0288": {
+    "query": "Is chemotherapy for cancer covered by the plan?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0289": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_mental_health"
+  },
+  "r0290": {
+    "query": "Can I get a day back for working on a Sunday?",
+    "id": "policy_003_other"
+  },
+  "r0291": {
+    "query": "Can my parents be added to the health cover?",
+    "id": "policy_016_maternity_critical"
+  },
+  "r0292": {
+    "query": "I am pregnant, how long can I be away?",
+    "id": "policy_007"
+  },
+  "r0293": {
+    "query": "Who do I talk to if I am unhappy about something?",
+    "id": "policy_016_workplace_support"
+  },
+  "r0294": {
+    "query": "Do I have to give back my laptop when I quit?",
+    "id": "policy_011"
+  }
+}

@@ -38,3 +38,12 @@ coverage/
 # Downloaded sentence-transformer weights (~87 MB). Cached explicitly rather than
 # left inside node_modules so CI can restore it between runs.
 hr-backend/.model-cache/
+
+# The model service is a separate package with its own dependency tree -- that
+# separation is the point of it, so it has its own node_modules.
+model-service/node_modules/
+model-service/.model-cache/
+
+# Notifications are written through to a file so a restart does not lose every
+# decision anyone was told about. Runtime state, not source.
+hr-backend/.data/

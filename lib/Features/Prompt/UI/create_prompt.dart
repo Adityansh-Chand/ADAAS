@@ -403,14 +403,38 @@ class MessageBubble extends StatelessWidget {
               message.text ?? '',
               style: theme.textTheme.bodyMedium?.copyWith(color: ink),
             ),
-            if (message.sources.isNotEmpty) ...[
+            // The answer names the one policy it came from, in its own text.
+            // Anything else retrieval returned is listed under a heading that
+            // says what it is: also retrieved, not also used.
+            //
+            // It used to read "Sources: a; b; c; d; e" -- five policies under a
+            // word that means "this is where the answer came from", when one
+            // produced the answer and the other four were the rest of the top
+            // five. That is a claim about what the system did, which is the
+            // category this project is least willing to be loose about, and it
+            // was visible in the first committed screenshot.
+            if (message.sources.length == 1) ...[
               const SizedBox(height: 10),
               Text(
-                message.sources.length == 1
-                    ? 'Source: ${message.sources.first}'
-                    : 'Sources: ${message.sources.join('; ')}',
+                'Source: ${message.sources.first}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: ink.withValues(alpha: 0.72),
+                ),
+              ),
+            ] else if (message.sources.length > 1) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Source: ${message.sources.first}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: ink.withValues(alpha: 0.72),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Also retrieved, not used: '
+                '${message.sources.skip(1).join('; ')}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: ink.withValues(alpha: 0.55),
                 ),
               ),
             ],

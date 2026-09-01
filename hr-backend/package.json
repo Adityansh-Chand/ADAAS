@@ -17,7 +17,10 @@
     "rerank:verify": "node scripts/build_rerank_scores.js --verify",
     "bakeoff": "node scripts/bakeoff_retrieval.js",
     "bakeoff:intent": "node scripts/bakeoff_intent.js",
-    "probe:abstention": "node scripts/probe_abstention.js"
+    "bakeoff:margin": "node scripts/bakeoff_intent.js --stage=margin",
+    "probe:abstention": "node scripts/probe_abstention.js",
+    "probe:answerability": "node scripts/probe_answerability.js",
+    "annotate": "node scripts/annotate.js"
   },
   "keywords": [],
   "author": "",

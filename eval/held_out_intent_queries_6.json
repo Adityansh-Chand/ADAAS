@@ -1,0 +1,133 @@
+{
+  "about": "Sixth held-out intent set. Written before the asymmetric decision rule that item 5 of the README's open list calls for, and before any threshold was calibrated -- the same order sets 4 and 5 were created in. Sets 3, 4 and 5 were all read in the previous round, so all three are spent for selection and none of them can measure the next change.",
+  "how_it_differs_from_5": "Set 5 was a targeted regression set: it probed one known failure class, so a good score on it proves the gap is closed and not that the classifier generalises. This one is general. It samples the whole surface -- all three intents, leave and non-leave topics, and the registers the other sets under-cover: terse imperatives with no pronoun, sentences with a typo, a question and a request in the same message, and polite padding that buries the verb.",
+  "the_hardest_cases_are_deliberate": "Four cases mix a question with an action ('what is the casual leave limit, and book me two days'). A router that must choose one label will be wrong about half of each. They are labelled by what the service should DO -- the action, because acting on a request and mentioning the policy is recoverable, while answering a question and silently not filing the leave is not. If the classifier gets these wrong that is a finding about a real ambiguity, not a bug, and it is recorded here so the reading is fixed before the score is seen.",
+  "labels": [
+    "leaveBalance",
+    "applyLeave",
+    "policyQuestion"
+  ],
+  "cases": [
+    {
+      "q": "balance",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how much annual leve do i have left",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "could you possibly let me know where my leave stands at the moment",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "days remaining",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "i think i have used most of mine, can you confirm",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "whats my sick leave at",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "leave position for me and for the year so far",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "quick check on my entitlement",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how many of the 18 have i taken",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "tell me if i can afford three days off",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "off tomorrow",
+      "label": "applyLeave"
+    },
+    {
+      "q": "please put in a leave for the 23rd, i have a wedding",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i wont be avilable on friday",
+      "label": "applyLeave"
+    },
+    {
+      "q": "what is the casual leave limit, and book me two days",
+      "label": "applyLeave"
+    },
+    {
+      "q": "sick today",
+      "label": "applyLeave"
+    },
+    {
+      "q": "if it is allowed take the 14th off for me",
+      "label": "applyLeave"
+    },
+    {
+      "q": "i would be grateful if you could arrange leave for me next tuesday",
+      "label": "applyLeave"
+    },
+    {
+      "q": "how does comp off work, and use one for me on the 9th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "put the 30th and 31st down as leave",
+      "label": "applyLeave"
+    },
+    {
+      "q": "cannot come in, child is ill",
+      "label": "applyLeave"
+    },
+    {
+      "q": "notice period",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "are personal calls allowed during core hours",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is dental covered under the plan",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "who approves an expense over the limit",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "do i lose leave if i resign mid year",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "explain the pip proces",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what should i do about a colleague making me uncomfortable",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is there any rule about second jobs",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how much notice for planned time off",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what does the company cover if i am injured at work",
+      "label": "policyQuestion"
+    }
+  ],
+  "one_case_was_replaced": "The case originally written as 'what is the rule on working from another city' was removed after the leakage check measured it at 0.9478 cosine against the training example 'what rules govern working from another city' -- over the 0.92 ceiling, so it failed the build rather than merely looking close. It was replaced with 'are personal calls allowed during core hours'. This happened after the set had been scored once, which is disclosed rather than glossed, exactly as the same thing was disclosed for set 4: the reason was a leakage measurement and not an accuracy one, and removing a near-paraphrase of a training example can only make the set harder. The gate is what caught it -- writing a fixture and believing it is held out is precisely the mistake that check exists to prevent, and it has now caught the same error twice, in two different sets, written by the person who also wrote the check."
+}

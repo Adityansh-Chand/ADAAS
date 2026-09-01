@@ -1,6 +1,7 @@
 import 'package:adaas/Features/Prompt/UI/create_prompt.dart';
 import 'package:adaas/Model/chat_message_model.dart';
 import 'package:adaas/Model/leave_balance_model.dart';
+import 'package:adaas/theme/app_theme.dart';
 import 'package:adaas/widgets/leave_summary_table.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 Widget _host(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
+  _sourceLabelTests();
   testWidgets('LeaveSummaryTable shows remaining against entitlement',
       (tester) async {
     await tester.pumpWidget(_host(const LeaveSummaryTable(
@@ -129,5 +131,72 @@ void main() {
     expect(find.text('NOT COMPLETED'), findsOneWidget);
     expect(find.byIcon(Icons.notifications_none), findsOneWidget);
     expect(find.byIcon(Icons.error_outline), findsOneWidget);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// What the source line claims
+// ---------------------------------------------------------------------------
+
+void _sourceLabelTests() {
+  testWidgets('extra retrieved policies are not labelled as sources', (tester) async {
+    // The bubble used to print "Sources: a; b; c; d; e" whenever retrieval
+    // returned five policies -- one produced the answer and four were the rest
+    // of the top five, all under a word that means "this is where the answer
+    // came from". A reader could only conclude that five documents informed it.
+    //
+    // Caught by looking at a committed screenshot, not by a test, which is why
+    // there is now a test.
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.light(),
+      home: Scaffold(
+        body: MessageBubble(
+          message: AppMessageModel(
+            role: 'model',
+            type: MessageType.text,
+            text: 'Remote work requires manager approval.',
+            sources: const [
+              'Flexible Work Arrangement Policy',
+              'Employee Handbook, Section 4: Attendance',
+              'Leave Policy Guidelines, Section 3.5',
+            ],
+          ),
+          isUserMessage: false,
+          maxWidth: 600,
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.text('Source: Flexible Work Arrangement Policy'), findsOneWidget);
+    expect(
+      find.textContaining('Also retrieved, not used:'),
+      findsOneWidget,
+      reason: 'the other retrieved policies must say what they are',
+    );
+    // The plural heading is the specific claim being retired.
+    expect(find.textContaining('Sources:'), findsNothing);
+  });
+
+  testWidgets('a single source keeps the plain label', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.light(),
+      home: Scaffold(
+        body: MessageBubble(
+          message: AppMessageModel(
+            role: 'model',
+            type: MessageType.text,
+            text: 'Smoking is prohibited on premises.',
+            sources: const ['Workplace Safety Policy'],
+          ),
+          isUserMessage: false,
+          maxWidth: 600,
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.text('Source: Workplace Safety Policy'), findsOneWidget);
+    expect(find.textContaining('Also retrieved'), findsNothing);
   });
 }
