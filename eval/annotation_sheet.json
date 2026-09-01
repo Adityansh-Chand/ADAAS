@@ -1,0 +1,1776 @@
+{
+  "about": "Blind relevance annotation sheet. Fill in `grade` on every row: 2 = this document answers the question, 1 = useful but incomplete, 0 = not relevant. Do not consult eval/policy_qrels.json, and do not run the retriever -- the point of a second opinion is that it is formed without either. Save as eval/policy_qrels.second.json and run `npm run annotate -- --agree eval/policy_qrels.second.json`.",
+  "rubric": {
+    "0": "Not relevant.",
+    "1": "Useful but incomplete: addresses the topic, does not contain the fact asked for.",
+    "2": "Answers it. A reader given only this document would have what they asked for."
+  },
+  "blinding": "Policy ids, existing grades, gold labels and retrieval scores are all withheld, and rows are shuffled with a fixed seed so consecutive rows are not the same query.",
+  "seed": 1597463007,
+  "pairs": [
+    {
+      "row": "r0001",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0002",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0003",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Exit & Separation Policy?\nObjective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "grade": null
+    },
+    {
+      "row": "r0004",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0005",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0006",
+      "query": "Can I work from my house a few days a week?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0007",
+      "query": "I need two days off for a family errand",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0008",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0009",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0010",
+      "query": "When do I get paid each month?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0011",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0012",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0013",
+      "query": "What happens if I steal from the company?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0014",
+      "query": "Am I obliged to keep quiet about the project after I leave?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0015",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0016",
+      "query": "What happens if I steal from the company?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0017",
+      "query": "What are my targets assessed against at year end?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0018",
+      "query": "What happens if I use software that is not approved?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0019",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0020",
+      "query": "Am I allowed to smoke in the building?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0021",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0022",
+      "query": "I need two days off for a family errand",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0023",
+      "query": "I am resigning, how much notice must I give?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0024",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0025",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0026",
+      "query": "I need two days off for a family errand",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0027",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0028",
+      "query": "Do I have to give back my laptop when I quit?",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0029",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0030",
+      "query": "When do I get paid each month?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0031",
+      "query": "How many days off do I get each year?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0032",
+      "query": "How long do I have to hand in my taxi receipts?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0033",
+      "query": "I need two days off for a family errand",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0034",
+      "query": "When do I get paid each month?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0035",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0036",
+      "query": "Do I have to give back my laptop when I quit?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0037",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0038",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0039",
+      "query": "Do I have to give back my laptop when I quit?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0040",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0041",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0042",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0043",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0044",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What is the Training & Development Policy?\nObjective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0045",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0046",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0047",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0048",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0049",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0050",
+      "query": "I am resigning, how much notice must I give?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0051",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0052",
+      "query": "How late can I arrive before it is a problem?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0053",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0054",
+      "query": "How late can I arrive before it is a problem?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0055",
+      "query": "Will the company pay for a course I want to do?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0056",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0057",
+      "query": "What happens if I use software that is not approved?",
+      "policy": "What is the Training & Development Policy?\nObjective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0058",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0059",
+      "query": "Am I allowed to smoke in the building?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0060",
+      "query": "Can I accept a gift from a supplier?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0061",
+      "query": "Am I obliged to keep quiet about the project after I leave?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0062",
+      "query": "Where do I report a fire hazard in the office?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0063",
+      "query": "What happens if I use software that is not approved?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0064",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0065",
+      "query": "How long do I have to hand in my taxi receipts?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0066",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0067",
+      "query": "Can I work from my house a few days a week?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0068",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0069",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0070",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0071",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0072",
+      "query": "Will the company pay for a course I want to do?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0073",
+      "query": "How do I get money back after a business trip?",
+      "policy": "What is the Training & Development Policy?\nObjective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0074",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0075",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0076",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0077",
+      "query": "How long do I have to hand in my taxi receipts?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0078",
+      "query": "Is there money for a professional certification?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0079",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0080",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0081",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0082",
+      "query": "What time am I supposed to start in the morning?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0083",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0084",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0085",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0086",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0087",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0088",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0089",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0090",
+      "query": "Can I accept a gift from a supplier?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0091",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0092",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0093",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0094",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0095",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0096",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0097",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0098",
+      "query": "What time am I supposed to start in the morning?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0099",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0100",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0101",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0102",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0103",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0104",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0105",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0106",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0107",
+      "query": "Can I work from my house a few days a week?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0108",
+      "query": "What happens if I steal from the company?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0109",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0110",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0111",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0112",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0113",
+      "query": "What are my targets assessed against at year end?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0114",
+      "query": "What happens if I use software that is not approved?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0115",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0116",
+      "query": "What are my targets assessed against at year end?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0117",
+      "query": "What happens if I use software that is not approved?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0118",
+      "query": "What is a PIP and when do I get one?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0119",
+      "query": "Where do I report a fire hazard in the office?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0120",
+      "query": "Am I obliged to keep quiet about the project after I leave?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0121",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0122",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0123",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0124",
+      "query": "Is there money for a professional certification?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0125",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0126",
+      "query": "What time am I supposed to start in the morning?",
+      "policy": "What is the Remote Work & Flexible Work Policy?\nObjective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "grade": null
+    },
+    {
+      "row": "r0127",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0128",
+      "query": "What is a PIP and when do I get one?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0129",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0130",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0131",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0132",
+      "query": "How late can I arrive before it is a problem?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0133",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0134",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0135",
+      "query": "How do I get money back after a business trip?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0136",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0137",
+      "query": "I need two days off for a family errand",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0138",
+      "query": "Can I accept a gift from a supplier?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0139",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0140",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0141",
+      "query": "Can I accept a gift from a supplier?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0142",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0143",
+      "query": "Is there money for a professional certification?",
+      "policy": "What is the Training & Development Policy?\nObjective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0144",
+      "query": "How do I get money back after a business trip?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0145",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0146",
+      "query": "What time am I supposed to start in the morning?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0147",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0148",
+      "query": "I am resigning, how much notice must I give?",
+      "policy": "What is the Exit & Separation Policy?\nObjective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "grade": null
+    },
+    {
+      "row": "r0149",
+      "query": "Will the company pay for a course I want to do?",
+      "policy": "What is the Training & Development Policy?\nObjective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0150",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0151",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0152",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0153",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0154",
+      "query": "Where do I report a fire hazard in the office?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0155",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0156",
+      "query": "I am resigning, how much notice must I give?",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0157",
+      "query": "What happens if I steal from the company?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0158",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0159",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What is the Remote Work & Flexible Work Policy?\nObjective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "grade": null
+    },
+    {
+      "row": "r0160",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What is the Remote Work & Flexible Work Policy?\nObjective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "grade": null
+    },
+    {
+      "row": "r0161",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0162",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0163",
+      "query": "What time am I supposed to start in the morning?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0164",
+      "query": "Can I accept a gift from a supplier?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0165",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0166",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0167",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0168",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0169",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0170",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0171",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0172",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0173",
+      "query": "What happens if I use software that is not approved?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0174",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0175",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0176",
+      "query": "Will the company pay for a course I want to do?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0177",
+      "query": "When do I get paid each month?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0178",
+      "query": "Am I allowed to smoke in the building?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0179",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0180",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What is the Training & Development Policy?\nObjective: Promote skill development. Detailed Policy: L&D identifies training needs via performance reviews. Programs include technical, behavioral, leadership, and mandatory compliance training. Certifications may be sponsored for relevant roles. Completion of training and feedback forms is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0181",
+      "query": "Can I work from my house a few days a week?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0182",
+      "query": "How do I get money back after a business trip?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0183",
+      "query": "I am resigning, how much notice must I give?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0184",
+      "query": "How do I get money back after a business trip?",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0185",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0186",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0187",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0188",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0189",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0190",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0191",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0192",
+      "query": "Will the company pay for a course I want to do?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0193",
+      "query": "What is a PIP and when do I get one?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0194",
+      "query": "How many days off do I get each year?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0195",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0196",
+      "query": "How many days off do I get each year?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0197",
+      "query": "Can I work from my house a few days a week?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0198",
+      "query": "Where do I report a fire hazard in the office?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0199",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0200",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0201",
+      "query": "I need two days off for a family errand",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0202",
+      "query": "What happens if I steal from the company?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0203",
+      "query": "Is there money for a professional certification?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0204",
+      "query": "What is a PIP and when do I get one?",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0205",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0206",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0207",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0208",
+      "query": "How long do I have to hand in my taxi receipts?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0209",
+      "query": "Where do I report a fire hazard in the office?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0210",
+      "query": "I need two days off for a family errand",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0211",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0212",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0213",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0214",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0215",
+      "query": "How late can I arrive before it is a problem?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0216",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0217",
+      "query": "Am I allowed to put company files on my own USB?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0218",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0219",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0220",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What is the IT & Data Security Policy?\nObjective: To protect digital infrastructure. Detailed Policy: Use company systems for official tasks only. Keep antivirus/patches updated. Use strong, regularly changed passwords. Do not install unauthorized software or extensions. Confidential files must not be emailed externally or copied to personal drives. Avoid public Wi-Fi or use VPN. Immediately report breaches to IT Security. Lock devices when unattended.",
+      "grade": null
+    },
+    {
+      "row": "r0221",
+      "query": "When do I get paid each month?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0222",
+      "query": "What happens if I steal from the company?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0223",
+      "query": "Am I obliged to keep quiet about the project after I leave?",
+      "policy": "What is the Remote Work & Flexible Work Policy?\nObjective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "grade": null
+    },
+    {
+      "row": "r0224",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0225",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0226",
+      "query": "I need two days off for a family errand",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0227",
+      "query": "Am I allowed to smoke in the building?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0228",
+      "query": "How late can I arrive before it is a problem?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0229",
+      "query": "Do I have to give back my laptop when I quit?",
+      "policy": "What is the Remote Work & Flexible Work Policy?\nObjective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "grade": null
+    },
+    {
+      "row": "r0230",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0231",
+      "query": "Am I obliged to keep quiet about the project after I leave?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0232",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0233",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0234",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0235",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0236",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0237",
+      "query": "Are eye tests and dental visits paid for?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0238",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0239",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0240",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0241",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0242",
+      "query": "My wife is having a baby, what am I entitled to?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0243",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What is the Maternity Leave policy?\nEntitlement: 26 weeks as per statutory norms. Can be availed up to 8 weeks pre-delivery and the balance post-delivery. Additional leave provided for miscarriage, adoption (children <3 months), and surrogacy arrangements. Post-maternity work-from-home may be granted based on role feasibility and manager approval.",
+      "grade": null
+    },
+    {
+      "row": "r0244",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0245",
+      "query": "Am I allowed to smoke in the building?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0246",
+      "query": "Can I accept a gift from a supplier?",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0247",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0248",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0249",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0250",
+      "query": "What is a PIP and when do I get one?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0251",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0252",
+      "query": "How long do I have to hand in my taxi receipts?",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0253",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0254",
+      "query": "Am I obliged to keep quiet about the project after I leave?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0255",
+      "query": "Do I have to give back my laptop when I quit?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0256",
+      "query": "What are my targets assessed against at year end?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0257",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0258",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What is the Grievance Redressal Policy?\nObjective: Fair resolution of concerns. Detailed Policy: Employees may raise concerns to HR or the Grievance Cell. HR will acknowledge within 3 working days. Issues should be resolved within 10 working days whenever possible. If dissatisfied, escalation to HR leadership or business head is allowed.",
+      "grade": null
+    },
+    {
+      "row": "r0259",
+      "query": "Someone is making inappropriate jokes about me",
+      "policy": "What is the Employee Conduct & Disciplinary Policy?\nObjective: Ensure discipline. Detailed Policy: Misconduct includes policy violation, fraud, theft, data breach, harassment, unauthorized absence, insubordination, or data misuse. Disciplinary Actions: Verbal warning, Written warning, Suspension, Termination (for severe violations). Investigations will be documented, and employees given opportunities to respond.",
+      "grade": null
+    },
+    {
+      "row": "r0260",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0261",
+      "query": "Will the company pay for a course I want to do?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0262",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0263",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What is excluded from the medical policy?\nCommon exclusions include cosmetic surgery, self-inflicted injuries, non-medically necessary procedures, unapproved treatments, and over-the-counter medicines without prescriptions. Pre-existing illness waiting periods may apply as per insurer rules.",
+      "grade": null
+    },
+    {
+      "row": "r0264",
+      "query": "What time am I supposed to start in the morning?",
+      "policy": "What is the Code of Conduct policy?\nObjective: To ensure employees uphold the highest standards of ethics and professionalism. Scope: Applies to all employees, contractors, interns, and partners. Detailed Policy: Employees must maintain honesty and integrity. Confidential information (client data, IP, source code, financial details) must not be disclosed. Conflicts of interest must be avoided. Bribery, kickbacks, or gifts influencing decisions are strictly prohibited. Abusive language, harassment, and discrimination are not tolerated. Fraud and falsification of documents are considered misconduct. Compliance with all legal and regulatory requirements is mandatory.",
+      "grade": null
+    },
+    {
+      "row": "r0265",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0266",
+      "query": "What are my targets assessed against at year end?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0267",
+      "query": "Is there money for a professional certification?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0268",
+      "query": "Is there a nurse on site if I hurt myself?",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0269",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What is the Anti-Harassment & Anti-Discrimination Policy?\nObjective: Maintain a respectful, safe, inclusive workplace. Detailed Policy: Discrimination based on gender, caste, religion, disability, etc., is prohibited. Sexual harassment (unwelcome contact, comments, jokes, advances) is strictly forbidden. The Internal Committee (ICC) handles complaints confidentially under POSH regulations. Complaints to be resolved within statutory timelines. Retaliation against complainants is forbidden.",
+      "grade": null
+    },
+    {
+      "row": "r0270",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0271",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0272",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What does the Medical Insurance (GMI) cover?\nObjective: Provide comprehensive health coverage. Coverage: Hospitalization (illness/injury), Pre-hospitalization (30 days), Post-hospitalization (60 days), Day-care procedures, Emergency hospitalization, Room rent/ICU as per limits. Sum Insured: Provided as per grade. Dependents: Spouse, children, and parents/in-laws (plan dependent) can be covered. Top-up: Employees can purchase higher coverage during enrollment windows.",
+      "grade": null
+    },
+    {
+      "row": "r0273",
+      "query": "What are my targets assessed against at year end?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0274",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "How do I make a medical claim (Cashless vs. Reimbursement)?\nCashless: Use at network hospitals by presenting the company/insurance e-card and ID proof. Reimbursement: For non-network hospitals. Submit original bills, discharge summary, prescriptions, and reports within the insurer's timeline (7-30 days).",
+      "grade": null
+    },
+    {
+      "row": "r0275",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What are the OPD and Preventive Healthcare benefits?\nOPD Benefits: May include consultation fees, diagnostic tests, medicines, dental/optical (plan-dependent). Requires valid bills. Preventive Healthcare: Annual health checkups, on-site medical camps, vaccination drives (flu, COVID-19), and mental health awareness programs.",
+      "grade": null
+    },
+    {
+      "row": "r0276",
+      "query": "I am burnt out and need someone to talk to",
+      "policy": "What is the Travel & Expense Reimbursement Policy?\nObjective: Ensure transparency. Detailed Policy: All travel requires prior approval. Choose cost-effective travel/hotel options. Reimbursable expenses: airfare/train tickets, hotel stay, meals, local transport, approved client entertainment. Bills must be submitted within 10 working days. Fake or inflated claims lead to disciplinary action.",
+      "grade": null
+    },
+    {
+      "row": "r0277",
+      "query": "Does the company pay for my hospital bills?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0278",
+      "query": "Can I work from my house a few days a week?",
+      "policy": "What is the Remote Work & Flexible Work Policy?\nObjective: Support flexibility with accountability. Detailed Policy: Remote work requires manager/HR approval. Employees must ensure stable internet, secure workspace, and confidentiality. Attendance and availability during core hours are mandatory. Virtual meetings must be attended professionally. Equipment remains company property.",
+      "grade": null
+    },
+    {
+      "row": "r0279",
+      "query": "Is there money for a professional certification?",
+      "policy": "What is the Confidentiality & Non-Disclosure Policy?\nObjective: Safeguard proprietary info. Detailed Policy: All employees sign an NDA at joining. Confidential info (project details, client data, financials, source code) must not be disclosed without approval. Confidentiality obligations continue even after resignation or termination.",
+      "grade": null
+    },
+    {
+      "row": "r0280",
+      "query": "Is a plastic surgery procedure covered?",
+      "policy": "What is the Paternity Leave policy?\nEntitlement: 10 days for male employees on childbirth or adoption. Can be taken in a single block or two segments. Must be availed within 3 months before or after childbirth/adoption.",
+      "grade": null
+    },
+    {
+      "row": "r0281",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What is the Casual Leave (CL) policy?\nEntitlement: 4 days per year. It cannot be carried forward, accumulated, or encashed. Intended for short-term personal matters or urgent errands. Maximum of 2 consecutive days allowed at a time. Prior approval is required whenever possible.",
+      "grade": null
+    },
+    {
+      "row": "r0282",
+      "query": "Do I pay upfront at the hospital or does the insurer?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0283",
+      "query": "Can I tell a friend which clients we work with?",
+      "policy": "What is the Compensation & Benefits Policy?\nObjective: Ensure fair and competitive remuneration. Detailed Policy: Salaries credited monthly on or before the last working day. Annual increments based on performance ratings and business conditions. Benefits: Health insurance, Provident Fund (PF), Gratuity (after 5 years), Bonuses/Incentives (role-based), Travel reimbursements. Salary structure follows statutory tax rules.",
+      "grade": null
+    },
+    {
+      "row": "r0284",
+      "query": "I need two days off for a family errand",
+      "policy": "What is the Workplace Health, Safety & Environment Policy?\nObjective: Provide a safe workplace. Detailed Policy: Follow fire safety, evacuation plans, and emergency procedures. Smoking and alcohol consumption are prohibited on premises. Report unsafe conditions or hazards immediately. First-aid support is available in all locations. Wellness programs and counseling are encouraged.",
+      "grade": null
+    },
+    {
+      "row": "r0285",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0286",
+      "query": "Do I get extra days for adopting a child as the father?",
+      "policy": "What is the Annual / Earned / Sick Leave policy?\nEntitlement: 18 days per year (Combined Annual/Earned/Sick). Credited annually or monthly. Can be carried forward within limits. Used for vacations, personal commitments, minor medical issues, and rest. Sick leave >3 consecutive days requires a medical certificate. Unused earned leave may be encashed as per policy during separation or declared cycles.",
+      "grade": null
+    },
+    {
+      "row": "r0287",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What are the attendance and working hours policies?\nObjective: To maintain punctuality and discipline. Detailed Policy: Standard work hours are 9 hours/day (8 hours work + 1 hour break). Core operating hours are typically 9:00 AM – 6:00 PM. Attendance must be marked via HRMS/biometric. Late arrival beyond grace periods is recorded; 3+ late entries/month may result in warnings or compensation impacts. Remote/hybrid work requires manager and HR approval. Absence without intimation for >3 consecutive days may be treated as job abandonment.",
+      "grade": null
+    },
+    {
+      "row": "r0288",
+      "query": "Is chemotherapy for cancer covered by the plan?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0289",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "Does the company provide mental health support?\nYes. The Employee Assistance Program (EAP) provides confidential counseling sessions, stress management workshops, and access to certified psychologists for issues like burnout and work-life balance.",
+      "grade": null
+    },
+    {
+      "row": "r0290",
+      "query": "Can I get a day back for working on a Sunday?",
+      "policy": "What other types of leave are available (LWP, Comp Off, Emergency)?\nLWP: Applicable when paid leave is exhausted; requires approval and affects salary. Comp Off: Granted for working on non-working days; valid for 30-60 days; cannot be encashed. Emergency Leave: For critical emergencies; deducted from available leave types. Process: Planned leave needs 3 days notice via HRMS; unplanned requires immediate intimation via Teams/call/email.",
+      "grade": null
+    },
+    {
+      "row": "r0291",
+      "query": "Can my parents be added to the health cover?",
+      "policy": "What are the Maternity and Critical Illness benefits?\nMaternity: Covers normal/C-section delivery, pre/post-natal expenses, and complications. Newborns are covered from birth (hospitalization) and must be added to the policy after 90 days. Critical Illness: Lump-sum payout for diagnosis of specified illnesses like cancer, heart attack, stroke, or major surgery (if included in plan).",
+      "grade": null
+    },
+    {
+      "row": "r0292",
+      "query": "I am pregnant, how long can I be away?",
+      "policy": "What is the Performance Management Policy?\nObjective: Evaluate contributions and support improvement. Detailed Policy: Annual reviews based on KPIs, competencies, and goals. Managers must conduct feedback discussions. Employees with performance gaps may be placed on a 30–90 day Performance Improvement Plan (PIP). Access to learning platforms is provided. Consistent low performance may lead to corrective actions.",
+      "grade": null
+    },
+    {
+      "row": "r0293",
+      "query": "Who do I talk to if I am unhappy about something?",
+      "policy": "What medical support is available at the workplace?\nOn-Site: Dedicated medical rooms with certified nurses/practitioners and emergency equipment (oxygen, stretchers). First Aid: Injuries must be reported to HR/Admin immediately for on-site treatment. Emergency Response: Security/Admin will transport employees to the nearest empanelled hospital if needed.",
+      "grade": null
+    },
+    {
+      "row": "r0294",
+      "query": "Do I have to give back my laptop when I quit?",
+      "policy": "What is the Exit & Separation Policy?\nObjective: Ensure smooth offboarding. Detailed Policy: Notice period is 30–90 days, depending on role/grade. Exit interview conducted by HR. Full and final (F&F) settlement processed within 30 days after clearance. Employees must return Laptop, ID card, Access cards, and documents. Relieving letter is issued post-clearance.",
+      "grade": null
+    }
+  ]
+}

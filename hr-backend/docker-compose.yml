@@ -12,14 +12,42 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       MONGODB_URI: mongodb://mongo:27017/adaas
+      # Points the API at the model service instead of an in-process model. This
+      # is what makes RETRIEVAL_MODE=dense or =reranked work in a built image:
+      # the API image installs with --omit=dev and does not contain
+      # @huggingface/transformers at all.
+      MODEL_SERVICE_URL: http://models:3100
     ports:
       - "3000:3000"
     depends_on:
       - mongo
+      - models
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
+      retries: 3
+
+  # The only container carrying @huggingface/transformers. It holds no HR data,
+  # talks to no database, and its transitive advisories -- adm-zip and sharp, via
+  # onnxruntime-node, with no upstream fix -- are now confined to a process whose
+  # entire job is turning text into numbers.
+  #
+  # Not published on the host. A deployment that exposes it has made a mistake
+  # this file cannot prevent, but it will not make that mistake by default.
+  models:
+    build:
+      context: ..
+      dockerfile: model-service/Dockerfile
+    environment:
+      MODEL_SERVICE_PORT: 3100
+    expose:
+      - "3100"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3100/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
       retries: 3
 
   mongo:

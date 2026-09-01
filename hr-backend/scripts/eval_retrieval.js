@@ -80,6 +80,7 @@ const { buildIndex, retrieve } = require('../retrieval');
 const { cosine } = require('../embeddings');
 const dense = require('../dense');
 const rerankModule = require('../rerank');
+const bootstrap = require('./bootstrap');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const KB_PATH = path.join(ROOT, 'assets', 'hr_knowledge_base.json');
@@ -154,12 +155,16 @@ function scoreRanked(cases, rank) {
   let empty = 0;
   let rrTotal = 0;
   const misses = [];
+  const perCaseTop1 = [];
+  const perCaseRr = [];
 
   for (const testCase of cases) {
     const ranked = rank(testCase) || [];
     if (ranked.length === 0) {
       empty += 1;
       misses.push({ q: testCase.q, want: testCase.id, got: '(nothing)', rank: -1 });
+      perCaseTop1.push(0);
+      perCaseRr.push(0);
       continue;
     }
     const r = ranked.findIndex((x) => x.entry.id === testCase.id);
@@ -172,10 +177,18 @@ function scoreRanked(cases, rank) {
       inTopK += 1;
       rrTotal += 1 / (r + 1);
     }
+    perCaseTop1.push(r === 0 ? 1 : 0);
+    perCaseRr.push(r >= 0 ? 1 / (r + 1) : 0);
   }
 
   const n = cases.length;
-  return { n, top1: top1 / n, recallAtK: inTopK / n, mrr: rrTotal / n, empty, misses };
+  return {
+    n, top1: top1 / n, recallAtK: inTopK / n, mrr: rrTotal / n, empty, misses,
+    // Per-case, so the bootstrap can resample them. Reporting a mean without
+    // keeping what it was a mean of is what made the error bars impossible to
+    // add later.
+    perCaseTop1, perCaseRr,
+  };
 }
 
 /**
@@ -257,6 +270,7 @@ function scoreGraded(cases, rank, qrels) {
   let p1Relevant = 0;
   let p1Answers = 0;
   const rescued = [];
+  const perCaseNdcg = [];
 
   for (const testCase of cases) {
     const grades = qrels[testCase.q];
@@ -265,7 +279,9 @@ function scoreGraded(cases, rank, qrels) {
 
     const ideal = Object.values(grades).sort((a, b) => b - a).slice(0, TOP_K);
     const idealDcg = dcg(ideal);
-    ndcgTotal += idealDcg === 0 ? 0 : dcg(got) / idealDcg;
+    const caseNdcg = idealDcg === 0 ? 0 : dcg(got) / idealDcg;
+    ndcgTotal += caseNdcg;
+    perCaseNdcg.push(caseNdcg);
 
     if (got[0] >= 1) p1Relevant += 1;
     if (got[0] === 2) p1Answers += 1;
@@ -285,6 +301,7 @@ function scoreGraded(cases, rank, qrels) {
     p1Relevant: p1Relevant / n,
     p1Answers: p1Answers / n,
     rescued,
+    perCaseNdcg,
   };
 }
 
@@ -462,6 +479,91 @@ function main() {
   for (const [name] of methods) {
     printRow(`${name} B/dev`, results[`${name} B/dev`]);
     printRow(`${name} B/report`, results[`${name} B/report`]);
+  }
+
+  // -------------------------------------------------------------------------
+  // Error bars.
+  //
+  // The report halves are 18 queries, so one case is 5.6 points and several
+  // differences reported in this project sit inside that. The intervals below
+  // are what makes that readable; the paired comparison after them is what makes
+  // it decidable, because two methods scored on identical queries have
+  // correlated errors and comparing their intervals by eye is the wrong test.
+  // -------------------------------------------------------------------------
+  console.log('');
+  console.log('Set B report half with 95% bootstrap intervals, 2000 resamples,');
+  console.log('         seeded so the interval is reproducible. n=18: one query is');
+  console.log('         5.6 points, and the width says so.');
+  for (const [name] of methods) {
+    const r = results[`${name} B/report`];
+    const g = graded[`${name} B/report`];
+    const ciTop1 = bootstrap.interval(r.perCaseTop1);
+    const ciNdcg = bootstrap.interval(g.perCaseNdcg);
+    console.log(
+      `  ${`${name} B/report`.padEnd(20)} `
+      + `top-1 ${bootstrap.format(r.top1, ciTop1).padEnd(26)} `
+      + `nDCG@5 ${bootstrap.format(g.ndcg, ciNdcg)}`,
+    );
+  }
+
+  console.log('');
+  console.log('  Paired comparisons on the same 18 queries. "not separated" means');
+  console.log('  the difference interval contains zero -- the two are indistinguishable');
+  console.log('  at this sample size, which is a result and not a missing measurement.');
+  const pairs = [
+    ['reranked', 'dense'],
+    ['dense', 'hybrid'],
+    ['reranked', 'lexical'],
+  ];
+  // Both metrics, because they disagree and the disagreement is informative.
+  // top-1 throws away everything below rank 1, so on 18 cases it can only take 19
+  // values and a real improvement has to move whole queries to register. nDCG
+  // uses the whole ranking and is continuous, so it resolves differences that
+  // top-1 cannot. Where nDCG separates and top-1 does not, the honest reading is
+  // that the ordering improved measurably and the top slot did not move enough
+  // times to prove it at this sample size.
+  for (const metric of ['top-1', 'nDCG@5']) {
+    console.log('');
+    console.log(`  by ${metric}:`);
+    for (const [a, b] of pairs) {
+      const pick = (name) => (metric === 'top-1'
+        ? results[`${name} B/report`].perCaseTop1
+        : graded[`${name} B/report`].perCaseNdcg);
+      const d = bootstrap.difference(pick(a), pick(b));
+      console.log(
+        `    ${`${a} - ${b}`.padEnd(22)} `
+        + `${d.mean >= 0 ? '+' : ''}${d.mean.toFixed(4)} `
+        + `[${d.lo.toFixed(4)}, ${d.hi.toFixed(4)}]   `
+        + `${d.separated ? 'separated' : 'NOT separated'}`,
+      );
+    }
+  }
+
+  // Pooled over both halves, for power, and flagged because it is not clean.
+  // 36 cases instead of 18 narrows the interval by roughly a third, but the dev
+  // half is what the reranker was selected on, so a comparison that includes it
+  // is biased in the reranker's favour. It is printed because refusing to
+  // compute it would leave the impression that no more evidence exists, and
+  // labelled because using it as the headline would be the fitting this project
+  // spends most of its effort avoiding.
+  console.log('');
+  console.log('  pooled over dev + report, n=36 -- MORE POWER, NOT CLEAN:');
+  console.log('  the dev half is what the reranker was chosen on.');
+  for (const [a, b] of [['reranked', 'dense']]) {
+    for (const metric of ['top-1', 'nDCG@5']) {
+      const pick = (name) => (metric === 'top-1'
+        ? [...results[`${name} B/dev`].perCaseTop1,
+          ...results[`${name} B/report`].perCaseTop1]
+        : [...graded[`${name} B/dev`].perCaseNdcg,
+          ...graded[`${name} B/report`].perCaseNdcg]);
+      const d = bootstrap.difference(pick(a), pick(b));
+      console.log(
+        `    ${`${a} - ${b}, ${metric}`.padEnd(32)} `
+        + `${d.mean >= 0 ? '+' : ''}${d.mean.toFixed(4)} `
+        + `[${d.lo.toFixed(4)}, ${d.hi.toFixed(4)}]   `
+        + `${d.separated ? 'separated' : 'NOT separated'}`,
+      );
+    }
   }
 
   console.log('');

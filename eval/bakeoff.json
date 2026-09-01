@@ -2,63 +2,6 @@
   "top_k": 5,
   "rerank_pool": 10,
   "dev_n": 18,
-  "bi_encoders": [
-    {
-      "id": "Xenova/all-MiniLM-L6-v2",
-      "note": "incumbent",
-      "queryPrefix": "",
-      "passagePrefix": "",
-      "dim": 384,
-      "n": 18,
-      "top1": 0.7222222222222222,
-      "recallAtK": 1,
-      "mrr": 0.8148148148148148
-    },
-    {
-      "id": "Xenova/bge-small-en-v1.5",
-      "note": "BAAI, asymmetric prefixes",
-      "queryPrefix": "Represent this sentence for searching relevant passages: ",
-      "passagePrefix": "",
-      "dim": 384,
-      "n": 18,
-      "top1": 0.7777777777777778,
-      "recallAtK": 1,
-      "mrr": 0.8657407407407407
-    },
-    {
-      "id": "Xenova/gte-small",
-      "note": "Alibaba GTE, symmetric",
-      "queryPrefix": "",
-      "passagePrefix": "",
-      "dim": 384,
-      "n": 18,
-      "top1": 0.7222222222222222,
-      "recallAtK": 1,
-      "mrr": 0.8240740740740741
-    },
-    {
-      "id": "Xenova/e5-small-v2",
-      "note": "Microsoft E5, asymmetric prefixes",
-      "queryPrefix": "query: ",
-      "passagePrefix": "passage: ",
-      "dim": 384,
-      "n": 18,
-      "top1": 0.6666666666666666,
-      "recallAtK": 1,
-      "mrr": 0.7916666666666666
-    },
-    {
-      "id": "Xenova/bge-base-en-v1.5",
-      "note": "768-dim, ~4x the download",
-      "queryPrefix": "Represent this sentence for searching relevant passages: ",
-      "passagePrefix": "",
-      "dim": 768,
-      "n": 18,
-      "top1": 0.7777777777777778,
-      "recallAtK": 1,
-      "mrr": 0.8611111111111112
-    }
-  ],
   "reranker_retriever": "Xenova/bge-small-en-v1.5",
   "rerankers": [
     {
@@ -131,203 +74,34 @@
       "unavailable": "Unsupported model type: new"
     }
   ],
-  "ablation_reranker": "mixedbread-ai/mxbai-rerank-xsmall-v1",
-  "ablation": [
+  "late_interaction": [
     {
-      "pool": 10,
-      "label": "pool 10, answer only",
+      "label": "dense pooled only (baseline)",
       "n": 18,
-      "top1": 0.8333333333333334,
+      "top1": 0.7777777777777778,
       "recallAtK": 1,
-      "mrr": 0.9166666666666666
+      "mrr": 0.8657407407407407
     },
     {
-      "pool": 26,
-      "label": "pool 26 (full corpus), answer only",
-      "n": 18,
-      "top1": 0.8333333333333334,
-      "recallAtK": 1,
-      "mrr": 0.9166666666666666
-    },
-    {
-      "pool": 10,
-      "label": "pool 10, question + answer",
+      "label": "cross-encoder only (shipping)",
       "n": 18,
       "top1": 0.8888888888888888,
       "recallAtK": 1,
       "mrr": 0.9444444444444444
     },
     {
-      "pool": 26,
-      "label": "pool 26 (full corpus), question + answer",
+      "label": "late interaction only",
+      "n": 18,
+      "top1": 0.8888888888888888,
+      "recallAtK": 1,
+      "mrr": 0.9351851851851851
+    },
+    {
+      "label": "late interaction + cross-encoder, RRF",
       "n": 18,
       "top1": 0.8888888888888888,
       "recallAtK": 1,
       "mrr": 0.9444444444444444
     }
-  ],
-  "fusion_rerankers": [
-    "mixedbread-ai/mxbai-rerank-xsmall-v1",
-    "mixedbread-ai/mxbai-rerank-base-v1"
-  ],
-  "fusion": {
-    "mixedbread-ai/mxbai-rerank-xsmall-v1": [
-      {
-        "label": "cross-encoder only (w=1.0, production)",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "dense only (w=0.0, no reranking)",
-        "n": 18,
-        "top1": 0.7777777777777778,
-        "recallAtK": 1,
-        "mrr": 0.8657407407407407
-      },
-      {
-        "label": "RRF over both orderings, k=60",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "RRF over both orderings, k=10",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "RRF over both orderings, k=1",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "min-max blend, w=0.3",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "min-max blend, w=0.5",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "min-max blend, w=0.6",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "min-max blend, w=0.7",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "min-max blend, w=0.8",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      },
-      {
-        "label": "min-max blend, w=0.9",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9444444444444444
-      }
-    ],
-    "mixedbread-ai/mxbai-rerank-base-v1": [
-      {
-        "label": "cross-encoder only (w=1.0, production)",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "dense only (w=0.0, no reranking)",
-        "n": 18,
-        "top1": 0.7777777777777778,
-        "recallAtK": 1,
-        "mrr": 0.8657407407407407
-      },
-      {
-        "label": "RRF over both orderings, k=60",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "RRF over both orderings, k=10",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "RRF over both orderings, k=1",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "min-max blend, w=0.3",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9305555555555556
-      },
-      {
-        "label": "min-max blend, w=0.5",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "min-max blend, w=0.6",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "min-max blend, w=0.7",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "min-max blend, w=0.8",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      },
-      {
-        "label": "min-max blend, w=0.9",
-        "n": 18,
-        "top1": 0.8888888888888888,
-        "recallAtK": 1,
-        "mrr": 0.9351851851851851
-      }
-    ]
-  }
+  ]
 }
