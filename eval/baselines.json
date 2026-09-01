@@ -1,0 +1,138 @@
+{
+  "about": "Off-the-shelf RAG frameworks scored on the ADAAS splits with the ADAAS scorer. Written to answer the build-versus-buy question with numbers rather than principle. The comparison is run by the author of one of the systems, in that system's repository, against that system's corpus and metric -- every structural advantage is on the ADAAS side, which is why the variants are split to separate the framework from the embedding model from the chunking.",
+  "generated_by": "cd baselines && npm run bench",
+  "split": "report",
+  "queries": 18,
+  "documents": 26,
+  "install_notes": {
+    "langchain_community": "will not install: requires @langchain/core ^1.1.38 while pulling 0.3.80 through @getzep/zep-cloud. The embedding adapter is written against @langchain/core directly.",
+    "memory_vector_store": "moved out of langchain/vectorstores/memory into @langchain/classic.",
+    "dependency_counts": {
+      "adaas_production": 4,
+      "langchain_stack": 39,
+      "llamaindex_stack": 96
+    }
+  },
+  "findings": [
+    "The hand-written dense path is exactly a framework default. lc-same-text, lc-same-everything, li-same-text and adaas-dense all score top-1 0.7222 and recall@5 1.0000, and the LangChain rows match ADAAS MRR to four decimals at 0.8287.",
+    "The embedding model was worth one query out of eighteen (0.5556 to 0.6111) and LOSES on nDCG@5 (0.8215 to 0.7725) and on how often the top result is relevant at all (0.8333 to 0.7222).",
+    "The largest single contribution is the twelve curated keywords per policy: same framework, same model, keywords added, 0.6111 to 0.7222. That is hand-written domain knowledge, not retrieval engineering, and no default recipe provides it.",
+    "LangChain default chunking is a no-op on this corpus: 26 documents in, 26 chunks out, identical scores with splitting on and off, because every policy is shorter than the 1000-character chunk size.",
+    "The cross-encoder is the only component no framework configuration reproduced (0.7222 to 0.8333), and even it is not separated at n=18: the interval spans zero.",
+    "A PREDICTION MADE BEFORE RUNNING THIS was that the embedding model would explain the gap. It did not, and the true explanation is a smaller claim still: keyword lists and a reranker."
+  ],
+  "results": [
+    {
+      "label": "lc-default",
+      "framework": "langchain",
+      "model": "Xenova/all-MiniLM-L6-v2",
+      "chunking": "RecursiveCharacterTextSplitter(1000, 200)",
+      "passage_text": "the policy answer field alone, as a naive ingestion would take it",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.5555555555555556,
+      "recall5": 1,
+      "mrr": 0.7101851851851851,
+      "ndcg5": 0.8215142498998146,
+      "topRelevant": 0.8333333333333334
+    },
+    {
+      "label": "lc-same-model",
+      "framework": "langchain",
+      "model": "Xenova/bge-small-en-v1.5",
+      "chunking": "RecursiveCharacterTextSplitter(1000, 200)",
+      "passage_text": "the policy answer field alone, as a naive ingestion would take it",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.6111111111111112,
+      "recall5": 0.9444444444444444,
+      "mrr": 0.7194444444444444,
+      "ndcg5": 0.7724862936600011,
+      "topRelevant": 0.7222222222222222
+    },
+    {
+      "label": "lc-same-text",
+      "framework": "langchain",
+      "model": "Xenova/bge-small-en-v1.5",
+      "chunking": "RecursiveCharacterTextSplitter(1000, 200)",
+      "passage_text": "question / category / keywords / answer -- the string ADAAS embeds",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recall5": 1,
+      "mrr": 0.8287037037037037,
+      "ndcg5": 0.8287161590869658,
+      "topRelevant": 0.7777777777777778
+    },
+    {
+      "label": "lc-same-everything",
+      "framework": "langchain",
+      "model": "Xenova/bge-small-en-v1.5",
+      "chunking": "one chunk per policy",
+      "passage_text": "question / category / keywords / answer -- the string ADAAS embeds",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recall5": 1,
+      "mrr": 0.8287037037037037,
+      "ndcg5": 0.8287161590869658,
+      "topRelevant": 0.7777777777777778
+    },
+    {
+      "label": "li-default",
+      "framework": "llamaindex",
+      "model": "Xenova/all-MiniLM-L6-v2",
+      "chunking": "RecursiveCharacterTextSplitter(1000, 200)",
+      "passage_text": "the policy answer field alone, as a naive ingestion would take it",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.5,
+      "recall5": 1,
+      "mrr": 0.6777777777777777,
+      "ndcg5": 0.7992131287892837,
+      "topRelevant": 0.8333333333333334
+    },
+    {
+      "label": "li-same-text",
+      "framework": "llamaindex",
+      "model": "Xenova/bge-small-en-v1.5",
+      "chunking": "RecursiveCharacterTextSplitter(1000, 200)",
+      "passage_text": "question / category / keywords / answer -- the string ADAAS embeds",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recall5": 1,
+      "mrr": 0.8472222222222222,
+      "ndcg5": 0.8139181491538225,
+      "topRelevant": 0.7777777777777778
+    },
+    {
+      "label": "adaas-dense",
+      "framework": "adaas",
+      "model": "Xenova/bge-small-en-v1.5",
+      "chunking": "one chunk per policy",
+      "passage_text": "question / category / keywords / answer -- the string ADAAS embeds",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.7222222222222222,
+      "recall5": 1,
+      "mrr": 0.8287037037037037,
+      "ndcg5": 0.8173814998257514,
+      "topRelevant": 0.7777777777777778
+    },
+    {
+      "label": "adaas-reranked",
+      "framework": "adaas",
+      "model": "Xenova/bge-small-en-v1.5",
+      "chunking": "one chunk per policy",
+      "passage_text": "question / category / keywords / answer -- the string ADAAS embeds",
+      "chunks": 26,
+      "n": 18,
+      "top1": 0.8333333333333334,
+      "recall5": 1,
+      "mrr": 0.9074074074074073,
+      "ndcg5": 0.8747330049325778,
+      "topRelevant": 0.8888888888888888
+    }
+  ]
+}

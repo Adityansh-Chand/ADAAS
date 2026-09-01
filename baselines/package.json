@@ -1,0 +1,18 @@
+{
+  "name": "adaas-baselines",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Off-the-shelf RAG framework baselines, scored on the ADAAS splits",
+  "type": "commonjs",
+  "scripts": {
+    "bench": "node bench.js"
+  },
+  "dependencies": {
+    "@langchain/classic": "^1.0.46",
+    "@langchain/core": "^1.2.9",
+    "@langchain/textsplitters": "^1.0.1",
+    "@llamaindex/huggingface": "^0.1.32",
+    "langchain": "^1.5.10",
+    "llamaindex": "^0.12.1"
+  }
+}
