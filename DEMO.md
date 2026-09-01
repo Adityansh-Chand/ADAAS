@@ -178,19 +178,29 @@ cd hr-backend
 npm run eval:intent
 ```
 
-Five sets, two methods, and the table says what each set is worth. Two are clean:
-`held_out_3`, written before the classifier existed, at **rules 0.5667, embedding
-0.9333**; and `held_out_4`, written before the classifier was *rewritten*, at
-**rules 0.3667, embedding 0.8000**.
+Six sets, two methods, and the table says what each set is worth. Three are
+clean: `held_out_3`, written before the classifier existed, at **rules 0.5667,
+embedding 0.9667**; `held_out_4`, written before the classifier was *rewritten*, at
+**rules 0.3667, embedding 0.8000**; and `held_out_5`, written before an
+action-safety fix, at **rules 0.6389, embedding 0.9722**.
+
+Scroll to the **action safety** block. It scores the 36 retrieval paraphrases,
+which are policy questions by construction, and counts how often one becomes a
+leave action. It exists because a screenshot found the app filing a five-day leave
+application in answer to a question about working from home. 14 of 36 before, 8
+after -- and the rule baseline still beats the fitted classifier at it, 3 misroutes
+against 8, which is printed rather than omitted.
 
 Set 3 previously read 0.9000, down from 0.9667 before the embedding model changed,
 and the README then said the honest way to recover it was a fourth held-out set
 written before anything was re-picked. That is exactly the order it happened in:
 set 4 first, then a dev-only comparison of thirteen decision rules, then the
 held-out sets read once. The incumbent k-NN came last but one; a plain logistic
-regression on the same vectors won. Set 3 recovered to 0.9333 -- two-thirds of the
-loss, not all of it -- and the 54 training examples added at the same time turned
-out to contribute nothing, which the README says in as many words.
+regression on the same vectors won. Set 3 recovered to 0.9333 at that point --
+two-thirds of the loss, not all of it -- and the 54 training examples added at the
+same time turned out to contribute nothing, which the README says in as many
+words. It reached 0.9667, the pre-swap figure, only after the action-safety fix,
+which was not aimed at it.
 
 Try three queries the rules get wrong. With `RETRIEVAL_MODE=reranked` running:
 
@@ -203,6 +213,21 @@ done
 
 All three classify correctly, each reporting `"method":"embedding"`. Restart with
 `RETRIEVAL_MODE=lexical` and the same three fall through to `policyQuestion`.
+
+## 5d. The screenshots, regenerated from the running app
+
+```bash
+node tool/capture_screenshots.js
+```
+
+Drives the real app in headless Chrome against the backend you already have
+running and rewrites `docs/screenshots/`. Nothing in the README is a mock-up: the
+policy text is what retrieval returned and the balance figures are what the API
+returned. It waits for the page to stop changing rather than sleeping a fixed
+amount, because the first attempt captured the loading indicator instead of the
+answer.
+
+This is also the command that found the intent bug above.
 
 ## 6. Leave balance, checkable against the policy
 
