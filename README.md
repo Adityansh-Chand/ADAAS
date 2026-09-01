@@ -43,7 +43,7 @@ returned, and the reference id was minted by the request that produced it.
 > These screenshots earned their place before they were ever committed. The first
 > capture run asked *"Can I work from my house a few days a week?"* and the app
 > filed a five-day casual leave application. See
-> [Intent classification](#intent-classification-two-methods-on-five-sets) — no
+> [Intent classification](#intent-classification-two-methods-on-six-sets) — no
 > evaluation had ever caught it, and there is now a gate that does.
 
 ## Setup
@@ -1600,8 +1600,10 @@ genuinely unknown.
   screenshots generated from the running app; a faithfulness verifier on
   model-written answers, reported in the response and counted in `/metrics`;
   Docker/Compose/K8s config; CI covering tests, thirteen retrieval quality gates
-  (two of them on graded nDCG), six intent gates plus a leakage ceiling, five
-  answer-layer gates including a zero-false-positive control, embedding and
+  (two of them on graded nDCG), six intent gates plus a leakage ceiling, four
+  answer-layer gates that can fail — of eight declared, since the four classes
+  measured at 0.0000 are floored at zero and so are recorded rather than
+  enforced — embedding and
   reranker verification, the smoke test, a container that is started and queried,
   and Flutter analyze/tests.
 - **Known weak spots, measured:** retrieval reaches 0.8333 top-1 and nDCG@5
