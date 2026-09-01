@@ -29,7 +29,7 @@ cd hr-backend
 npm run smoke
 ```
 
-Twenty checks, all about response content. It asserts that retrieval returns the
+Twenty-eight checks, all about response content. It asserts that retrieval returns the
 Flexible Work Arrangement Policy rather than Attendance, that an over-cap leave
 request is refused with no reference ID, and that an accepted one moves the
 balance. The previous version of this script checked only HTTP status, so it
@@ -165,6 +165,30 @@ but one of thirteen candidates.
 ```bash
 npm run probe:abstention
 ```
+
+```bash
+npm run probe:answerability
+```
+
+A fourth, also rejected: NLI entailment over (passage, "this policy states the
+answer to: *question*"). The direction is right — in-scope median 0.0266 against
+0.0012 for the hard tier — and the highest threshold keeping all 36 genuine
+questions rejects **0 of 12**, because a real question about taxi receipts scores
+below almost every hard negative.
+
+```bash
+npm run annotate
+```
+
+Writes a blind relevance-annotation sheet: 294 contested pairs with policy ids,
+existing grades, gold labels and retrieval output all withheld, rows shuffled with
+a fixed seed, and the row-to-document key written to a **separate** file the
+annotator does not receive. `npm run annotate -- --agree <file>` then reports
+Cohen's kappa and the 2-vs-0 disagreements that actually move a score.
+
+It does not make the judgements independent — the same person wrote them and the
+retriever — and nothing written from inside could. It removes every other
+obstacle.
 
 A third abstention signal, built and rejected: term-level corpus coverage. It
 prints the least-covered word in every out-of-scope probe (`dog`, `car`, `sublet`,
@@ -345,6 +369,124 @@ API_KEY=demo-key npm start
 curl -i "http://localhost:3000/leave-balance?employee_id=1001"
 curl -s "http://localhost:3000/leave-balance?employee_id=1001" -H "X-API-Key: demo-key"
 ```
+
+A shared API key says *a* caller is allowed. It says nothing about *which*
+employee they are, which is the next two sections.
+
+## 9b. One employee cannot read another's record
+
+```bash
+SESSION_SECRET=demo-secret npm start
+```
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:3000/session -H "Content-Type: application/json" -d '{"employee_id":"1001"}' | python -c "import json,sys;print(json.load(sys.stdin)['token'])")
+curl -s -o /dev/null -w "own record:   %{http_code}\n" "http://localhost:3000/leave-balance?employee_id=1001" -H "Authorization: Bearer $TOKEN"
+curl -s -o /dev/null -w "someone else: %{http_code}\n" "http://localhost:3000/leave-balance?employee_id=1002" -H "Authorization: Bearer $TOKEN"
+```
+
+**200 then 403.** Before this, both were 200: `HR_EMPLOYEE_ID` chose which
+employee the app displayed and every endpoint then accepted whatever
+`employee_id` the request carried, so editing a query string was enough to read
+someone else's leave record.
+
+Note what `/session` will do:
+
+```bash
+curl -s -X POST http://localhost:3000/session -H "Content-Type: application/json" -d '{"employee_id":"9999","role":"approver"}'
+```
+
+It mints a token for an employee id that does not exist, with approver rights,
+because there is nothing here to authenticate anyone against. The response says
+so in a `caveat` field. This is the seam an identity provider replaces — and the
+scoping it feeds is real, which is the point of separating the two.
+
+## 9c. A real identity provider
+
+```bash
+OIDC_ISSUER=https://your-tenant.example.com OIDC_AUDIENCE=adaas npm start
+```
+
+```bash
+curl -s http://localhost:3000/health | python -m json.tool | grep -A4 '"identity"'
+```
+
+With both set, the service accepts an ID token from that provider and verifies
+it: RS256 over the published JWKS with the algorithm **pinned rather than read
+from the token**, key selection by `kid` with one refetch on rotation, and
+`iss` / `aud` / `exp` / `nbf` all checked.
+
+There is no tenant to point this at from a fresh clone, so the demonstration is
+the test suite:
+
+```bash
+node --test server.test.js 2>&1 | grep -iE "token|forgery|claim|issuer"
+```
+
+Nine tests run the verifier unmodified against a local RSA key pair serving a
+real discovery document and JWKS — including `alg: none`, a tampered signature, a
+token minted for a different application at the same provider, and an
+unrecognised role claim, which must **not** become `approver`.
+
+`/health` reports `oidc`, `demo`, `oidc+demo` or `none`. Both paths can be live
+at once during a migration, and that is a real weakening rather than a
+convenience, so it is named.
+
+## 9d. Telling someone a decision was made
+
+```bash
+python -c "
+import http.server, socketserver, json
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers['Content-Length']))
+        print('webhook received:', json.loads(body)['message'])
+        self.send_response(200); self.end_headers(); self.wfile.write(b'{}')
+    def log_message(self, *a): pass
+socketserver.TCPServer(('127.0.0.1', 4321), H).serve_forever()
+"
+```
+
+Then, in another terminal, start the API with `NOTIFY_WEBHOOK_URL=http://127.0.0.1:4321/`
+and approve something from section 8b. The notification arrives at the webhook.
+
+Email works the same way through `SMTP_HOST` and `NOTIFY_EMAIL_TO`. Two things it
+refuses rather than papers over, both tested against a local SMTP server speaking
+the real protocol: **credentials are never sent over an unencrypted connection**
+(if STARTTLS is declined and `SMTP_USER` is set, the send fails), and body lines
+are dot-stuffed — without which a line containing a single `.` ends `DATA` early,
+truncating the message and leaving the remainder to be read as SMTP commands.
+
+Delivery can never fail a decision. The approval has already moved a balance, so
+a failure is counted in `/metrics` and the request still succeeds:
+
+```bash
+curl -s http://localhost:3000/metrics | python -m json.tool | grep -A8 '"notifications"'
+```
+
+## 9e. Who owns the corpus
+
+```bash
+curl -s http://localhost:3000/health | python -m json.tool | grep -A10 '"corpus"'
+```
+
+Version, content digest, owner, review age and cadence. Two answers worth
+reading rather than skipping:
+
+`"owner": "UNASSIGNED"` is deliberate. An invented name would read as
+accountability while providing none.
+
+`"provenance": "synthetic demonstration content"` is the part no check can
+establish. Everything else here asserts internal consistency — the entitlements
+match the policy text, the digest matches the vectors — and a corpus that went
+stale eighteen months ago satisfies all of it perfectly while being wrong.
+
+```bash
+npm test 2>&1 | grep -i corpus
+```
+
+Missing fields, duplicate ids, unknown categories and a digest that no longer
+matches all fail, and a mutation test proves each of them *can* fail.
 
 ## Flutter walkthrough
 
