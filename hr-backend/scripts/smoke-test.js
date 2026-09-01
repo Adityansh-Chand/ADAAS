@@ -128,7 +128,7 @@ async function main() {
     after?.casual_leave_balance === before?.casual_leave_balance - 1,
     `${before?.casual_leave_balance} -> ${after?.casual_leave_balance}`);
 
-  const listed = await request('/leave-applications');
+  const listed = await request('/leave-applications?employee_id=1001');
   check('the application is listed',
     (listed.body?.applications || []).some(
       (a) => a.reference_id === applied.body?.reference_id),

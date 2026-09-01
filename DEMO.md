@@ -278,7 +278,7 @@ previous build accepted this with `status: "submitted"` and a reference.
 ```bash
 curl -s -X POST http://localhost:3000/leave-application -H "Content-Type: application/json" -d @examples/requests/leave-application.json
 curl -s "http://localhost:3000/leave-balance?employee_id=1001"
-curl -s http://localhost:3000/leave-applications
+curl -s "http://localhost:3000/leave-applications?employee_id=1001"
 ```
 
 The balance drops by the days submitted. Previously the two features never
