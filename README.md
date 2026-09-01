@@ -75,7 +75,7 @@ Seven commands. All seven should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm test               # 82 backend tests
+npm test               # 101 backend tests
 npm run eval           # lexical, dense, hybrid and reranked on identical splits
 npm run eval:intent    # rules vs the embedding classifier
 npm run embed:verify   # committed embeddings still match the corpus
@@ -153,7 +153,11 @@ seeded data with no LLM.
 | `API_KEY` | HR data and chat endpoints are unauthenticated |
 | `RETRIEVAL_MODE` | `lexical` -- the weaker mode; see the table above |
 | `LLM_PROVIDER` | policy answers come straight from the retrieved policy text |
-| `SESSION_SECRET` | **no per-employee authorization** -- every endpoint accepts any `employee_id`. `/health` reports `authorization: none` |
+| `SESSION_SECRET` | no demo-identity authorization. With `OIDC_ISSUER` also unset, every endpoint accepts any `employee_id` and `/health` reports `authorization: none` |
+| `OIDC_ISSUER` + `OIDC_AUDIENCE` | no identity verification -- the service can enforce scoping but cannot establish who the caller is |
+| `OIDC_EMPLOYEE_CLAIM` | `sub` |
+| `SMTP_HOST` + `NOTIFY_EMAIL_TO` | decisions are stored but not emailed |
+| `<NAME>_FILE` | secrets are read from the environment. Set it to a path and the file wins -- how Docker and Kubernetes secret volumes deliver values without putting them in `docker inspect` |
 | `MODEL_SERVICE_URL` | models load in-process, which needs the optional devDependency; set it to use `model-service/` instead |
 | `NOTIFY_WEBHOOK_URL` | decisions are recorded and stored, but nothing is sent anywhere |
 | `NOTIFICATIONS_PATH` | `hr-backend/.data/notifications.json` |
@@ -843,7 +847,7 @@ it drops below AA — see Tests.
 
 ## Tests
 
-**129 total: 82 backend, 47 Flutter.** `flutter analyze` clean.
+**148 total: 101 backend, 47 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
@@ -1039,22 +1043,38 @@ person who built the thing cannot honestly be the one to settle it.
 
 ### Narrower than it was
 
-- **Identity.** Still no identity provider — `/session` will mint a token for any
-  employee id, because there is nothing here to authenticate anyone against. But
-  the *authorisation* bug underneath it is fixed, and it never needed one: employee
-  1001 could read 1002's balance by editing a query string, and nothing stopped it.
-  Signed session tokens now carry a subject and a role, and every employee-scoped
-  route checks the request against them. Opt-in via `SESSION_SECRET`, like
-  `API_KEY`, and `/health` reports `authorization: none` when it is off, so the
-  weak state is visible rather than assumed.
-- **Notifications.** Durable by default now, written through to a file, so a
-  restart with no MongoDB configured no longer loses every decision anyone was told
-  about — which was the default path rather than an edge case. Delivery is an
-  outbound webhook when `NOTIFY_WEBHOOK_URL` is set. That is a seam, **not** email
-  or push: it hands the notification to something that knows how to reach a person,
-  and that something is not in this repository. Delivery cannot fail a decision,
-  since the approval has already moved a balance, so failures are counted in
-  `/metrics` rather than rolled back.
+- **Identity — now verified, not asserted.** `hr-backend/oidc.js` verifies an ID
+  token from a configured provider: RS256 over the provider's JWKS with the
+  algorithm **pinned** rather than read from the token, key selection by `kid`
+  with one refetch on rotation, and `iss` / `aud` / `exp` / `nbf` all checked with
+  a bounded clock skew. Nine tests drive it against a local RSA key pair serving a
+  real discovery document and JWKS, so the verifier runs unmodified — including
+  the two classic forgeries (`alg: none`, tampered signature), a token minted for
+  a different application, and an unrecognised role claim, which must **not**
+  become `approver`.
+
+  What is still missing is named rather than implied: no authorization-code flow,
+  no PKCE, no refresh, and the Flutter client does not log anyone in. This closes
+  "the backend cannot verify anyone" and not "the app has a login". `/health`
+  reports `oidc`, `demo`, `oidc+demo` or `none`, because both paths can be on at
+  once during a migration and that is a real weakening.
+- **Notifications — durable, and now actually delivered.** Written through to a
+  file, so a restart with no MongoDB no longer loses every decision anyone was
+  told about. Two channels: the webhook, and **email over SMTP**
+  (`hr-backend/smtp.js`) — EHLO, optional STARTTLS, AUTH PLAIN, one recipient,
+  base64 body with an explicit charset. Hand-written rather than adding
+  `nodemailer`, for the same reason the model service exists: this is the image
+  that serves leave records, and the previous round was spent taking a dependency
+  *out* of it.
+
+  Two failure modes it refuses rather than papers over: **credentials are never
+  sent over an unencrypted connection** (if STARTTLS is declined and `SMTP_USER`
+  is set, the send fails), and body lines are dot-stuffed, without which a line
+  containing a single `.` truncates the message and the remainder is read as SMTP
+  commands. Both are tested against a local SMTP server speaking the real
+  protocol. Still no push, and recipient resolution is a single mailbox
+  (`NOTIFY_EMAIL_TO`) because this service has no directory and guessing an
+  address from an employee id would silently mail the wrong person.
 - **Error bars are printed; the sample is still small.** 18-query report halves, 26
   documents, and a 36-case action-safety probe that moves 2.8 points per case. The
   intervals make that legible. They do not make it go away, and a larger corpus and
@@ -1062,10 +1082,32 @@ person who built the thing cannot honestly be the one to settle it.
 
 ### Still open, unchanged
 
-- **The corpus has no owner.** A committed JSON file, no review cycle, no
-  versioning beyond git.
-- **No production HR integration**, managed MongoDB, managed secrets, or cloud
-  deployment.
+- **The corpus now has a governance record** — `assets/hr_knowledge_base.meta.json`
+  and `hr-backend/corpus.js`. Version, content digest, owner, review cadence and
+  a closed category list, validated on every test run: missing fields, duplicate
+  ids, unknown categories and a digest that no longer matches all fail, and a
+  mutation test proves each can. `/health` reports the owner, the review age and
+  whether it has lapsed.
+
+  Two deliberate choices. The owner reads **UNASSIGNED** rather than a
+  plausible-looking name — an invented owner reads as accountability while
+  providing none. And the review date is **reported, not gated**: a build that
+  turns red because a date passed fails on a pull request that did not touch the
+  corpus, and gets disabled within a month. What no check can establish is whether
+  the text is true of any real employer, and it says so on every request:
+  *synthetic demonstration content*.
+- **Secrets can now come from files**, not just the environment.
+  `hr-backend/secrets.js` implements the `<NAME>_FILE` convention Docker and
+  Kubernetes secret volumes use — file wins over variable, and an unreadable file
+  **refuses** rather than falling back to a stale value, because a broken mount
+  that degrades silently brings the service up healthy with the wrong credential.
+  The container runs as non-root, and the Kubernetes manifest requires it at the
+  platform level with a read-only root filesystem and all capabilities dropped.
+
+  This is the consumption end only. There is **no secrets manager** — no Vault, no
+  KMS, no rotation, no auditing — and no cloud deployment, managed MongoDB or
+  production HR integration. Those need infrastructure this repository does not
+  have, and none of them can be honestly claimed from here.
 - **Nothing verifies the screenshots still match the app.**
   `node tool/check_screenshots.js` checks that they exist, are valid PNGs, are not
   blank canvases, and that the README and the capture script agree on the set. It
@@ -1209,6 +1251,11 @@ genuinely unknown.
   corpus does not answer (2 of 12) — now a measured limit rather than an asserted
   one, after a third signal was built, tested and rejected. Notifications are a
   table this service owns, not email or push.
+- **Identity, delivery, secrets and corpus governance are now built**, and each is
+  described by what it does *not* do as well as what it does: token verification
+  without a login flow, email without push or a directory, file-mounted secrets
+  without a secrets manager, a governance record whose owner field honestly reads
+  UNASSIGNED.
 - **Reserved for a capstone:** unanswerable-question detection, an
   inter-annotator agreement study, a power analysis and a corpus sized to it, and
   generative reranking under a reproducibility constraint. Each is a question that

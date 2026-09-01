@@ -1062,6 +1062,450 @@ test('with no secret set, scoping is off and /health says so', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Delivery, secrets, and who owns the corpus
+// ---------------------------------------------------------------------------
+
+const smtpModule = require('./smtp');
+const secretsModule = require('./secrets');
+const corpusModule = require('./corpus');
+
+/**
+ * A real SMTP server, speaking the real protocol, that keeps what it is sent.
+ *
+ * Not a mock of the client: `smtp.js` runs unmodified and drives the actual
+ * exchange -- EHLO, MAIL FROM, RCPT TO, DATA, QUIT. Only the relay is local,
+ * which is the one part that cannot be present here.
+ */
+function smtpSink({ failAt = null } = {}) {
+  const received = [];
+  const server = require('node:net').createServer((socket) => {
+    let inData = false;
+    let message = '';
+    let envelope = {};
+    socket.setEncoding('utf8');
+    socket.write('220 sink ESMTP\r\n');
+    socket.on('data', (chunk) => {
+      for (const line of chunk.split('\r\n')) {
+        if (line === '' && !inData) continue;
+        if (inData) {
+          if (line === '.') {
+            inData = false;
+            received.push({ ...envelope, message });
+            socket.write('250 2.0.0 Ok: queued\r\n');
+          } else {
+            message += `${line}\r\n`;
+          }
+          continue;
+        }
+        const verb = line.split(' ')[0].toUpperCase();
+        if (failAt && verb === failAt) { socket.write('550 refused\r\n'); continue; }
+        if (verb === 'EHLO' || verb === 'HELO') {
+          socket.write('250-sink\r\n250 SIZE 10240000\r\n');
+        } else if (verb === 'STARTTLS') {
+          // Declined, which exercises the branch where the upgrade does not
+          // happen and credentials must therefore not be sent.
+          socket.write('454 TLS not available\r\n');
+        } else if (verb === 'MAIL') {
+          envelope = { from: line, to: null }; message = ''; socket.write('250 Ok\r\n');
+        } else if (verb === 'RCPT') {
+          envelope.to = line; socket.write('250 Ok\r\n');
+        } else if (verb === 'DATA') {
+          inData = true; socket.write('354 End data with <CR><LF>.<CR><LF>\r\n');
+        } else if (verb === 'QUIT') {
+          socket.write('221 Bye\r\n'); socket.end();
+        } else {
+          socket.write('250 Ok\r\n');
+        }
+      }
+    });
+  });
+  return {
+    received,
+    async start() {
+      await new Promise((r) => server.listen(0, '127.0.0.1', r));
+      return server.address().port;
+    },
+    stop() { return new Promise((r) => server.close(r)); },
+  };
+}
+
+async function withSmtp(sink, env, fn) {
+  const port = await sink.start();
+  const saved = { ...process.env };
+  Object.assign(process.env, {
+    SMTP_HOST: '127.0.0.1',
+    SMTP_PORT: String(port),
+    SMTP_SECURE: 'false',
+    SMTP_STARTTLS: 'false',
+    SMTP_FROM: 'adaas@example.test',
+    ...env,
+  });
+  try {
+    await fn(port);
+  } finally {
+    for (const k of ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_STARTTLS',
+      'SMTP_FROM', 'SMTP_USER', 'SMTP_PASS', 'NOTIFY_EMAIL_TO']) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+    await sink.stop();
+  }
+}
+
+test('a decision reaches a real SMTP relay', async () => {
+  // The gap this closes: a decision was recorded in a table and nobody was told
+  // unless they happened to open the app and look.
+  const sink = smtpSink();
+  await withSmtp(sink, {}, async () => {
+    const result = await smtpModule.send({
+      to: 'hr@example.test',
+      subject: 'Leave approved: LMS-TEST',
+      text: 'Your request for 1 day(s) of Casual Leave was approved.',
+    });
+    assert.equal(result.ok, true);
+    assert.equal(sink.received.length, 1);
+
+    const sent = sink.received[0];
+    assert.match(sent.to, /hr@example\.test/);
+    assert.match(sent.from, /adaas@example\.test/);
+    // Base64 with an explicit charset, so a non-ASCII policy name survives a
+    // 7-bit relay rather than arriving mangled.
+    assert.match(sent.message, /Content-Transfer-Encoding: base64/);
+    const body = sent.message.split('\r\n\r\n').slice(1).join('\r\n\r\n');
+    assert.match(
+      Buffer.from(body.replace(/\r\n/g, ''), 'base64').toString('utf8'),
+      /approved/,
+    );
+  });
+});
+
+test('credentials are never sent over an unencrypted connection', async () => {
+  // The check worth having in hand-rolled SMTP. The sink declines STARTTLS, so
+  // the connection stays plaintext -- and AUTH must refuse rather than proceed.
+  const sink = smtpSink();
+  await withSmtp(sink, {
+    SMTP_STARTTLS: 'true', SMTP_USER: 'someone', SMTP_PASS: 'a-password',
+  }, async () => {
+    await assert.rejects(
+      () => smtpModule.send({ to: 'hr@example.test', subject: 's', text: 't' }),
+      /refusing to send SMTP credentials over an unencrypted connection/,
+    );
+    // And nothing was queued.
+    assert.equal(sink.received.length, 0);
+  });
+});
+
+test('a rejected recipient surfaces as a failure, not a silent success', async () => {
+  const sink = smtpSink({ failAt: 'RCPT' });
+  await withSmtp(sink, {}, async () => {
+    await assert.rejects(
+      () => smtpModule.send({ to: 'nobody@example.test', subject: 's', text: 't' }),
+      /RCPT got 550/,
+    );
+  });
+});
+
+test('a body line of a single dot cannot truncate the message', () => {
+  // Dot-stuffing. Without it, a line containing only "." ends DATA early: the
+  // message is truncated and everything after it is read as SMTP commands. It is
+  // a message-splitting bug with a security flavour, and it is the classic
+  // hand-written-SMTP mistake.
+  const stuffed = smtpModule.dotStuff('first\r\n.\r\nlast');
+  assert.equal(stuffed, 'first\r\n..\r\nlast');
+  assert.ok(!/\r\n\.\r\n/.test(stuffed), 'a bare dot line must not survive');
+});
+
+test('a secret in a file beats one in the environment', async () => {
+  // Precedence, not fallback. If both are set the file is the deliberate
+  // configuration and the variable is usually left over from a compose file
+  // nobody updated -- preferring the environment would make a mounted secret
+  // silently ineffective, which is the worst of the four outcomes.
+  const file = path.join(require('node:os').tmpdir(), `adaas-secret-${process.pid}`);
+  fs.writeFileSync(file, 'from-the-file\n');
+  try {
+    const env = { API_KEY: 'from-the-environment', API_KEY_FILE: file };
+    assert.equal(secretsModule.read('API_KEY', env), 'from-the-file');
+
+    secretsModule.resolveAll(env);
+    assert.equal(env.API_KEY, 'from-the-file');
+    assert.deepEqual(secretsModule.status(env).from_file, ['API_KEY']);
+  } finally {
+    fs.unlinkSync(file);
+  }
+});
+
+test('an unreadable secret file refuses rather than falling back', () => {
+  // A broken secret mount must not degrade to whatever stale value is around --
+  // the service would come up looking healthy with the wrong credential.
+  const env = { API_KEY: 'stale', API_KEY_FILE: '/definitely/not/here' };
+  assert.throws(() => secretsModule.read('API_KEY', env), /could not be read/);
+});
+
+test('the corpus validates against its declared schema', () => {
+  const meta = corpusModule.loadMeta();
+  assert.ok(meta, 'the corpus must have a governance record');
+  assert.deepEqual(corpusModule.validate(KB, meta), []);
+});
+
+test('the governance digest agrees with the one the vectors were built from', () => {
+  // Two independently maintained files describing the same corpus. They are
+  // computed separately on purpose -- a shared helper would keep them agreeing
+  // even if the helper itself were wrong -- and the first version of corpus.js
+  // hashed different fields and disagreed, which is the drift this catches.
+  const committed = evalFileRaw('embeddings.json');
+  assert.equal(corpusModule.digestOf(KB), committed.corpus_digest);
+  assert.equal(corpusModule.loadMeta().content_digest, committed.corpus_digest);
+});
+
+test('an edited corpus fails the governance check', () => {
+  // Mutation test: the check must be able to fail. A corpus edited without
+  // updating the governance record means last_reviewed now refers to different
+  // text, which is precisely the silent staleness this exists to prevent.
+  const edited = KB.map((e, i) => (i === 0 ? { ...e, answer: `${e.answer} EDITED` } : e));
+  const problems = corpusModule.validate(edited, corpusModule.loadMeta());
+  assert.ok(problems.some((p) => /content_digest/.test(p)), problems.join('; '));
+
+  const missingField = KB.map((e, i) => (i === 0 ? { ...e, answer: '' } : e));
+  assert.ok(
+    corpusModule.validate(missingField, corpusModule.loadMeta())
+      .some((p) => /missing or empty answer/.test(p)),
+  );
+
+  const badCategory = KB.map((e, i) => (i === 0 ? { ...e, category: 'Medcial' } : e));
+  assert.ok(
+    corpusModule.validate(badCategory, corpusModule.loadMeta())
+      .some((p) => /not in the declared list/.test(p)),
+  );
+});
+
+test('the corpus reports an owner and a review age, and does not invent one', () => {
+  // UNASSIGNED is the honest value. An invented owner reads as accountability
+  // while providing none, which is worse than an empty field.
+  const status = corpusModule.status(KB);
+  assert.equal(status.governed, true);
+  assert.equal(status.digest_matches, true);
+  assert.equal(typeof status.review_age_days, 'number');
+  assert.equal(typeof status.review_overdue, 'boolean');
+  assert.equal(status.owner_assigned, status.owner !== 'UNASSIGNED');
+  assert.match(status.provenance, /synthetic/);
+});
+
+// ---------------------------------------------------------------------------
+// Identity: verifying a token from a provider
+// ---------------------------------------------------------------------------
+
+const oidcModule = require('./oidc');
+
+/**
+ * A stand-in identity provider: a real RSA key pair, a real discovery document
+ * and a real JWKS, served over HTTP.
+ *
+ * This is not a mock of the verifier -- the verifier runs unmodified and does its
+ * own fetching, key selection and signature check. What is faked is only the
+ * provider, which is the one part that cannot be present on this machine. Every
+ * check below therefore exercises the code that would run against Okta or Entra.
+ */
+function fakeIdp({ kid = 'test-key-1' } = {}) {
+  const { publicKey, privateKey } = require('node:crypto').generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+  });
+  const jwk = { ...publicKey.export({ format: 'jwk' }), kid, alg: 'RS256', use: 'sig' };
+
+  let issuer;
+  const server = require('node:http').createServer((req, res) => {
+    const send = (body) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(body));
+    };
+    if (req.url === '/.well-known/openid-configuration') {
+      send({ issuer, jwks_uri: `${issuer}/jwks` });
+      return;
+    }
+    if (req.url === '/jwks') { send({ keys: [jwk] }); return; }
+    res.writeHead(404); res.end();
+  });
+
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+
+  return {
+    async start() {
+      await new Promise((resolve) => server.listen(0, resolve));
+      issuer = `http://127.0.0.1:${server.address().port}`;
+      return issuer;
+    },
+    stop() { return new Promise((resolve) => server.close(resolve)); },
+    /** Sign a token. Overrides let a test break exactly one thing at a time. */
+    mint(claims = {}, { header = {}, tamper = false, key = privateKey } = {}) {
+      const now = Math.floor(Date.now() / 1000);
+      const h = b64({ alg: 'RS256', typ: 'JWT', kid, ...header });
+      const p = b64({
+        iss: issuer,
+        aud: 'adaas',
+        sub: '1001',
+        exp: now + 3600,
+        iat: now,
+        ...claims,
+      });
+      if (header.alg === 'none') return `${h}.${p}.`;
+      const sig = require('node:crypto')
+        .sign('RSA-SHA256', Buffer.from(`${h}.${p}`), key)
+        .toString('base64url');
+      return `${h}.${p}.${tamper ? `${sig.slice(0, -1)}A` : sig}`;
+    },
+  };
+}
+
+async function withIdp(fn, env = {}) {
+  const idp = fakeIdp();
+  const issuer = await idp.start();
+  const saved = { ...process.env };
+  process.env.OIDC_ISSUER = issuer;
+  process.env.OIDC_AUDIENCE = 'adaas';
+  Object.assign(process.env, env);
+  oidcModule.__clearCache();
+  try {
+    await fn(idp, issuer);
+  } finally {
+    for (const k of ['OIDC_ISSUER', 'OIDC_AUDIENCE', 'OIDC_EMPLOYEE_CLAIM',
+      'OIDC_ROLE_CLAIM', 'SESSION_SECRET']) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+    oidcModule.__clearCache();
+    await idp.stop();
+  }
+}
+
+test('a valid ID token authenticates, and scoping still applies', async () => {
+  // The half that was missing. session.js already enforced that a caller may only
+  // act for its own subject; what it could not do was establish who the caller is,
+  // because /session mints a token for any employee id it is asked for.
+  await withIdp(async (idp) => {
+    await withServer(async (baseUrl) => {
+      const token = idp.mint({ sub: '1001' });
+
+      const own = await fetch(`${baseUrl}/leave-balance?employee_id=1001`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      assert.equal(own.status, 200);
+
+      // Verified identity does not mean unlimited authority.
+      const other = await fetch(`${baseUrl}/leave-balance?employee_id=1002`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      assert.equal(other.status, 403);
+    });
+  });
+});
+
+test('a token signed by the wrong key is refused', async () => {
+  await withIdp(async (idp) => {
+    const other = require('node:crypto').generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+    }).privateKey;
+    await assert.rejects(
+      () => oidcModule.verifyIdToken(idp.mint({}, { key: other })),
+      /signature does not verify/,
+    );
+  });
+});
+
+test('alg none and a tampered signature are both refused', async () => {
+  // The two classic JWT forgeries. `alg: none` works when a verifier reads the
+  // algorithm out of the token it is verifying, which is why this one is pinned.
+  await withIdp(async (idp) => {
+    await assert.rejects(
+      () => oidcModule.verifyIdToken(idp.mint({}, { header: { alg: 'none' } })),
+      /unsupported alg/,
+    );
+    await assert.rejects(
+      () => oidcModule.verifyIdToken(idp.mint({}, { tamper: true })),
+      /signature does not verify/,
+    );
+  });
+});
+
+test('a token for another application is refused', async () => {
+  // Cross-application confusion: a correctly signed, unexpired token from the
+  // same provider, issued for something else entirely.
+  await withIdp(async (idp) => {
+    await assert.rejects(
+      () => oidcModule.verifyIdToken(idp.mint({ aud: 'some-other-app' })),
+      /does not include adaas/,
+    );
+  });
+});
+
+test('an expired token is refused, and clock skew is bounded', async () => {
+  await withIdp(async (idp) => {
+    const now = Math.floor(Date.now() / 1000);
+    await assert.rejects(
+      () => oidcModule.verifyIdToken(idp.mint({ exp: now - 3600 })),
+      /expired/,
+    );
+    // Inside the allowance, a just-expired token still passes -- deliberate, and
+    // bounded, because a zero allowance rejects valid tokens intermittently when
+    // two clocks differ by seconds.
+    const justExpired = idp.mint({ exp: now - 5 });
+    const ok = await oidcModule.verifyIdToken(justExpired);
+    assert.equal(ok.employeeId, '1001');
+  });
+});
+
+test('the employee id comes from a configurable claim', async () => {
+  // Mapping a directory identity onto an HR employee number is a deployment
+  // concern with no correct universal answer, so it is a setting. A token with
+  // nothing in the configured claim is refused rather than defaulted.
+  await withIdp(async (idp) => {
+    const found = await oidcModule.verifyIdToken(
+      idp.mint({ employee_number: '1002' }),
+    );
+    assert.equal(found.employeeId, '1002');
+
+    await assert.rejects(
+      () => oidcModule.verifyIdToken(idp.mint({ employee_number: undefined })),
+      /has no employee_number claim/,
+    );
+  }, { OIDC_EMPLOYEE_CLAIM: 'employee_number' });
+});
+
+test('a provider claiming a different issuer is refused', async () => {
+  // A discovery document naming an issuer other than the configured one is either
+  // a misconfiguration or a redirect somewhere unintended. Both are refusals.
+  await withIdp(async (idp, issuer) => {
+    process.env.OIDC_ISSUER = `${issuer}/tenant-two`;
+    oidcModule.__clearCache();
+    await assert.rejects(() => oidcModule.fetchKeys(), /returned 404|names issuer/);
+  });
+});
+
+test('an unknown role claim does not become approver', async () => {
+  // The dangerous default. If the role claim is missing or unrecognised the
+  // principal must be an employee, because defaulting to approver would let any
+  // authenticated person act for anyone else.
+  await withIdp(async (idp) => {
+    await withServer(async (baseUrl) => {
+      const token = idp.mint({ sub: '1001', adaas_role: 'superuser' });
+      const other = await fetch(`${baseUrl}/leave-balance?employee_id=1002`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      assert.equal(other.status, 403, 'an unrecognised role must not grant authority');
+    });
+  });
+});
+
+test('health names which identity path is live', async () => {
+  await withIdp(async () => {
+    await withServer(async (baseUrl) => {
+      const health = await (await fetch(`${baseUrl}/health`)).json();
+      assert.equal(health.authorization, 'oidc');
+      assert.equal(health.identity.configured, true);
+      assert.equal(health.identity.employee_claim, 'sub');
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Where the models live
 // ---------------------------------------------------------------------------
 
