@@ -17,8 +17,22 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: hr-backend/package-lock.json
+          cache-dependency-path: |
+            hr-backend/package-lock.json
+            model-service/package-lock.json
       - name: Install backend dependencies
+        run: npm ci
+      # model-service is a separate package with its own dependency tree -- that
+      # separation is the point of it -- so `npm ci` in hr-backend cannot load it,
+      # and the cross-boundary contract test skips itself when it is absent.
+      #
+      # Skipping was the right behaviour and the wrong outcome: it meant the one
+      # test asserting that the API and the model service agree about the model
+      # ids and the query prefix never ran anywhere. A disagreement there produces
+      # vectors that do not compare with the committed ones, which looks like bad
+      # retrieval rather than a mismatch.
+      - name: Install model-service dependencies
+        working-directory: model-service
         run: npm ci
       - name: Run backend tests
         run: npm test

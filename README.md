@@ -1232,7 +1232,7 @@ genuinely unknown.
   report unready; a light/dark themed client with contrast gated in CI; seven UI
   screenshots generated from the running app; Docker/Compose/K8s config; CI
   covering tests, thirteen retrieval quality gates (two of them on graded nDCG),
-  five intent gates plus a leakage ceiling, embedding and reranker verification,
+  six intent gates plus a leakage ceiling, embedding and reranker verification,
   the smoke test, a container that is started and queried, and Flutter
   analyze/tests.
 - **Known weak spots, measured:** retrieval reaches 0.8333 top-1 and nDCG@5
