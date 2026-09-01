@@ -911,6 +911,52 @@ test('the classifier declines rather than guessing on an unrelated message', () 
   assert.equal(result.confidence, 0);
 });
 
+test('a policy question is never routed to a leave action', () => {
+  // The test that did not exist, and the reason a screenshot found this instead
+  // of the suite. Asked "Can I work from my house a few days a week?", the app
+  // routed to applyLeave and attempted to file five days of casual leave -- and
+  // every intent set passed, because no intent fixture contained a policy
+  // question phrased that way.
+  //
+  // Scored on the 36 retrieval paraphrases, which are policy questions by
+  // construction. This is asymmetric on purpose: routing a question to
+  // policyQuestion when it was a request is a worse answer, while routing a
+  // request to an action that was never asked for writes to a leave balance. The
+  // three contested labels in eval/intent_from_retrieval.json are excluded from
+  // the count and named there; the floor is set against the conservative figure
+  // that includes them.
+  const store = denseRetrieval.loadVectors();
+  const classifier = intentModule.buildClassifier(
+    evalFile('intent_training.json'), store.queries,
+  );
+
+  let routedToAnAction = 0;
+  for (const c of evalFile('policy_queries.json')) {
+    const decided = intentModule.route(c.q, classifier, store.queries[c.q]);
+    if (decided.intent !== 'policyQuestion') routedToAnAction += 1;
+  }
+
+  // 0.75, matching the gate in eval_intent.js -- see the note there on why a
+  // 36-case probe cannot carry a tighter floor.
+  const safe = 1 - (routedToAnAction / 36);
+  assert.ok(safe >= 0.75,
+    `${routedToAnAction} of 36 policy questions routed to a leave action `
+    + `(${safe.toFixed(4)} safe)`);
+
+  // The converse, so this cannot be passed by answering policyQuestion to
+  // everything -- which would score 1.0000 above and break both leave features.
+  const balanced = evalFile('held_out_intent_queries_5.json');
+  let correct = 0;
+  for (const c of balanced) {
+    if (intentModule.route(c.q, classifier, store.queries[c.q]).intent === c.label) {
+      correct += 1;
+    }
+  }
+  assert.ok(correct / balanced.length >= 0.80,
+    `held-out set 5 accuracy ${(correct / balanced.length).toFixed(4)} -- `
+    + 'action safety must not be bought by refusing to act at all');
+});
+
 test('the graded judgements never contradict the original gold labels', () => {
   // The guard that lets graded relevance judgements be trusted at all. The same
   // person who tuned the retriever wrote them, so the one protection that does
@@ -968,7 +1014,7 @@ test('the training set is not a paraphrase of any held-out set', () => {
   let worst = 0;
   for (const file of ['held_out_intent_queries.json',
     'held_out_intent_queries_2.json', 'held_out_intent_queries_3.json',
-    'held_out_intent_queries_4.json']) {
+    'held_out_intent_queries_4.json', 'held_out_intent_queries_5.json']) {
     for (const c of evalFile(file)) {
       const v = store.queries[c.q];
       if (!v) continue;

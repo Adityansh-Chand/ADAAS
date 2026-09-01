@@ -72,6 +72,7 @@ async function build() {
     'held_out_intent_queries_2.json',
     'held_out_intent_queries_3.json',
     'held_out_intent_queries_4.json',
+    'held_out_intent_queries_5.json',
   ];
   const intentQueries = [];
   for (const file of intentFiles) {
