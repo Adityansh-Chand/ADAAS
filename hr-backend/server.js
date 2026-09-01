@@ -12,6 +12,9 @@ const llm = require('./llm');
 const { buildIndex, retrieve } = require('./retrieval');
 const denseRetrieval = require('./dense');
 const reranker = require('./rerank');
+const modelClient = require('./model_client');
+const notificationStore = require('./notifications');
+const session = require('./session');
 const intentModule = require('./intent');
 const embeddings = require('./embeddings');
 const {
@@ -300,8 +303,21 @@ async function retrieveContext(message) {
   );
 }
 
+/**
+ * The deterministic answer: the retrieved policy's own text, unaltered.
+ *
+ * It used to append "Source: <policy>" to the text as well. That duplicated the
+ * `sources` field this endpoint already returns, and in the app it rendered
+ * twice -- once inside the bubble and once as the citation line underneath.
+ * Visible in the first committed screenshot, which is how it was noticed.
+ *
+ * The citation belongs in the structured field. An API consumer reads `sources`;
+ * a UI renders it as a citation and can style it, order it, and say which of the
+ * retrieved policies actually produced the answer. Baking it into prose gives up
+ * all of that and gains nothing.
+ */
 function groundedAnswer(retrieval) {
-  return `${retrieval.primaryAnswer}\n\nSource: ${retrieval.sources[0]}`;
+  return retrieval.primaryAnswer;
 }
 
 async function generateAnswer(message, retrieval) {
@@ -450,12 +466,23 @@ app.get('/health', (req, res) => {
       ? { entries: knowledgeBase.length }
       : { entries: 0, error: kbError },
     llm: llm.isConfigured() ? llm.readConfig().provider : 'none',
+    // Whether per-employee scoping is being enforced. Reported because
+    // "unauthenticated" should be a visible state rather than something a
+    // reader has to infer from the absence of a variable.
+    authorization: session.isEnforced() ? 'session_tokens' : 'none',
     retrieval: (() => {
       const { mode, reason } = activeRetrievalMode();
       const requested = configuredRetrievalMode();
-      return mode === requested
+      const base = mode === requested
         ? { mode }
         : { mode, requested, degraded_because: reason };
+      // Where the vectors come from, reported rather than inferred. 'service'
+      // means a separate model-service process, which is what lets the
+      // production image run dense or reranked retrieval at all -- the model
+      // package carries advisories with no upstream fix and is not installed
+      // there. 'local' is the in-process optional dependency, which is what
+      // developers and CI use.
+      return { ...base, model_source: modelClient.activeSource() };
     })(),
   };
   res.status(ready ? 200 : 503).json(body);
@@ -468,10 +495,16 @@ app.get('/metrics', (req, res) => {
     dataSource: mongoUsable() ? 'mongodb' : 'memory',
     knowledge_base_entries: knowledgeBase.length,
     retrieval_mode: activeRetrievalMode().mode,
+    // Delivery is best-effort by design -- a webhook failure must not roll back
+    // an approval that has already moved a balance. That makes "nobody is being
+    // told" a silent condition unless it is counted, so it is counted here.
+    notifications: notificationStore.status(),
   });
 });
 
-app.get('/leave-balance', requireApiKey, asyncHandler(async (req, res) => {
+app.get('/leave-balance', requireApiKey, session.attachPrincipal,
+  session.requireSelfOrApprover((req) => req.query.employee_id),
+  asyncHandler(async (req, res) => {
   const employeeId = req.query.employee_id;
   if (!employeeId) {
     res.status(400).json({ error: 'employee_id is required' });
@@ -487,7 +520,9 @@ app.get('/leave-balance', requireApiKey, asyncHandler(async (req, res) => {
   res.json(balancePayload(employeeId, usage));
 }));
 
-app.post('/leave-application', requireApiKey, asyncHandler(async (req, res) => {
+app.post('/leave-application', requireApiKey, session.attachPrincipal,
+  session.requireSelfOrApprover((req) => req.body.employee_id),
+  asyncHandler(async (req, res) => {
   const employeeId = req.body.employee_id;
   const requestText = req.body.request_text || '';
   if (!employeeId || !requestText) {
@@ -694,7 +729,9 @@ app.post('/leave-applications/:reference/decision', requireApiKey,
     });
   }));
 
-app.get('/leave-applications', requireApiKey, asyncHandler(async (req, res) => {
+app.get('/leave-applications', requireApiKey, session.attachPrincipal,
+  session.requireSelfOrApprover((req) => req.query.employee_id),
+  asyncHandler(async (req, res) => {
   if (mongoUsable()) {
     const applications = await LeaveApplication.find()
       .sort({ createdAt: -1 })
@@ -787,10 +824,14 @@ app.post('/intent', requireApiKey, asyncHandler(async (req, res) => {
 // optional by design. What matters is that the decision produces a durable
 // record addressed to someone.
 // ---------------------------------------------------------------------------
-const fallbackNotifications = [];
-
+// Storage and delivery live in notifications.js. Two things changed there and
+// both were open items: the array is now written through to a file, so a restart
+// with no MongoDB configured no longer loses every decision anyone was told
+// about -- which was the default path, not an edge case -- and an outbound
+// webhook can now hand the notification to something that knows how to reach a
+// person. That is a seam, not email or push, and it is described as one.
 function addNotification({ employeeId, referenceId, decision, leaveType, days, decidedBy }) {
-  fallbackNotifications.push({
+  notificationStore.add({
     id: `NTF-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
     employee_id: String(employeeId),
     reference_id: referenceId,
@@ -808,7 +849,51 @@ function addNotification({ employeeId, referenceId, decision, leaveType, days, d
   counters.notifications_created_total += 1;
 }
 
-app.get('/notifications', requireApiKey, asyncHandler(async (req, res) => {
+/**
+ * Mint a session token for a demo employee.
+ *
+ * This endpoint is exactly as trustworthy as the demo identity behind it: it
+ * will issue a token for any employee id it is asked for, because there is
+ * nothing here to authenticate anyone against. It is the seam an identity
+ * provider would replace, and it is named and documented as that rather than
+ * dressed up as a login.
+ *
+ * What the token then does is real: every employee-scoped route checks the
+ * request's subject against it, so 1001 cannot read 1002's balance by editing a
+ * query string -- which, before this, it could.
+ */
+app.post('/session', requireApiKey, asyncHandler(async (req, res) => {
+  if (!session.isEnforced()) {
+    res.status(409).json({
+      error: 'Session tokens are disabled. Set SESSION_SECRET to enable '
+        + 'per-employee authorization; without it every endpoint accepts any '
+        + 'employee_id, which /health reports as authorization: none.',
+    });
+    return;
+  }
+  const employeeId = req.body.employee_id;
+  const role = req.body.role || 'employee';
+  if (!employeeId) {
+    res.status(400).json({ error: 'employee_id is required' });
+    return;
+  }
+  if (!session.ROLES.includes(role)) {
+    res.status(400).json({ error: `role must be one of ${session.ROLES.join(', ')}` });
+    return;
+  }
+  res.json({
+    token: session.issue(employeeId, role),
+    employee_id: String(employeeId),
+    role,
+    expires_in: session.DEFAULT_TTL_SECONDS,
+    caveat: 'This does not authenticate anyone. It signs the demo identity you '
+      + 'asked for so that scoping can be enforced downstream.',
+  });
+}));
+
+app.get('/notifications', requireApiKey, session.attachPrincipal,
+  session.requireSelfOrApprover((req) => req.query.employee_id),
+  asyncHandler(async (req, res) => {
   const employeeId = req.query.employee_id;
   if (!employeeId) {
     res.status(400).json({ error: 'employee_id is required' });
@@ -816,22 +901,17 @@ app.get('/notifications', requireApiKey, asyncHandler(async (req, res) => {
   }
 
   const unreadOnly = String(req.query.unread || '') === 'true';
-  const notifications = fallbackNotifications
-    .filter((n) => n.employee_id === String(employeeId))
-    .filter((n) => !unreadOnly || !n.read)
-    .slice(-50)
-    .reverse();
+  const notifications = notificationStore.forEmployee(employeeId, { unreadOnly });
 
   res.json({ notifications, unread: notifications.filter((n) => !n.read).length });
 }));
 
 app.post('/notifications/:id/ack', requireApiKey, asyncHandler(async (req, res) => {
-  const notification = fallbackNotifications.find((n) => n.id === req.params.id);
+  const notification = notificationStore.markRead(req.params.id);
   if (!notification) {
     res.status(404).json({ error: 'Notification not found' });
     return;
   }
-  notification.read = true;
   res.json({ id: notification.id, read: true });
 }));
 
@@ -890,7 +970,7 @@ module.exports.classifyIntent = classifyIntent;
  */
 module.exports.__resetDemoData = () => {
   fallbackLeaveApplications.length = 0;
-  fallbackNotifications.length = 0;
+  notificationStore.__reset(process.env.NOTIFICATIONS_PATH);
   for (const key of Object.keys(fallbackLeaveUsage)) delete fallbackLeaveUsage[key];
   Object.assign(fallbackLeaveUsage, SEEDED_LEAVE_USAGE());
 };

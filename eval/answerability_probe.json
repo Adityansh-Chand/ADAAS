@@ -1,0 +1,87 @@
+{
+  "model": "Xenova/nli-deberta-v3-xsmall",
+  "failed_to_load": [],
+  "entail_label_index": 1,
+  "in_scope": {
+    "n": 36,
+    "min": 0.00033242596347363525,
+    "p25": 0.009498320581834058,
+    "median": 0.026613919746233828,
+    "max": 0.7595960314467756
+  },
+  "hard_tier": {
+    "n": 12,
+    "min": 0.0003589653217815175,
+    "p25": 0.0006421780061573041,
+    "median": 0.0012495591981742011,
+    "max": 0.20566984261658955
+  },
+  "threshold": 0.00033242596347363525,
+  "rejected": 0,
+  "margin": 0,
+  "min_yield_required": 4,
+  "min_margin_required": 0.05,
+  "usable": false,
+  "hard_detail": [
+    {
+      "q": "where can I park my car at the office",
+      "id": "policy_010",
+      "p": 0.0012638773877899352
+    },
+    {
+      "q": "how do I book a meeting room for tomorrow",
+      "id": "policy_002",
+      "p": 0.003550101920931842
+    },
+    {
+      "q": "what is the company's stock ticker symbol",
+      "id": "policy_009",
+      "p": 0.0012495591981742011
+    },
+    {
+      "q": "can I bring my dog into the office",
+      "id": "policy_010",
+      "p": 0.0006421780061573041
+    },
+    {
+      "q": "is there a subsidised canteen in the building",
+      "id": "policy_016_workplace_support",
+      "p": 0.0003589653217815175
+    },
+    {
+      "q": "what is the policy on office music and headphones",
+      "id": "policy_010",
+      "p": 0.0004237088033940412
+    },
+    {
+      "q": "do we get a bonus if we refer a friend for a job",
+      "id": "policy_006",
+      "p": 0.001136226561276597
+    },
+    {
+      "q": "how many days of paternity leave does the law require",
+      "id": "policy_003_pat",
+      "p": 0.20566984261658955
+    },
+    {
+      "q": "what is the notice period for a contractor rather than an employee",
+      "id": "policy_011",
+      "p": 0.022521421127092996
+    },
+    {
+      "q": "can I sublet my company-provided accommodation",
+      "id": "policy_013",
+      "p": 0.01513929717551639
+    },
+    {
+      "q": "which bank does the company use for payroll",
+      "id": "policy_006",
+      "p": 0.0006330728531540216
+    },
+    {
+      "q": "what happens to my shares if the company is acquired",
+      "id": "policy_006",
+      "p": 0.0009220581463059709
+    }
+  ]
+}

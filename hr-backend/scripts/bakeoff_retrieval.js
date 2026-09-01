@@ -539,6 +539,148 @@ async function stageFusion(kb, cases, winner, rerankerId) {
   return rows;
 }
 
+/**
+ * STAGE 5 -- late interaction, the "something that reads" the README asks for.
+ *
+ * The residual retrieval errors are all near-duplicate confusions: paternity
+ * against maternity, chemotherapy against the exclusions annex. Every method
+ * tried so far compresses each side to one vector before comparing, or compares
+ * the pair through a cross-encoder trained on someone else's data. Late
+ * interaction is the third option and the only one that is neither: it keeps a
+ * vector per TOKEN, and scores a pair by summing, over query tokens, the best
+ * match anywhere in the document.
+ *
+ * The reason it is worth trying on this corpus specifically is that near
+ * duplicates differ in a few tokens and agree everywhere else. Mean pooling
+ * averages those few tokens away by construction -- that is what pooling is --
+ * whereas MaxSim lets a single decisive token ("paternity", "10 days", "male")
+ * carry as much weight as it deserves.
+ *
+ * The reason it may not work is equally concrete, and is stated before the
+ * numbers rather than after: bge-small was trained to produce a good POOLED
+ * vector. Its token vectors are a by-product, never supervised for this use, and
+ * a real ColBERT is trained end to end with a MaxSim objective and a projection
+ * layer this model does not have. So this measures whether the effect is strong
+ * enough to survive using an unsuited model, which is a lower bar to fail than
+ * "late interaction does not help".
+ */
+async function stageLateInteraction(kb, cases, winner, rerankerId) {
+  const t = await tf();
+  console.log('');
+  console.log('STAGE 5 -- late interaction (ColBERT-style MaxSim)');
+  console.log(`  encoder: ${winner.id}   pool: ${RERANK_POOL}`);
+  console.log('');
+
+  const pipe = await t.pipeline('feature-extraction', winner.id, { dtype: 'fp32' });
+
+  // One vector per token, L2-normalised, so a dot product is a cosine.
+  const tokenVectors = async (text) => {
+    const out = await pipe([text], { pooling: 'none', normalize: false });
+    const [, seq, dim] = out.dims;
+    const flat = out.tolist()[0];
+    return flat.slice(0, seq).map((row) => {
+      let norm = 0;
+      for (let i = 0; i < dim; i += 1) norm += row[i] * row[i];
+      norm = Math.sqrt(norm) || 1;
+      return row.map((x) => x / norm);
+    });
+  };
+
+  const maxSim = (queryTokens, docTokens) => {
+    let total = 0;
+    for (const q of queryTokens) {
+      let best = -1;
+      for (const d of docTokens) {
+        let dot = 0;
+        for (let i = 0; i < q.length; i += 1) dot += q[i] * d[i];
+        if (dot > best) best = dot;
+      }
+      total += best;
+    }
+    return total / queryTokens.length;
+  };
+
+  const policyVectors = await embedAll(
+    winner.id, kb.map((e) => (winner.passagePrefix || '') + policyText(e)),
+  );
+  const queryVectors = await embedAll(
+    winner.id, cases.map((c) => (winner.queryPrefix || '') + c.q),
+  );
+  const byQuery = new Map(cases.map((c, i) => [c.q, queryVectors[i]]));
+
+  const docTokens = new Map();
+  for (const e of kb) docTokens.set(e.id, await tokenVectors(rerankPassage(e)));
+
+  const tok = await t.AutoTokenizer.from_pretrained(rerankerId);
+  const model = await t.AutoModelForSequenceClassification.from_pretrained(
+    rerankerId, { dtype: 'fp32' },
+  );
+
+  const rows = [];
+  const scored = new Map();
+  for (const c of cases) {
+    const pool = kb
+      .map((entry, i) => ({ entry, cos: cosine(byQuery.get(c.q), policyVectors[i]) }))
+      .sort((a, b) => b.cos - a.cos || a.entry.id.localeCompare(b.entry.id))
+      .slice(0, RERANK_POOL);
+
+    const qTokens = await tokenVectors((winner.queryPrefix || '') + c.q);
+    const late = pool.map((x) => maxSim(qTokens, docTokens.get(x.entry.id)));
+
+    const inputs = tok(pool.map(() => c.q), {
+      text_pair: pool.map((x) => rerankPassage(x.entry)),
+      padding: true,
+      truncation: true,
+    });
+    const { logits } = await model(inputs);
+    const ce = logits.tolist().map((r) => r[0]);
+
+    scored.set(c.q, pool.map((x, i) => ({ entry: x.entry, cos: x.cos, late: late[i], ce: ce[i] })));
+  }
+
+  const rank = (key) => (c) => scored.get(c.q).slice()
+    .sort((a, b) => b[key] - a[key] || a.entry.id.localeCompare(b.entry.id))
+    .slice(0, TOP_K);
+
+  // Rank fusion rather than a score blend: MaxSim sums are not on the
+  // cross-encoder's scale and inventing a normalisation between them would be
+  // the thing stage 4 already showed adds nothing.
+  const fused = (c) => {
+    const pool = scored.get(c.q);
+    const rankOf = (key) => {
+      const m = new Map();
+      pool.slice().sort((a, b) => b[key] - a[key]).forEach((x, i) => m.set(x.entry.id, i));
+      return m;
+    };
+    const rl = rankOf('late');
+    const rc = rankOf('ce');
+    return pool
+      .map((x) => ({
+        entry: x.entry,
+        score: 1 / (10 + rl.get(x.entry.id)) + 1 / (10 + rc.get(x.entry.id)),
+      }))
+      .sort((a, b) => b.score - a.score || a.entry.id.localeCompare(b.entry.id))
+      .slice(0, TOP_K);
+  };
+
+  const variants = [
+    { label: 'dense pooled only (baseline)', rank: rank('cos') },
+    { label: 'cross-encoder only (shipping)', rank: rank('ce') },
+    { label: 'late interaction only', rank: rank('late') },
+    { label: 'late interaction + cross-encoder, RRF', rank: fused },
+  ];
+
+  for (const v of variants) {
+    const m = score(cases, v.rank);
+    rows.push({ label: v.label, ...m });
+    console.log(
+      `  ${v.label.padEnd(42)} top-1 ${fmt(m.top1)}  `
+      + `recall@5 ${fmt(m.recallAtK)}  MRR ${fmt(m.mrr)}`,
+    );
+  }
+  return rows;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const stageArg = (args.find((a) => a.startsWith('--stage='))
@@ -567,7 +709,8 @@ async function main() {
     : BI_ENCODERS.find((c) => c.id === embeddings.MODEL_ID) || BI_ENCODERS[0];
 
   if (stageArg === 'all' || stageArg === 'reranker'
-      || stageArg === 'ablation' || stageArg === 'fusion') {
+      || stageArg === 'ablation' || stageArg === 'fusion'
+      || stageArg === 'late') {
     out.reranker_retriever = bestBi.id;
     const rrRows = await stageReranker(kb, cases, bestBi);
     out.rerankers = rrRows;
@@ -579,6 +722,10 @@ async function main() {
     if (stageArg === 'all' || stageArg === 'ablation') {
       out.ablation_reranker = bestRr.id;
       out.ablation = await stageAblation(kb, cases, bestBi, bestRr.id);
+    }
+
+    if (stageArg === 'all' || stageArg === 'late') {
+      out.late_interaction = await stageLateInteraction(kb, cases, bestBi, bestRr.id);
     }
 
     if (stageArg === 'all' || stageArg === 'fusion') {

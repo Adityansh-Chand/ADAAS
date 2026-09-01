@@ -1,0 +1,15 @@
+{
+  "name": "adaas-model-service",
+  "version": "1.0.0",
+  "description": "Embedding and reranking over HTTP, so the API image need not carry the model dependency",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.1.0",
+    "@huggingface/transformers": "^4.2.0"
+  }
+}

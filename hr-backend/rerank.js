@@ -50,6 +50,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const modelClient = require('./model_client');
+
 const MODEL_ID = 'mixedbread-ai/mxbai-rerank-xsmall-v1';
 
 // Candidates handed to the cross-encoder. Measured, not guessed: the ablation in
@@ -167,6 +169,14 @@ async function getModel() {
  */
 async function scorePairs(query, passages) {
   if (passages.length === 0) return [];
+
+  // Same decision as embeddings.js: when a model service is configured it is the
+  // only source, and no local fallback is attempted. See model_client.js for why
+  // failing over silently would be worse than failing.
+  if (modelClient.serviceUrl()) {
+    return modelClient.rerankScores(query, passages);
+  }
+
   const { tokenizer, model } = await getModel();
   const inputs = tokenizer(passages.map(() => query), {
     text_pair: passages,
@@ -252,12 +262,10 @@ function loadScores(file = DEFAULT_SCORES_PATH) {
 
 /** Is the optional package present? Does not load the model. */
 function isAvailable() {
-  try {
-    require.resolve('@huggingface/transformers');
-    return true;
-  } catch {
-    return false;
-  }
+  // A configured model service counts as available -- that is the whole point of
+  // it. Before this, the production image had no local package and therefore
+  // reported reranking unavailable even when a service was running beside it.
+  return modelClient.activeSource() !== 'none';
 }
 
 module.exports = {

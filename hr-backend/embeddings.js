@@ -35,6 +35,8 @@
  * RETRIEVAL_MODE. Everything else keeps working without it.
  */
 
+const modelClient = require('./model_client');
+
 const MODEL_ID = 'Xenova/bge-small-en-v1.5';
 const DIMENSIONS = 384;
 
@@ -102,7 +104,32 @@ function round(vector) {
  * Embed an array of strings. Returns an array of normalised 384-dim vectors,
  * rounded to STORED_PRECISION so the result is stable enough to commit.
  */
-async function embed(texts, { batchSize = BATCH_SIZE } = {}) {
+async function embed(texts, { batchSize = BATCH_SIZE, kind = 'passage' } = {}) {
+  // The service path, when one is configured. Checked here rather than at the
+  // call sites so every caller -- live queries, the build scripts, the eval --
+  // goes through the same decision, and so `MODEL_SERVICE_URL` cannot be honoured
+  // by some paths and ignored by others.
+  //
+  // Rounded identically to the local path: the committed vectors are compared to
+  // one unit of stored precision, and a service returning full-precision floats
+  // would fail `npm run embed:verify` for a reason that is not drift.
+  if (modelClient.serviceUrl()) {
+    const out = [];
+    for (let i = 0; i < texts.length; i += batchSize) {
+      const batch = texts.slice(i, i + batchSize);
+      const vectors = kind === 'query'
+        ? await modelClient.embedQueries(batch)
+        : await modelClient.embedPassages(batch);
+      for (const vector of vectors) {
+        if (vector.length !== DIMENSIONS) {
+          throw new Error(`expected ${DIMENSIONS} dims, got ${vector.length}`);
+        }
+        out.push(round(vector));
+      }
+    }
+    return out;
+  }
+
   const extractor = await getExtractor();
   const out = [];
   for (let i = 0; i < texts.length; i += batchSize) {
@@ -130,6 +157,11 @@ async function embedPassages(texts, options) {
 
 /** Embed queries -- what a user typed. Prefixed, per the model contract above. */
 async function embedQueries(texts, options) {
+  // The service applies the prefix itself, so sending prefixed text would apply
+  // it twice. One place owns the prefix per path, and which one is explicit.
+  if (modelClient.serviceUrl()) {
+    return embed(texts, { ...options, kind: 'query' });
+  }
   return embed(texts.map((t) => QUERY_PREFIX + t), options);
 }
 

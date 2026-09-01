@@ -71,6 +71,16 @@ jobs:
       # caught a case in set 4 that was a near-paraphrase of a training example.
       - name: Score intent classification
         run: npm run eval:intent:gate
+      # Checks what CI can actually check about the committed screenshots: that
+      # they exist, are valid PNGs, are not blank canvases from a failed render,
+      # and that the README and the capture script agree on the set. It
+      # deliberately does NOT diff pixels -- headless font rasterisation differs
+      # between a developer machine and this runner, so that check would fail
+      # every run for reasons unconnected to the UI, and a check that fails for
+      # irrelevant reasons gets disabled.
+      - name: Check the committed screenshots
+        working-directory: .
+        run: node tool/check_screenshots.js
 
   embeddings-verify:
     name: Embeddings match the corpus

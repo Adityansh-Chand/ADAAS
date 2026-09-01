@@ -37,6 +37,7 @@ const path = require('path');
 
 const intent = require('../intent');
 const dense = require('../dense');
+const bootstrap = require('./bootstrap');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const EVAL_DIR = path.join(ROOT, 'eval');
@@ -49,6 +50,7 @@ const QUALITY_GATES = {
   'embedding held_out_3': 0.88,
   'embedding held_out_4': 0.72,
   'embedding held_out_5': 0.80,
+  'embedding held_out_6': 0.65,
 };
 
 // ACTION SAFETY
@@ -67,8 +69,12 @@ const QUALITY_GATES = {
 // three contested labels in eval/intent_from_retrieval.json cannot lower the
 // bar. Both numbers are printed.
 //
-// 0.75 rather than 0.80, and the reason is a measurement rather than a
-// preference. Rewording ONE training example -- for a leakage-margin reason
+// Raised from 0.75 to 0.78 when the asymmetric action margin took the measured
+// value from 0.7778 to 0.8611. Still roughly two cases below what is measured,
+// for the reason below.
+//
+// The original 0.75 was set rather than 0.80, and the reason was a measurement
+// rather than a preference. Rewording ONE training example -- for a leakage-margin reason
 // having nothing to do with this probe, and on a sentence about exit formalities
 // -- moved this number from 0.8056 to 0.7778, by flipping an unrelated question
 // about performance targets. At n=36 a single case is 2.8 points, and a linear
@@ -79,7 +85,7 @@ const QUALITY_GATES = {
 // flake on edits that have nothing to do with routing, and a gate that fails for
 // reasons unconnected to what it is guarding gets disabled. The probe is
 // directional at this size, and it is reported as directional.
-const ACTION_SAFETY_FLOOR = 0.75;
+const ACTION_SAFETY_FLOOR = 0.78;
 
 // THE EMBEDDING MODEL CHANGED, AND INTENT PAID FOR IT
 //
@@ -123,6 +129,7 @@ const SETS = [
   ['held_out_3', 'held_out_intent_queries_3.json', 'CLEAN for the classifier'],
   ['held_out_4', 'held_out_intent_queries_4.json', 'CLEAN -- written before the rewrite'],
   ['held_out_5', 'held_out_intent_queries_5.json', 'CLEAN -- written before the action-safety fix'],
+  ['held_out_6', 'held_out_intent_queries_6.json', 'CLEAN -- written before the asymmetric rule'],
 ];
 
 function loadJson(file) {
@@ -134,10 +141,12 @@ function score(cases, decide) {
   const confusion = {};
   const misroutes = [];
   const methods = {};
+  const perCase = [];
 
   for (const c of cases) {
     const { intent: got, method } = decide(c.q);
     methods[method] = (methods[method] || 0) + 1;
+    perCase.push(got === c.label ? 1 : 0);
     if (got === c.label) {
       correct += 1;
     } else {
@@ -153,6 +162,7 @@ function score(cases, decide) {
     confusion,
     misroutes,
     methods,
+    perCase,
   };
 }
 
@@ -260,7 +270,10 @@ function main() {
       const got = decideEmbedding(c.q).intent;
       if (got !== 'policyQuestion') wrong.push({ q: c.q, got });
     }
-    return { n: cases.length, ok: cases.length - wrong.length, wrong };
+    return {
+      n: cases.length, ok: cases.length - wrong.length, wrong,
+      perCase: cases.map((c) => (decideEmbedding(c.q).intent === 'policyQuestion' ? 1 : 0)),
+    };
   };
 
   const probeAll = scoreProbe(policyQuestions);
@@ -286,6 +299,38 @@ function main() {
       const tag = excluded.has(w.q) ? ' [contested label]' : '';
       console.log(`      -> ${w.got.padEnd(13)} "${w.q}"${tag}`);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Error bars.
+  //
+  // These sets are 24 to 36 cases, so one misroute is 3 to 4 points and the
+  // differences between rounds of work are frequently that size. The intervals
+  // say which of them are readable. The paired comparison is against the rules
+  // on identical queries, which is the comparison the classifier has to win.
+  // -------------------------------------------------------------------------
+  console.log('');
+  console.log('95% bootstrap intervals, 2000 resamples, seeded. Paired against the');
+  console.log('rules on identical queries -- correlated errors, so pairing is the');
+  console.log('right test and comparing two intervals by eye is not.');
+  for (const [name] of SETS.filter(([n]) => n !== 'intent_training')) {
+    const e = results[`embedding ${name}`];
+    const r = results[`rules ${name}`];
+    const ci = bootstrap.interval(e.perCase);
+    const d = bootstrap.difference(e.perCase, r.perCase);
+    console.log(
+      `  ${name.padEnd(16)} ${bootstrap.format(e.accuracy, ci).padEnd(26)} `
+      + `vs rules ${d.mean >= 0 ? '+' : ''}${d.mean.toFixed(4)} `
+      + `[${d.lo.toFixed(4)}, ${d.hi.toFixed(4)}]  `
+      + `${d.separated ? 'separated' : 'NOT separated'}`,
+    );
+  }
+  {
+    const ci = bootstrap.interval(probeAll.perCase);
+    console.log(
+      `  ${'action safety'.padEnd(16)} `
+      + `${bootstrap.format(probeAll.ok / probeAll.n, ci)}`,
+    );
   }
 
   console.log('');

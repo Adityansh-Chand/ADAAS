@@ -59,6 +59,7 @@ const FORBIDDEN = [
   'held_out_intent_queries_3.json',
   'held_out_intent_queries_4.json',
   'held_out_intent_queries_5.json',
+  'held_out_intent_queries_6.json',
 ];
 
 function loadEvalJson(name) {
@@ -255,6 +256,14 @@ function accuracy(examples, cases, vectors, build) {
 const fmt = (v) => v.toFixed(4);
 
 async function main() {
+  // Leave-one-out refits the model once per example, so the candidate table costs
+  // O(candidates x examples) full fits -- at 154 examples and six regularisation
+  // settings that is over nine hundred fits and several minutes. The margin sweep
+  // needs none of it: it fits once and only varies a decision threshold. So the
+  // stages are separable, and `--stage=margin` is the one to run when calibrating.
+  const stage = (process.argv.slice(2).find((a) => a.startsWith('--stage='))
+    || '--stage=all').split('=')[1];
+
   const training = loadEvalJson('intent_training.json').cases;
   const devSets = [
     ['intent_queries', loadEvalJson('intent_queries.json').cases],
@@ -280,9 +289,9 @@ async function main() {
   // entries of the file; extend_training preserved order deliberately.
   const original = examples.slice(0, 64);
   console.log('');
-  console.log('  What the 54 extra training examples did, per decision rule:');
+  console.log('  What the extra training examples did, per decision rule:');
   const sizeEffect = [];
-  for (const [ruleName, build] of REPORT_SIZE_EFFECT_FOR) {
+  for (const [ruleName, build] of (stage === 'margin' ? [] : REPORT_SIZE_EFFECT_FOR)) {
     for (const [name, cases] of devSets) {
       const before = accuracy(original, cases, vectors, build);
       const after = accuracy(examples, cases, vectors, build);
@@ -302,7 +311,7 @@ async function main() {
     + `${'LOO'.padEnd(8)}${'queries'.padEnd(9)}${'held1'.padEnd(9)}mean`);
 
   const rows = [];
-  for (const cand of CANDIDATES) {
+  for (const cand of (stage === 'margin' ? [] : CANDIDATES)) {
     const loo = looAccuracy(examples, cand.build);
     const perSet = devSets.map(([name, cases]) => [
       name, accuracy(examples, cases, vectors, cand.build),
@@ -320,7 +329,9 @@ async function main() {
     );
   }
 
-  const best = rows.slice().sort((a, b) => b.mean - a.mean)[0];
+  const best = rows.length
+    ? rows.slice().sort((a, b) => b.mean - a.mean)[0]
+    : { label: '(candidate table skipped, --stage=margin)', mean: 0 };
 
   // -------------------------------------------------------------------------
   // Calibrating the confidence floor
@@ -372,6 +383,63 @@ async function main() {
   const inStat = stat(inDomain);
   const outStat = stat(outOfDomain);
 
+  // -------------------------------------------------------------------------
+  // Calibrating the action margin
+  //
+  // An action must out-score answering by this much or the message is answered
+  // instead. The sweep exists because the trade is real and the tempting number
+  // is the wrong one: a margin large enough to stop every policy question
+  // becoming an action would also stop the app filing leave, and the only way to
+  // see that is to print both columns side by side.
+  //
+  // Dev only. `policy questions kept` is the 36 retrieval paraphrases, which are
+  // policy questions by construction and are a declared dev signal because they
+  // were read before the fix they prompted. `leave intents kept` is every
+  // applyLeave and leaveBalance case in the dev sets -- the cost side, and the
+  // reason this is a sweep rather than a single measurement.
+  // -------------------------------------------------------------------------
+  const probeQueries = loadEvalJson('policy_queries.json').cases.map((c) => c.q);
+  const probeList = await embedAll(probeQueries);
+  const probeVectors = new Map(probeQueries.map((q, i) => [q, probeList[i]]));
+
+  const leaveCases = devSets
+    .flatMap(([, cases]) => cases)
+    .filter((c) => c.label !== 'policyQuestion');
+  const allDevCases = devSets.flatMap(([, cases]) => cases);
+
+  console.log('');
+  console.log('  Action margin sweep (dev only):');
+  console.log(`    ${'margin'.padEnd(9)}${'policy questions kept'.padEnd(24)}`
+    + `${'leave intents kept'.padEnd(24)}dev accuracy`);
+
+  const marginRows = [];
+  for (const margin of [0, 0.05, 0.10, 0.15, 0.20, 0.30, 0.45]) {
+    const clf = { minConfidence: 0, actionMargin: margin, examples, model };
+    const kept = probeQueries.filter(
+      (q) => intentModule.classify(clf, probeVectors.get(q)).candidate === 'policyQuestion',
+    ).length;
+    const leaveKept = leaveCases.filter(
+      (c) => intentModule.classify(clf, vectors.get(c.q)).candidate === c.label,
+    ).length;
+    const devCorrect = allDevCases.filter(
+      (c) => intentModule.classify(clf, vectors.get(c.q)).candidate === c.label,
+    ).length;
+
+    marginRows.push({
+      margin,
+      policy_questions_kept: kept / probeQueries.length,
+      leave_intents_kept: leaveKept / leaveCases.length,
+      dev_accuracy: devCorrect / allDevCases.length,
+    });
+    console.log(
+      `    ${String(margin).padEnd(9)}`
+      + `${`${kept}/${probeQueries.length}  ${fmt(kept / probeQueries.length)}`.padEnd(24)}`
+      + `${`${leaveKept}/${leaveCases.length}  ${fmt(leaveKept / leaveCases.length)}`.padEnd(24)}`
+      + `${fmt(devCorrect / allDevCases.length)}`,
+    );
+  }
+  console.log(`    shipping: ${intentModule.DEFAULT_ACTION_MARGIN}`);
+
   console.log('');
   console.log('  Confidence floor calibration (winner\'s hyperparameters):');
   console.log(`    in-domain  n=${inDomain.length}  min ${fmt(inStat.min)}  `
@@ -400,6 +468,8 @@ async function main() {
     forbidden: FORBIDDEN,
     candidates: rows,
     winner: best.label,
+    action_margin_sweep: marginRows,
+    action_margin_shipping: intentModule.DEFAULT_ACTION_MARGIN,
     confidence_calibration: {
       in_domain: inStat,
       out_of_scope: outStat,
