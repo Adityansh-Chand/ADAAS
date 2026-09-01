@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const LeaveApplication = require('./models/LeaveApplication');
 const LeaveBalance = require('./models/LeaveBalance');
 const llm = require('./llm');
+const answers = require('./answers');
 const { buildIndex, retrieve } = require('./retrieval');
 const denseRetrieval = require('./dense');
 const reranker = require('./rerank');
@@ -64,6 +65,12 @@ const counters = {
   intent_requests_total: 0,
   intent_embedding_failures_total: 0,
   notifications_created_total: 0,
+  // Generated answers that were checked, and how many carried a finding. Only
+  // model-written answers are counted: the extractive path returns policy text
+  // verbatim and verifying an identity would inflate the first number without
+  // telling anyone anything.
+  answers_verified_total: 0,
+  answers_flagged_total: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -653,12 +660,57 @@ app.post('/chat', requireApiKey, asyncHandler(async (req, res) => {
   }
 
   const generated = await generateAnswer(message, retrieval);
+
+  /**
+   * Verify the answer before returning it.
+   *
+   * Only for answers a model wrote. The extractive path returns the retrieved
+   * policy text unaltered, so there is nothing to verify -- running the checks
+   * over it would report a grounded verdict on an identity and give a reader the
+   * impression the generative path had been checked when it had not. That
+   * distinction is reported rather than smoothed over: `verified` is absent when
+   * there was nothing to verify.
+   *
+   * A finding does not suppress the answer. This is a heuristic with a measured
+   * sensitivity of 0.3867 on exact checks alone, and turning a false positive
+   * into a refusal to answer would make the guard worse than not having it. What
+   * it does is refuse to be silent: the verdict is in the response, the finding
+   * names which check fired, and /metrics counts it, so an unfaithful answer
+   * leaves a trace.
+   *
+   * The entailment signal measured in `npm run eval:answers -- --nli` is
+   * deliberately NOT here. It needs a 70MB cross-encoder and five model calls per
+   * sentence per retrieved document, which does not belong in front of somebody
+   * waiting on a leave balance. The split is on cost, and the concession is a
+   * number rather than an assumption: exact checks catch 0.3867 of known-wrong
+   * answers, both together catch 0.5467.
+   */
+  const verified = generated.generated_by !== 'knowledge_base'
+    && generated.generated_by !== 'none'
+    ? answers.verify(generated.answer, {
+      context: retrieval.context,
+      sources: retrieval.sources,
+    })
+    : null;
+
+  if (verified) {
+    counters.answers_verified_total += 1;
+    if (!verified.grounded) counters.answers_flagged_total += 1;
+  }
+
   res.json({
     answer: generated.answer,
     sources: retrieval.sources,
     retrieval_mode: retrieval.mode,
     generated_by: generated.generated_by,
     ...(generated.llm_status ? { llm_status: generated.llm_status } : {}),
+    ...(verified ? {
+      verified: {
+        grounded: verified.grounded,
+        findings: verified.findings,
+        checks: 'exact only; see npm run eval:answers for what entailment adds',
+      },
+    } : {}),
   });
 }));
 
