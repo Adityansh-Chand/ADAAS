@@ -1,5 +1,5 @@
 {
-  "about": "Labelled training examples for the embedding intent classifier. NOT an evaluation set -- the classifier is fitted on these, so its accuracy here is reported for reference and never gated. Grown from 64 examples to 118 because the classifier's weakest measured set was intent_queries at 0.7083, and 64 examples across three classes is thin for k-nearest-neighbour: with k=5 a single unusual phrasing has no near neighbour of its own class to find. The 54 added examples were written without reading any evaluation set, deliberately in registers the original 64 did not cover (bare noun phrases, a stated reason with the request implicit, policy questions about non-leave topics), and the fourth held-out set was created before any of them existed. eval_intent.js measures the nearest-neighbour similarity between every evaluation query and this file and fails the build above 0.92, so growth here cannot quietly become leakage.",
+  "about": "Labelled training examples for the embedding intent classifier. NOT an evaluation set -- the classifier is fitted on these, so its accuracy here is reported for reference and never gated. Grown twice. 64 to 118, because 64 examples across three classes is thin for any classifier and the weakest measured set was intent_queries at 0.7083; measured afterwards, that round contributed nothing and is documented as having contributed nothing. Then 118 to 154, for a reason that was not an accuracy point: a screenshot of the running app showed a policy question about working from home being routed to applyLeave, and the app attempting to file five days of casual leave. Scored on the 36 retrieval paraphrases -- 36 policy questions no intent fixture contained -- the classifier sent 14 to a leave action. The cause was distribution, not method: the policyQuestion class was dominated by leave-policy wording, so a first-person sentence with a day or a time in it read as a leave action whatever it asked about. The 36 examples added cover attendance, payroll, IT, expenses, grievance, medical, exit and conduct questions in first-person phrasing, with six of each leave intent so the class prior is not merely pushed toward policyQuestion. eval/held_out_intent_queries_5.json was written before any of them existed. eval_intent.js measures the nearest-neighbour similarity between every evaluation query and this file and fails the build above 0.92, so growth here cannot quietly become leakage.",
   "labels": [
     "leaveBalance",
     "applyLeave",
@@ -477,16 +477,160 @@
     {
       "q": "is smoking allowed anywhere on site",
       "label": "policyQuestion"
+    },
+    {
+      "q": "do I have to wear a badge inside the office",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is my laptop screen supposed to lock automatically",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what happens to the provident fund when I leave",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "am I entitled to a relieving letter",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how long does the insurer take to settle a claim",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is there a limit on the room rent covered",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "do I get a warning before a written one",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "who is on the internal committee for complaints",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "am I expected to attend the compliance training",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is the appraisal rating shared with me",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "can my spouse use the same insurance card",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "do I need a doctor certificate for one day of illness",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what counts as a conflict of interest here",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is alcohol allowed at an office party",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "am I reimbursed for a client dinner",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how do I escalate if HR does not respond",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "is a fire drill mandatory for everyone",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "does the company pay for an eye test",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "am I allowed to work from a cafe",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "what is deducted if I go on loss of pay",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "does seniority change the exit formalities",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "do I keep the health cover during the notice period",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "am I supposed to report a phishing email",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "how is the comp off validity counted",
+      "label": "policyQuestion"
+    },
+    {
+      "q": "log a leave for me on the 11th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I will not be in on Thursday, personal work",
+      "label": "applyLeave"
+    },
+    {
+      "q": "please apply two days earned leave from the 19th",
+      "label": "applyLeave"
+    },
+    {
+      "q": "keep me out of office tomorrow morning",
+      "label": "applyLeave"
+    },
+    {
+      "q": "record my absence for the 2nd",
+      "label": "applyLeave"
+    },
+    {
+      "q": "I need next Monday off, put it in the system",
+      "label": "applyLeave"
+    },
+    {
+      "q": "how many casual days remain with me",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "print what is left of my entitlement",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "status of my leave account please",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "how many days did I use in the last quarter",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "total unused across all my leave types",
+      "label": "leaveBalance"
+    },
+    {
+      "q": "what is my current available count",
+      "label": "leaveBalance"
     }
   ],
   "provenance": {
-    "original": 64,
-    "added": 54,
-    "total": 118,
+    "round_1": 64,
+    "round_2": 118,
+    "round_3": 154,
     "by_label": {
-      "leaveBalance": 38,
-      "applyLeave": 39,
-      "policyQuestion": 41
+      "leaveBalance": 44,
+      "applyLeave": 45,
+      "policyQuestion": 65
     }
   }
 }

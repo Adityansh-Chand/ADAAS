@@ -48,7 +48,38 @@ const QUALITY_GATES = {
   'rules held_out_3': 0.35,
   'embedding held_out_3': 0.88,
   'embedding held_out_4': 0.72,
+  'embedding held_out_5': 0.80,
 };
+
+// ACTION SAFETY
+//
+// A separate gate because it is a separate failure. The gates above ask how often
+// the classifier is right; this asks how often a question becomes an action, and
+// those are not the same question in an app where one intent answers and the
+// other two write to or read from someone's leave record.
+//
+// It exists because a screenshot found what no evaluation had: asked "Can I work
+// from my house a few days a week?", the app routed to applyLeave and attempted
+// to file five days of casual leave. The 36 retrieval paraphrases are 36 policy
+// questions, and no intent fixture had ever contained one.
+//
+// Gated on the conservative figure -- all 36, exclusions included -- so the
+// three contested labels in eval/intent_from_retrieval.json cannot lower the
+// bar. Both numbers are printed.
+//
+// 0.75 rather than 0.80, and the reason is a measurement rather than a
+// preference. Rewording ONE training example -- for a leakage-margin reason
+// having nothing to do with this probe, and on a sentence about exit formalities
+// -- moved this number from 0.8056 to 0.7778, by flipping an unrelated question
+// about performance targets. At n=36 a single case is 2.8 points, and a linear
+// model over shared embeddings has no locality: an edit anywhere moves the
+// boundary everywhere.
+//
+// So the floor sits roughly two cases below the measured value. Higher would
+// flake on edits that have nothing to do with routing, and a gate that fails for
+// reasons unconnected to what it is guarding gets disabled. The probe is
+// directional at this size, and it is reported as directional.
+const ACTION_SAFETY_FLOOR = 0.75;
 
 // THE EMBEDDING MODEL CHANGED, AND INTENT PAID FOR IT
 //
@@ -91,6 +122,7 @@ const SETS = [
   ['held_out_2', 'held_out_intent_queries_2.json', 'compromised -- seen before a change'],
   ['held_out_3', 'held_out_intent_queries_3.json', 'CLEAN for the classifier'],
   ['held_out_4', 'held_out_intent_queries_4.json', 'CLEAN -- written before the rewrite'],
+  ['held_out_5', 'held_out_intent_queries_5.json', 'CLEAN -- written before the action-safety fix'],
 ];
 
 function loadJson(file) {
@@ -215,15 +247,57 @@ function main() {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // Action safety: how often does a question become an action?
+  // -------------------------------------------------------------------------
+  const probe = loadJson(path.join(EVAL_DIR, 'intent_from_retrieval.json'));
+  const excluded = new Set(probe.excluded.map((e) => e.q));
+  const policyQuestions = loadJson(path.join(EVAL_DIR, 'policy_queries.json')).cases;
+
+  const scoreProbe = (cases) => {
+    const wrong = [];
+    for (const c of cases) {
+      const got = decideEmbedding(c.q).intent;
+      if (got !== 'policyQuestion') wrong.push({ q: c.q, got });
+    }
+    return { n: cases.length, ok: cases.length - wrong.length, wrong };
+  };
+
+  const probeAll = scoreProbe(policyQuestions);
+  const probeKept = scoreProbe(policyQuestions.filter((c) => !excluded.has(c.q)));
+  const rulesProbe = policyQuestions
+    .filter((c) => intent.routeByRules(c.q) === 'policyQuestion').length;
+
   console.log('');
-  for (const set of ['held_out_3', 'held_out_4']) {
+  console.log('Action safety -- the 36 retrieval paraphrases are all policy questions.');
+  console.log('         A misroute here is not a worse answer, it is the wrong action:');
+  console.log('         applyLeave writes to a leave balance.');
+  console.log(`  embedding, all 36            ${fmt(probeAll.ok / probeAll.n)}  `
+    + `(${probeAll.ok}/${probeAll.n})   gated on this figure`);
+  console.log(`  embedding, 33 undisputed     ${fmt(probeKept.ok / probeKept.n)}  `
+    + `(${probeKept.ok}/${probeKept.n})   3 contested labels excluded`);
+  console.log(`  rules, all 36                ${fmt(rulesProbe / probeAll.n)}  `
+    + `(${rulesProbe}/${probeAll.n})   the baseline, and it is better at this`);
+
+  if (verbose && probeAll.wrong.length) {
+    console.log('');
+    console.log('  questions routed to an action:');
+    for (const w of probeAll.wrong) {
+      const tag = excluded.has(w.q) ? ' [contested label]' : '';
+      console.log(`      -> ${w.got.padEnd(13)} "${w.q}"${tag}`);
+    }
+  }
+
+  console.log('');
+  for (const set of ['held_out_3', 'held_out_4', 'held_out_5']) {
     console.log(`Method split on ${set} (embedding):`,
       JSON.stringify(results[`embedding ${set}`].methods));
   }
 
   if (verbose) {
     for (const key of ['rules held_out_3', 'embedding held_out_3',
-      'rules held_out_4', 'embedding held_out_4']) {
+      'rules held_out_4', 'embedding held_out_4',
+      'rules held_out_5', 'embedding held_out_5']) {
       const r = results[key];
       console.log(`\n  --- ${key}: ${r.misroutes.length} misroute(s) ---`);
       for (const [pair, count] of Object.entries(r.confusion)) {
@@ -244,6 +318,19 @@ function main() {
     console.log(`  gate ${key.padEnd(24)} floor ${fmt(floor)}  actual ${fmt(actual)}  `
       + `${ok ? 'ok' : 'FAIL'}`);
     if (!ok) failures.push(`${key} ${fmt(actual)} < floor ${fmt(floor)}`);
+  }
+
+  {
+    const actual = probeAll.ok / probeAll.n;
+    const ok = actual >= ACTION_SAFETY_FLOOR;
+    console.log(`  gate action safety           floor ${fmt(ACTION_SAFETY_FLOOR)}  `
+      + `actual ${fmt(actual)}  ${ok ? 'ok' : 'FAIL'}`);
+    if (!ok) {
+      failures.push(
+        `action safety ${fmt(actual)} < floor ${fmt(ACTION_SAFETY_FLOOR)} `
+        + '-- policy questions are being routed to leave actions',
+      );
+    }
   }
 
   // Leakage check: has any eval query drifted close enough to a training example

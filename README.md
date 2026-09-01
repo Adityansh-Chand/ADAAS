@@ -13,6 +13,28 @@ configured and seeded in-memory data otherwise. An LLM is used when
 text when it is not. The whole thing runs end to end on a laptop with no cloud
 account, no API key and no billing.
 
+## What it looks like
+
+Regenerate with `node tool/capture_screenshots.js`, which drives the real app in
+headless Chrome against the running backend. Nothing here is a mock-up: the
+policy text is what retrieval returned, the balance figures are what the API
+returned, and the reference id was minted by the request that produced it.
+
+| | |
+|---|---|
+| ![First run, light theme](docs/screenshots/01-empty-light.png) | ![A policy answer with its source](docs/screenshots/02-policy-answer-light.png) |
+| **First run.** Follows the system theme; the toggle cycles system, light, dark. | **A policy question**, answered from the retrieved policy with the source named. |
+| ![Leave balance table](docs/screenshots/03-leave-balance-light.png) | ![Leave filed, dark theme](docs/screenshots/04-apply-leave-dark.png) |
+| **Leave balance**, live from the API. 4 and 18 are the entitlements a test asserts against the policy text. | **A filed application**, dark theme, with the reference id the backend issued. |
+| ![An out-of-scope question refused](docs/screenshots/05-abstention-dark.png) | ![Mobile width](docs/screenshots/06-mobile-light.png) |
+| **Refusing to answer.** No company policy covers Kubernetes, and it says so rather than returning its closest guess. | **390x844.** The table keeps its column alignment; `07-mobile-dark.png` is the same width in dark. |
+
+> These screenshots earned their place before they were ever committed. The first
+> capture run asked *"Can I work from my house a few days a week?"* and the app
+> filed a five-day casual leave application. See
+> [Intent classification](#intent-classification-two-methods-on-five-sets) — no
+> evaluation had ever caught it, and there is now a gate that does.
+
 ## Setup
 
 ### Prerequisites
@@ -51,7 +73,7 @@ Seven commands. All seven should pass before you trust anything else.
 
 ```bash
 cd hr-backend
-npm test               # 72 backend tests
+npm test               # 73 backend tests
 npm run eval           # lexical, dense, hybrid and reranked on identical splits
 npm run eval:intent    # rules vs the embedding classifier
 npm run embed:verify   # committed embeddings still match the corpus
@@ -362,17 +384,67 @@ is visible as label breadth. Judgements written by someone with no stake in the
 score would still be better, and that is now the outstanding item rather than the
 graded judgements themselves.
 
-### Intent classification, two methods on five sets
+### Intent classification, two methods on six sets
 
 `npm run eval:intent` reproduces this.
 
 | Set | rules | embedding | What the set means |
 |---|---|---|---|
-| `intent_queries` | 1.0000 | 0.8750 | the rules were written with these visible |
-| `held_out_1` | 0.8750 | 0.9167 | BURNED — its failures informed rule fixes |
+| `intent_queries` | 1.0000 | 0.9167 | the rules were written with these visible |
+| `held_out_1` | 0.8750 | 0.9583 | BURNED — its failures informed rule fixes |
 | `held_out_2` | 0.4583 | 1.0000 | compromised — seen before a later change |
-| **`held_out_3`** | **0.5667** | **0.9333** | **written before the classifier existed** |
+| **`held_out_3`** | **0.5667** | **0.9667** | **written before the classifier existed** |
 | **`held_out_4`** | **0.3667** | **0.8000** | **written before the classifier was rewritten** |
+| **`held_out_5`** | **0.6389** | **0.9722** | **written before the action-safety fix** |
+
+`held_out_3` is back to **0.9667** — the number it scored before the embedding
+model was swapped for retrieval's benefit, and which the previous version of this
+section recorded as a loss that would not be reverted. It was not reverted; it was
+recovered, by replacing the classifier and then by fixing a data gap.
+
+#### A screenshot found what six evaluation sets did not
+
+The first run of `tool/capture_screenshots.js` asked *"Can I work from my house a
+few days a week?"* and the app **filed a five-day casual leave application**.
+
+Not a worse answer — the wrong action. `policyQuestion` answers a question;
+`applyLeave` writes to a real leave balance. The failure this app was rebuilt to
+prevent was fabricating a leave confirmation, and routing a policy question into
+`applyLeave` arrives at the same place by a different road.
+
+Every intent set passed, because none of them contained a policy question phrased
+that way. The 36 retrieval paraphrases are policy questions by construction and no
+intent fixture had ever contained one, so scoring them was free:
+
+| | policy questions routed to an action |
+|---|---|
+| before | **14 of 36** |
+| after | **8 of 36** (5 of them undisputed) |
+| rules baseline | 3 of 36 — *the baseline is still better at this* |
+
+The cause was distribution, not method. Of the training examples, the
+`policyQuestion` class was dominated by leave-policy wording, so a first-person
+sentence containing a day or a time read as a leave action whatever it asked
+about. 36 examples were added covering attendance, payroll, IT, expenses,
+grievance, medical, exit and conduct questions in first-person phrasing — with six
+of each leave intent, so the class prior was not simply pushed toward
+`policyQuestion`, which would trade one failure for two.
+
+`eval/held_out_intent_queries_5.json` was written **before** any of that, balanced
+12/12/12 for exactly that reason, and reads 0.9722. `npm run eval:intent` now gates
+both: action safety on the 36, and set 5 as the converse check that safety was not
+bought by refusing to act at all.
+
+**Three things worth saying about this rather than moving on.** The rules baseline
+is still better at action safety than the fitted classifier, 33 of 36 against 28 —
+a fitted model beating a rule-based one on average while losing on the axis that
+carries the cost is exactly the comparison worth publishing. The probe itself is a
+dev signal and not a clean number, because it was read before the fix it prompted;
+set 5 is the clean measurement. And the metric is noisy: rewording **one**
+training example, for a leakage-margin reason unrelated to routing, moved it from
+0.8056 to 0.7778 by flipping an unrelated question about performance targets. At
+n=36 one case is 2.8 points, so the gate sits two cases below the measurement and
+the probe is reported as directional.
 
 #### k-NN was the wrong classifier, and it had never been compared to anything
 
@@ -419,9 +491,9 @@ the incumbent was not a strong baseline.
   `intent_queries`, +0.0417 on `held_out_1`). The gain is the classifier. The data
   was kept for input coverage, not because it scores better, and saying so is the
   difference between a measurement and a press release.
-- **`held_out_3` recovered to 0.9333, not to 0.9667.** Two-thirds of the loss from
-  the embedding-model swap is back; a third of it is not, and the pre-swap figure
-  has not been reached.
+- **`held_out_3` recovered to 0.9333 at this point, not to 0.9667.** Two-thirds of
+  the loss from the embedding-model swap came back and a third did not. It reached
+  0.9667 only after the action-safety fix below, which was not aimed at it.
 - **One case in the brand-new set 4 had to be replaced after it was scored.** The
   leakage check measured *"rules on carrying days into next year"* at 0.9135 cosine
   against an existing training example — the closest training/eval pair in the
@@ -738,7 +810,7 @@ it drops below AA — see Tests.
 
 ## Tests
 
-**117 total: 72 backend, 45 Flutter.** `flutter analyze` clean.
+**118 total: 73 backend, 45 Flutter.** `flutter analyze` clean.
 
 The ones worth knowing about:
 
@@ -772,6 +844,14 @@ The ones worth knowing about:
 - **The classifier holds up on the set written before it was rewritten.** Held-out
   set 4, at 0.8000 against the rules' 0.3667 -- the lowest of the held-out scores,
   and the only one that was created before the change it measures.
+- **A policy question is never routed to a leave action.** The test that did not
+  exist, and the reason a screenshot found this rather than the suite. Scored on
+  the 36 retrieval paraphrases, which are policy questions by construction.
+  Deliberately asymmetric: routing a request to `policyQuestion` is a worse
+  answer, while routing a question to `applyLeave` writes to a leave balance. It
+  asserts the converse on held-out set 5 too, so it cannot be passed by answering
+  `policyQuestion` to everything -- which would score a perfect 1.0000 on the first
+  half and break both leave features.
 - The `reranked` mode degrades to `dense`, not to `lexical`, when the model
   package is absent, and `/health` names the reason.
 - An unreachable, stalled, 401-ing, 422-ing and 500-ing backend each produce a
@@ -898,9 +978,15 @@ its own answer key and is gated only as a smoke test that the vectors load.
 ### 5. A fifth held-out intent set, before the next intent change
 
 There are four sets: 1 is burned, 2 is compromised, 3 and 4 are clean and both were
-read this round. `held_out_3` is at 0.9333 and has not returned to the 0.9667 it
-scored before the embedding model changed. The next change to intent needs a set
-written before it, in that order — which is the rule that produced set 4.
+read this round, and set 5 makes three clean and two spent. `held_out_3` is back
+to 0.9667, the figure it scored before the embedding model changed. The next change
+to intent needs a set written before it, in that order — the rule that produced set
+4, and then set 5 when a screenshot found a failure class no fixture covered.
+
+Set 4 is the one that has not moved: 0.8000 across two rounds of work, and its six
+failures are mostly genuine boundary cases rather than the distribution gap set 5
+was written for. It is the hardest of the three and the most honest single number
+the classifier has.
 
 ### 6. The default retrieval mode is still the weakest one
 
@@ -945,9 +1031,11 @@ all. The second is the real answer and is not built.
   0.1111 on paraphrases, because the better modes need a dependency whose
   transitive advisories have no upstream fix and which is therefore kept out of
   production images. With `RETRIEVAL_MODE=reranked` the same deployment reaches
-  0.8333 retrieval top-1 (nDCG@5 0.8747) and 0.9333 / 0.8000 intent accuracy on
-  the two clean held-out sets. Retrieval top-1 did **not** move this round; what
-  moved was intent and the quality of the measurement. Abstention works on plainly
+  0.8333 retrieval top-1 (nDCG@5 0.8747) and 0.9667 / 0.8000 / 0.9722 intent
+  accuracy on the three clean held-out sets. Retrieval top-1 did **not** move this
+  round; what moved was intent and the quality of the measurement. Eight of 36
+  policy questions are still routed to a leave action, where the rule baseline
+  misroutes three — measured, gated, and better than the 14 it started at. Abstention works on plainly
   off-domain questions (12 of 12) and mostly fails on HR-shaped questions the
   corpus does not answer (2 of 12) — now a measured limit rather than an asserted
   one, after a third signal was built, tested and rejected. Notifications are a

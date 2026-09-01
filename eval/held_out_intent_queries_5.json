@@ -1,0 +1,52 @@
+{
+  "about": "Fifth held-out intent set. Written to probe a failure class found by a screenshot rather than by any evaluation: asked 'Can I work from my house a few days a week?', the app filed a five-day casual leave application. The intent classifier routed a policy question to applyLeave. Scored on the 36 retrieval paraphrases in policy_queries.json -- 36 policy questions the intent work had never looked at -- the shipping classifier routed 14 of them to a leave action. This file exists so the fix is measured on cases written before it, in the same order set 4 was.",
+
+  "what_it_probes": "Policy questions about non-leave topics, phrased in the first person and in the register a chat box actually produces. That is the gap: the intent training set is overwhelmingly leave-centric, so the classifier learned that a first-person sentence containing a day, a time or a duration is a leave action. Attendance, payroll, IT, expenses, grievance, medical and exit questions all carry those words and are not requests for anything.",
+
+  "why_this_matters_more_than_an_accuracy_point": "A misroute here is not a slightly worse answer, it is the wrong action. policyQuestion answers a question; applyLeave attempts to file leave against a real balance. The failure the app was rebuilt to prevent was fabricating a leave confirmation, and routing a policy question into applyLeave arrives at the same place by a different road.",
+
+  "honest_characterisation": "This is a TARGETED REGRESSION SET, not a random sample of user input. It was written after the failure class was known, so a good score on it means the specific gap is closed and does not by itself mean the classifier generalises. Sets 3 and 4 remain the general measurement and are reported alongside it. It is balanced 12/12/12 on purpose: a set of policy questions alone could be passed by a classifier that answers policyQuestion to everything, which would break both leave features instead.",
+
+  "labels": ["leaveBalance", "applyLeave", "policyQuestion"],
+
+  "cases": [
+    { "q": "am I supposed to badge in before nine", "label": "policyQuestion" },
+    { "q": "do I need approval before I install software on my laptop", "label": "policyQuestion" },
+    { "q": "what do I do if I feel harassed by a colleague", "label": "policyQuestion" },
+    { "q": "how soon does payroll credit the salary", "label": "policyQuestion" },
+    { "q": "can I claim a hotel bill without prior approval", "label": "policyQuestion" },
+    { "q": "who investigates a data breach if I report one", "label": "policyQuestion" },
+    { "q": "am I covered if I am hospitalised abroad", "label": "policyQuestion" },
+    { "q": "does the company sponsor a certification for my role", "label": "policyQuestion" },
+    { "q": "what is the process when my manager and I disagree on a rating", "label": "policyQuestion" },
+    { "q": "can I keep the access card after my last working day", "label": "policyQuestion" },
+    { "q": "am I allowed to accept a gift from a vendor", "label": "policyQuestion" },
+    { "q": "how many late arrivals before a warning", "label": "policyQuestion" },
+
+    { "q": "put me down for the 17th please", "label": "applyLeave" },
+    { "q": "I am not well, taking today off", "label": "applyLeave" },
+    { "q": "book two days for me from next Wednesday", "label": "applyLeave" },
+    { "q": "I will be out on the 9th for a family function", "label": "applyLeave" },
+    { "q": "file a casual leave for tomorrow", "label": "applyLeave" },
+    { "q": "need the afternoon of the 21st off", "label": "applyLeave" },
+    { "q": "mark me on leave from the 4th to the 6th", "label": "applyLeave" },
+    { "q": "going to be absent Monday, car trouble", "label": "applyLeave" },
+    { "q": "apply half day for me this Friday", "label": "applyLeave" },
+    { "q": "I want the 28th off against comp off", "label": "applyLeave" },
+    { "q": "raise sick leave for yesterday and today", "label": "applyLeave" },
+    { "q": "take me off work for the 12th", "label": "applyLeave" },
+
+    { "q": "how much casual leave have I not used", "label": "leaveBalance" },
+    { "q": "show what I have consumed this year", "label": "leaveBalance" },
+    { "q": "my remaining days please", "label": "leaveBalance" },
+    { "q": "am I out of sick leave", "label": "leaveBalance" },
+    { "q": "what does my leave account say", "label": "leaveBalance" },
+    { "q": "give me the count of unused days", "label": "leaveBalance" },
+    { "q": "how many earned leaves do I still hold", "label": "leaveBalance" },
+    { "q": "tell me my figures before I plan a trip", "label": "leaveBalance" },
+    { "q": "what is untaken on my record this cycle", "label": "leaveBalance" },
+    { "q": "read me my leave summary", "label": "leaveBalance" },
+    { "q": "have I got anything left for this quarter", "label": "leaveBalance" },
+    { "q": "check how many days I have banked", "label": "leaveBalance" }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "about": "Turns the 36 retrieval paraphrases in eval/policy_queries.json into an intent test. They are policy questions by construction -- every one was written to be answerable from the policy corpus -- so their intent label is known without anyone assigning it. No intent fixture contained them, and no intent work had ever scored them, which is how a whole failure class stayed invisible: asked one of them in the running app, the classifier routed it to applyLeave and the app tried to file a five-day casual leave application.",
+
+  "why_this_is_scored_separately": "It is one-class, so it measures precisely one thing: how often a question becomes an action. That is not a symmetric error. policyQuestion answers; applyLeave writes to a leave balance and leaveBalance returns someone's figures. A classifier that is 95% accurate overall and sends one policy question in three to applyLeave is not 95% good in this app. Balanced accuracy hides that and this does not.",
+
+  "it_cannot_be_gated_alone": "A classifier that answered policyQuestion to everything would score 1.0000 here and break both leave features. So this is gated together with held_out_5, which is balanced 12/12/12 and would collapse under that strategy. Neither number means anything without the other.",
+
+  "not_held_out": "This probe was read before the fix it prompted, so it is a dev signal and not a clean measurement -- the training examples added afterwards were written knowing this failure class existed. eval/held_out_intent_queries_5.json is the clean measurement of the same class: written before the fix, balanced, and never opened by the selection harness.",
+
+  "derived_not_copied": "The query list is read from policy_queries.json at run time rather than duplicated here, so the two cannot drift apart. This file holds only the exclusions.",
+
+  "excluded": [
+    {
+      "q": "I need two days off for a family errand",
+      "why": "In a chat box this is a leave request, whatever it was written as. It is labelled policy_003_cl for retrieval because the casual leave policy is what answers it, and both readings are correct for their own task. Counting it as an intent failure would be scoring the classifier against the wrong label."
+    },
+    {
+      "q": "How many days off do I get each year?",
+      "why": "Entitlement is a policy question and remaining balance is not, but this phrasing genuinely spans them -- 'how many do I get' against 'how many do I have left'. leaveBalance is a defensible reading and would even give a useful answer, since the balance response includes the entitlement."
+    },
+    {
+      "q": "Can I get a day back for working on a Sunday?",
+      "why": "Asking whether comp off exists is a policy question; asking for the day back is a request. The sentence is both, and a user typing it would accept either response."
+    }
+  ],
+
+  "the_exclusions_all_favour_the_metric_and_that_is_disclosed": "Every one of these three was among the 14 misroutes on the first run. Excluding them takes the reported failure count from 14 to 11, so this is a metric-favourable exclusion made by the person whose number it improves, and no amount of reasoning in the paragraphs above changes that. Two things are done about it rather than argued away. First, eval_intent.js reports BOTH numbers, on all 36 and on the 33, so the exclusion cannot quietly become the only figure anyone sees. Second, each exclusion states its reason in enough detail to be rejected: a reader who thinks 'How many days off do I get each year?' is unambiguously a policy question should read the 36-case number and ignore the 33-case one. If in doubt, the 36-case number is the conservative one and it is the one the gate is set against."
+}
