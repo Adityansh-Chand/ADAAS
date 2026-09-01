@@ -8,6 +8,17 @@ RUN npm ci --omit=dev
 COPY hr-backend/ ./
 COPY assets/ /app/assets/
 
+# Runs as a non-root user. node:24-slim ships an unprivileged `node` account, so
+# this needs no useradd -- and the omission was the gap: a container process that
+# does not need root should not have it, because the blast radius of any
+# vulnerability in this image is otherwise the whole filesystem.
+#
+# The chown covers the writable path: notifications are written through to
+# .data/, and a non-root process cannot create that directory under a
+# root-owned WORKDIR.
+RUN mkdir -p /app/.data && chown -R node:node /app
+USER node
+
 ENV PORT=3000
 # Stated explicitly rather than left to resolve relative to WORKDIR.
 ENV KB_PATH=/app/assets/hr_knowledge_base.json

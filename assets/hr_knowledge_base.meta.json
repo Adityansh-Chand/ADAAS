@@ -1,0 +1,36 @@
+{
+  "about": "Governance for assets/hr_knowledge_base.json. The corpus was a committed JSON array with no owner, no review cycle and no version -- which the README carried as an open item, because a policy corpus that nobody is accountable for is a different kind of risk from a model that scores badly. A wrong retrieval score is visible in an eval. A policy statement that went out of date eighteen months ago retrieves perfectly and is still wrong.",
+
+  "why_a_sibling_file": "The corpus is a bare JSON array and several things read it directly -- the server, the embedding builder, the eval, the Flutter tests. Wrapping it in an object to make room for metadata would have been a breaking change to all of them for a documentation gain, so the governance lives beside it and is joined by a digest.",
+
+  "corpus_version": "1.0.0",
+  "content_digest": "e7a3118eabe65e68",
+  "digest_note": "First 16 hex characters of the SHA-256 over the corpus, computed the same way scripts/build_embeddings.js computes it -- so a corpus edited without re-embedding fails `npm run embed:verify` and a corpus edited without updating this file fails the governance test. Two independent checks on the same fact, which is deliberate: they catch different mistakes.",
+
+  "owner": {
+    "role": "HR Policy Owner",
+    "name": "UNASSIGNED",
+    "note": "Deliberately not filled with a plausible-looking name. An invented owner is worse than an empty field: it reads as accountability while providing none, and this repository's whole discipline is against claims that cannot be checked. A deployment must set this to a real person or team before the corpus can be said to be governed."
+  },
+
+  "review": {
+    "cadence_days": 180,
+    "last_reviewed": "2026-09-01",
+    "last_reviewed_by": "UNASSIGNED",
+    "note": "last_reviewed records when the corpus text was last checked against the company's actual policies -- not when the file was last edited by anyone, which git already tells you. It is set to the date this governance file was created, which is the honest answer: nothing has been reviewed against a real HR policy set, because there is no real HR policy set behind it. This is synthetic demonstration content."
+  },
+
+  "provenance": "Written for this project as demonstration content. It is not a transcription of any organisation's real HR policy, and no clause in it should be relied on. The entitlements in leave_rules.js are transcribed from this corpus and a test asserts they still agree -- so the numbers are internally consistent, which is not the same as being correct about any real employer.",
+
+  "not_gated_on_the_review_date": "The review date is reported by GET /health and by npm run eval, and it does NOT fail the build when it lapses. A gate that turns red because a date passed fails for a reason unconnected to any change, on a pull request that did not touch the corpus, and the predictable result is that someone disables it. Reporting it puts it in front of a reader every run; failing on it would put it in front of nobody after the first month.",
+
+  "schema": {
+    "required": ["id", "category", "source", "keywords", "question", "answer"],
+    "categories": [
+      "Conduct", "Attendance", "Leave", "IT", "Compensation", "Performance",
+      "Security", "Safety", "Exit", "Grievance", "Remote Work", "Training",
+      "Expenses", "Medical"
+    ],
+    "note": "The category list is closed on purpose. An open list means a typo creates a new category silently, and the categories are part of the text the cross-encoder scores -- so a stray 'Medcial' would degrade retrieval in a way no test would catch."
+  }
+}

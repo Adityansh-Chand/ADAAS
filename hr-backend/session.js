@@ -45,6 +45,8 @@
 
 const crypto = require('crypto');
 
+const oidc = require('./oidc');
+
 // Long enough that expiry is not a demo annoyance, short enough that a leaked
 // token is not permanent.
 const DEFAULT_TTL_SECONDS = Number(process.env.SESSION_TTL_SECONDS || 12 * 3600);
@@ -57,7 +59,26 @@ function secret() {
 
 /** Is authorisation being enforced at all? Reported by /health. */
 function isEnforced() {
-  return Boolean(secret());
+  return Boolean(secret()) || oidc.isConfigured();
+}
+
+/**
+ * Which of the two is establishing identity, reported by /health.
+ *
+ *   oidc    an ID token from a configured provider, signature and claims verified
+ *   demo    a token this service minted for whatever employee id it was asked for
+ *   none    nothing is enforced
+ *
+ * Both can be on at once, and that is a deliberate deployment shape rather than an
+ * oversight: an operator turning on OIDC keeps the demo path working until the
+ * client is migrated. It is also a real weakening -- a demo token still passes --
+ * so it is named in /health rather than left to be discovered.
+ */
+function mode() {
+  if (oidc.isConfigured() && secret()) return 'oidc+demo';
+  if (oidc.isConfigured()) return 'oidc';
+  if (secret()) return 'demo';
+  return 'none';
 }
 
 function sign(payloadB64) {
@@ -112,20 +133,57 @@ function verify(token) {
  * With SESSION_SECRET unset this attaches nothing and lets everything through,
  * which is the documented demo mode.
  */
-function attachPrincipal(req, res, next) {
+async function attachPrincipal(req, res, next) {
   if (!isEnforced()) { next(); return; }
   const header = req.header('authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  const principal = token ? verify(token) : null;
-  if (!principal) {
+  if (!token) {
     res.status(401).json({
-      error: 'A valid session token is required',
+      error: 'A bearer token is required',
       request_id: req.requestId,
     });
     return;
   }
-  req.principal = principal;
-  next();
+
+  // The demo token is tried first and is cheap: it is a local HMAC, so a token
+  // this service minted is recognised without a network call. An OIDC token
+  // cannot pass that check -- different shape, different signature -- so there is
+  // no ambiguity about which verifier accepted what, and `principal.via` records
+  // it either way.
+  const demo = secret() ? verify(token) : null;
+  if (demo) {
+    req.principal = { ...demo, via: 'demo' };
+    next();
+    return;
+  }
+
+  if (oidc.isConfigured()) {
+    try {
+      const { claims, employeeId } = await oidc.verifyIdToken(token);
+      req.principal = {
+        sub: employeeId,
+        // Role comes from the provider when it sends one, and defaults to
+        // employee. Defaulting to approver would let any authenticated person act
+        // for anyone else, which is the failure this whole layer exists to stop.
+        role: ROLES.includes(claims[process.env.OIDC_ROLE_CLAIM || 'adaas_role'])
+          ? claims[process.env.OIDC_ROLE_CLAIM || 'adaas_role']
+          : 'employee',
+        via: 'oidc',
+        claims,
+      };
+      next();
+      return;
+    } catch (error) {
+      // The reason is logged, not returned. Telling a caller whether the
+      // signature, the audience or the expiry failed is free reconnaissance.
+      console.error(`OIDC rejected a token: ${error.message}`);
+    }
+  }
+
+  res.status(401).json({
+    error: 'A valid token is required',
+    request_id: req.requestId,
+  });
 }
 
 /**
@@ -155,6 +213,7 @@ function requireSelfOrApprover(subjectOf) {
 
 module.exports = {
   ROLES,
+  mode,
   DEFAULT_TTL_SECONDS,
   isEnforced,
   issue,

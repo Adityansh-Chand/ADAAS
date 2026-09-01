@@ -40,6 +40,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const smtp = require('./smtp');
+
 const DEFAULT_STORE_PATH = process.env.NOTIFICATIONS_PATH
   || path.resolve(__dirname, '.data', 'notifications.json');
 
@@ -52,7 +54,10 @@ let storePath = DEFAULT_STORE_PATH;
 let notifications = [];
 let loaded = false;
 let writeError = null;
-const counters = { delivered: 0, delivery_failures: 0, persist_failures: 0 };
+const counters = {
+  delivered: 0, delivery_failures: 0, persist_failures: 0,
+  emailed: 0, email_failures: 0,
+};
 
 function webhookUrl() {
   return (process.env.NOTIFY_WEBHOOK_URL || '').trim() || null;
@@ -99,9 +104,45 @@ function persist() {
  * Deliberately fire-and-forget from the caller's point of view: it returns a
  * promise so tests can await it, and `add` does not.
  */
+/**
+ * Email, when a relay is configured and the notification names a recipient.
+ *
+ * Recipient resolution is deliberately explicit: `NOTIFY_EMAIL_TO` is a single
+ * address every notification goes to -- an HR mailbox -- because this service has
+ * no directory and inventing an address from an employee id would be a guess that
+ * silently mails the wrong person. A real deployment routes per-employee through
+ * the identity provider's directory, which is the same seam OIDC opened.
+ */
+async function deliverEmail(notification) {
+  const to = (process.env.NOTIFY_EMAIL_TO || '').trim();
+  if (!to || !smtp.isConfigured()) return { attempted: false };
+  try {
+    await smtp.send({
+      to,
+      subject: `Leave ${notification.decision}: ${notification.reference_id}`,
+      text: `${notification.message}
+
+`
+        + `Employee: ${notification.employee_id}
+`
+        + `Reference: ${notification.reference_id}
+`
+        + `Decided by: ${notification.decided_by}
+`,
+    });
+    counters.emailed += 1;
+    return { attempted: true, ok: true };
+  } catch (error) {
+    counters.email_failures += 1;
+    console.error(`notification ${notification.id} not emailed: ${error.message}`);
+    return { attempted: true, ok: false, error: error.message };
+  }
+}
+
 async function deliver(notification) {
   const url = webhookUrl();
-  if (!url) return { attempted: false };
+  const email = await deliverEmail(notification);
+  if (!url) return email.attempted ? { attempted: true, email } : { attempted: false };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
@@ -166,6 +207,8 @@ function __reset(nextPath) {
   counters.delivered = 0;
   counters.delivery_failures = 0;
   counters.persist_failures = 0;
+  counters.emailed = 0;
+  counters.email_failures = 0;
 }
 
 function status() {
@@ -174,6 +217,9 @@ function status() {
     stored: notifications.length,
     path: storePath,
     webhook: webhookUrl() ? 'configured' : 'none',
+    email: smtp.isConfigured()
+      ? (process.env.NOTIFY_EMAIL_TO ? 'configured' : 'relay set, NOTIFY_EMAIL_TO missing')
+      : 'none',
     error: writeError || undefined,
     ...counters,
   };

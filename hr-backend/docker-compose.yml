@@ -17,6 +17,22 @@ services:
       # the API image installs with --omit=dev and does not contain
       # @huggingface/transformers at all.
       MODEL_SERVICE_URL: http://models:3100
+      # Identity. With OIDC_ISSUER and OIDC_AUDIENCE set the service verifies a
+      # real ID token; with only SESSION_SECRET set it enforces scoping over a
+      # demo identity; with neither, /health reports authorization: none.
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-}
+      OIDC_EMPLOYEE_CLAIM: ${OIDC_EMPLOYEE_CLAIM:-}
+      # Delivery. Both optional; a decision is recorded and stored either way.
+      NOTIFY_WEBHOOK_URL: ${NOTIFY_WEBHOOK_URL:-}
+      NOTIFY_EMAIL_TO: ${NOTIFY_EMAIL_TO:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     ports:
       - "3000:3000"
     depends_on:
