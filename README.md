@@ -958,6 +958,12 @@ inside this project can close it, and two are narrower than they were. What each
 attempt cost and returned is below, because an attempt that failed is more useful
 to a later reader than the goal it was aiming at.
 
+Four of what remains is deliberately not being closed here — see
+[Reserved for the capstone](#reserved-for-the-capstone). "Still open" and
+"reserved" look identical in a list and mean opposite things, so they are kept
+apart: one is work nobody has done, the other is work being kept because the
+person who built the thing cannot honestly be the one to settle it.
+
 ### Closed
 
 - **Error bars.** `npm run eval` and `npm run eval:intent` print 95% bootstrap
@@ -1068,6 +1074,105 @@ to a later reader than the goal it was aiming at.
   reasons unconnected to the UI. Regenerating them when the screen changes is a
   manual step, and saying so is the honest position.
 
+## Reserved for the capstone
+
+This project is the substrate for a Bachelor's capstone, and some of what is
+still open is deliberately **not** being closed here. Recording that split
+matters, because "still open" and "reserved" look identical in a list and mean
+opposite things: one is work nobody has done, the other is work being kept.
+
+The line is whether the item is a **question that can fail**. Everything reserved
+below has an outcome nobody knows in advance, a way to be wrong, and a body of
+published work to argue with. Everything not reserved has a known answer and only
+needs doing — and reserving those would be padding a thesis with integration.
+
+### Reserved
+
+**1. Detecting questions the corpus cannot answer.**
+
+The strongest of the four, and the only open item with no path that respects this
+project's other constraints. Abstention rejects 12 of 12 plainly off-domain
+questions and **2 of 12** HR-shaped ones the corpus does not answer, and four
+signals have now failed on that same tier — dense cosine, cross-encoder logit,
+term-level coverage, NLI entailment. Each was committed with the bar it would
+have had to clear, declared before the numbers were seen, so the failures are
+usable evidence rather than anecdote.
+
+What makes it a research question rather than a harder try: all four measure
+similarity, and "the corpus discusses this" is maximally similar to "the corpus
+answers this" — *how many days of paternity leave does the law require* scores
+higher than most genuine queries precisely because there is a paternity policy.
+The remaining path needs something that reads, which raises the question the rest
+of this repository is organised around: **how do you report a metric that depends
+on a vendor, a model version and a sampling temperature?** Every number here is
+currently reproducible without an API key, and that constraint is the interesting
+part, not an obstacle to route around.
+
+Connects to: SQuAD 2.0 unanswerability, BEIR, and the RAG groundedness
+literature — where a system scoring well on answerable questions and hallucinating
+on unanswerable ones is a known and unsolved failure mode.
+
+**2. How much of the graded score is annotator noise.**
+
+`npm run annotate` produces a blind sheet and `--agree` computes Cohen's kappa,
+both exercised end to end. What does not exist is a second annotator, and it
+cannot be produced from inside — the judgements were written by the person who
+tuned the retriever, and that is the definition of the problem.
+
+The capstone does the study, not the plumbing: recruit two or more independent
+annotators, report agreement, and answer the question this repository can pose but
+not settle — **is the inter-annotator disagreement larger than the differences
+nDCG is being used to detect?** Given that reranked-against-dense already fails to
+separate at n=18, the answer may well be yes, and a graded metric whose noise
+floor exceeds its effect size is worth knowing about.
+
+**3. Statistical power, and a corpus sized to it.**
+
+Bootstrap intervals are printed now, so the limitation is legible: 18-query report
+halves, 26 documents, and an action-safety probe where one case is 2.8 points.
+Several findings in this README sit inside their own intervals.
+
+The reserved question is the constructive one — **how many queries are needed to
+detect a 5-point difference at this variance?** That is a power analysis using
+machinery that already exists, and it turns "the corpus is small" from an apology
+into a number that tells you what to build. Building the corpus to that size, with
+graded judgements from item 2, is the natural follow-on.
+
+**4. Generative reranking under a reproducibility constraint.**
+
+Late interaction was tried and ties the cross-encoder on top-1 while losing on MRR
+(`npm run bakeoff -- --stage=late`). A generative reranker was deliberately not
+tried, and the reason is the research question: it would make every reported
+number depend on a vendor. Whether a metric can be reported honestly under that
+dependency — what has to be pinned, what has to be disclosed, what a reader can
+still check — is a methodological question this project has an unusually strong
+position to ask, having spent its whole history refusing to let numbers drift.
+
+### Not reserved
+
+These have known answers. Leaving them for a capstone would be reserving
+integration work, which is worth neither the delay nor the chapter.
+
+- **A real identity provider.** `/session` mints a token for any employee id.
+  Putting OIDC behind it is configuration, and the authorisation it would feed —
+  per-employee scoping — is already built and tested.
+- **Email or push delivery.** The webhook seam exists; what is missing is a
+  provider account.
+- **Cloud deployment, managed MongoDB, managed secrets.** Operations.
+- **Corpus governance** — an owner, a review cycle, versioning beyond git. Process,
+  not research.
+- **Screenshot currency.** Accepted as a manual rerun, for the reason
+  `tool/check_screenshots.js` states: a pixel diff would fail on every CI run
+  because headless font rasterisation differs by platform.
+
+### The rule this section is under
+
+An item moves from *reserved* to *open* the moment its question is answered, and
+from *open* to *done* only with a number attached. Nothing is reserved because it
+is hard — items 1 and 2 are reserved because they cannot be honestly settled by
+the person who built the thing being measured, and 3 and 4 because the answer is
+genuinely unknown.
+
 ## Reviewer Status
 
 - **Purpose:** Flutter HR assistant with a Node backend for leave workflows and
@@ -1104,6 +1209,11 @@ to a later reader than the goal it was aiming at.
   corpus does not answer (2 of 12) — now a measured limit rather than an asserted
   one, after a third signal was built, tested and rejected. Notifications are a
   table this service owns, not email or push.
+- **Reserved for a capstone:** unanswerable-question detection, an
+  inter-annotator agreement study, a power analysis and a corpus sized to it, and
+  generative reranking under a reproducibility constraint. Each is a question that
+  can fail; see [Reserved for the capstone](#reserved-for-the-capstone) for why
+  those four and not the integration work.
 - **Remaining gaps:** every item previously listed here has been worked, and
   [What is still open](#what-is-still-open) now records what each attempt returned
   rather than what it was aiming at. What genuinely remains: relevance judgements
