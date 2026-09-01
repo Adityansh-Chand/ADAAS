@@ -1670,7 +1670,15 @@ function fakeIdp({ kid = 'test-key-1' } = {}) {
       const sig = require('node:crypto')
         .sign('RSA-SHA256', Buffer.from(`${h}.${p}`), key)
         .toString('base64url');
-      return `${h}.${p}.${tamper ? `${sig.slice(0, -1)}A` : sig}`;
+      if (!tamper) return `${h}.${p}.${sig}`;
+      // Replace the last character with a DIFFERENT one. The first version
+      // appended 'A' unconditionally, so on a run where the real signature
+      // already ended in 'A' the tamper was a no-op, the signature verified, and
+      // the test failed for lack of the rejection it was asserting. The RSA key
+      // is generated per run, so it passed locally and failed in CI -- a flaky
+      // test of the test's own making, not a defect in the verifier.
+      const last = sig.slice(-1);
+      return `${h}.${p}.${sig.slice(0, -1)}${last === 'A' ? 'B' : 'A'}`;
     },
   };
 }
