@@ -14,10 +14,33 @@ spec:
       labels:
         app: adaas-hr-backend
     spec:
+      # Pod-level, so it applies to every container including any added later.
+      # The image already runs as `node`; this is the second half, enforced by the
+      # platform rather than trusted from the Dockerfile -- an image can be
+      # rebuilt or replaced, and a manifest that assumes it stays unprivileged is
+      # assuming something it can simply require.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: adaas-hr-backend:latest
           imagePullPolicy: IfNotPresent
+          # Nothing in this service writes outside /app/.data, so the root
+          # filesystem is read-only and the one writable path is an explicit
+          # volume. This is the control that turns "an attacker got code
+          # execution" into "an attacker got code execution and cannot persist".
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /app/.data
           ports:
             - containerPort: 3000
           env:
@@ -98,6 +121,15 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+      volumes:
+        # Notifications are written through to a file so a restart does not lose
+        # every decision anyone was told about. emptyDir is honest about what that
+        # buys in Kubernetes: it survives a container restart and NOT a
+        # rescheduled pod. Durable notifications across pod moves need MONGODB_URI,
+        # which is what the Mongo path is for.
+        - name: data
+          emptyDir: {}
+
 ---
 apiVersion: v1
 kind: Service

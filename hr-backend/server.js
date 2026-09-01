@@ -15,6 +15,9 @@ const reranker = require('./rerank');
 const modelClient = require('./model_client');
 const notificationStore = require('./notifications');
 const session = require('./session');
+const oidcModule = require('./oidc');
+const secrets = require('./secrets');
+const corpus = require('./corpus');
 const intentModule = require('./intent');
 const embeddings = require('./embeddings');
 const {
@@ -26,6 +29,15 @@ const {
 } = require('./leave_rules');
 
 dotenv.config();
+
+// Before anything reads a secret. `FOO_FILE` beats `FOO`, which is how Docker
+// secrets and Kubernetes secret volumes deliver values without putting them in
+// the environment -- where they are visible in `docker inspect`, in
+// /proc/<pid>/environ, and in any crash dump.
+const secretsFromFiles = secrets.resolveAll();
+if (secretsFromFiles.length) {
+  console.log(`secrets read from files: ${secretsFromFiles.join(', ')}`);
+}
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -469,7 +481,14 @@ app.get('/health', (req, res) => {
     // Whether per-employee scoping is being enforced. Reported because
     // "unauthenticated" should be a visible state rather than something a
     // reader has to infer from the absence of a variable.
-    authorization: session.isEnforced() ? 'session_tokens' : 'none',
+    authorization: session.mode(),
+    identity: oidcModule.status(),
+    secrets: secrets.status(),
+    // Who owns the corpus and when it was last checked against real policy. A
+    // wrong retrieval score shows up in an eval; a policy statement that went
+    // stale eighteen months ago retrieves perfectly and is still wrong, and
+    // nothing else here would notice.
+    corpus: corpus.status(knowledgeBase),
     retrieval: (() => {
       const { mode, reason } = activeRetrievalMode();
       const requested = configuredRetrievalMode();
