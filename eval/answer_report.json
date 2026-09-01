@@ -323,7 +323,9 @@
       "nli": 0.25333333333333335,
       "either": 0.5466666666666666,
       "nli_only": 24
-    }
+    },
+    "from_a_previous_run": true,
+    "note": "Not re-measured by this run. Stage 3 needs a model and is skipped by default and in CI; run `npm run eval:answers:nli` to refresh it."
   },
   "live": {
     "run": false,

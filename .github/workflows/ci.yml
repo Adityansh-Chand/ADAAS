@@ -85,6 +85,24 @@ jobs:
       # caught a case in set 4 that was a near-paraphrase of a training example.
       - name: Score intent classification
         run: npm run eval:intent:gate
+      # The answer layer. Scores the verifier's sensitivity against 150
+      # deterministically generated unfaithful answers in seven classes, with the
+      # 26 true corpus answers as a control.
+      #
+      # The control is the gate that matters and it is an absolute rather than a
+      # floor: any finding against unmutated policy text fails the build, because
+      # a check that fires on true text is one nobody will leave switched on, and
+      # every detection rate beside it would be meaningless.
+      #
+      # Deterministic and model-free. The mutations are regenerated from the
+      # corpus on every run rather than committed, so they cannot drift out of
+      # step with the policy text -- which also means they have to be reproducible,
+      # and a test asserts they are. The entailment stage is NOT run here: it
+      # needs a 70MB cross-encoder and one model call per sentence per retrieved
+      # document. `npm run eval:answers:nli` runs it locally and its last result
+      # is recorded in eval/answer_report.json.
+      - name: Score the answer layer
+        run: npm run eval:answers:gate
       # Checks what CI can actually check about the committed screenshots: that
       # they exist, are valid PNGs, are not blank canvases from a failed render,
       # and that the README and the capture script agree on the set. It

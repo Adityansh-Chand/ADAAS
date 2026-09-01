@@ -1123,14 +1123,50 @@ async function main() {
 
   const extractive = stageExtractive(kb, qrels, queries, store, rerankStore);
   const mutation = stageMutations(kb, mutations, store);
-  const entailment = wantNli
-    ? await stageEntailment(kb, mutations, store)
-    : { skipped: true, reason: 'pass --nli to run (needs a 70MB model)' };
 
-  if (entailment.skipped && entailment.reason) {
+  /**
+   * The last recorded entailment result, so a skipped stage 3 does not erase it.
+   *
+   * CI runs without `--nli`, because the stage needs a 70MB cross-encoder and one
+   * model call per sentence per retrieved document. The first version wrote
+   * `{ skipped: true }` over the entailment block on every such run, so the whole
+   * measurement -- four detectors, four false-positive budgets, the finding about
+   * the self-contradicting premise -- was deleted from the report by the next
+   * gated run and only the person who ran it locally ever saw it.
+   *
+   * Carried forward with the provenance attached rather than silently kept, so a
+   * reader can tell a figure produced by this run from one produced by an earlier
+   * one.
+   */
+  const previousReport = (() => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(EVAL_DIR, 'answer_report.json'), 'utf8'));
+    } catch {
+      return null;
+    }
+  })();
+
+  let entailment;
+  if (wantNli) {
+    entailment = await stageEntailment(kb, mutations, store);
+  } else if (previousReport && previousReport.entailment
+    && previousReport.entailment.skipped === false) {
+    entailment = {
+      ...previousReport.entailment,
+      from_a_previous_run: true,
+      note: 'Not re-measured by this run. Stage 3 needs a model and is skipped by '
+        + 'default and in CI; run `npm run eval:answers:nli` to refresh it.',
+    };
     console.log('');
-    console.log('STAGE 3  skipped -- pass --nli to run it (needs a 70MB model).');
-    console.log('  The last recorded result is in eval/answer_report.json.');
+    console.log('STAGE 3  not re-run. Carrying forward the last recorded result:');
+    console.log(`  model ${entailment.model}`);
+    console.log(`  exact ${fmt(entailment.overall.exact)}   `
+      + `NLI ${fmt(entailment.overall.nli)}   either ${fmt(entailment.overall.either)}`);
+    console.log('  `npm run eval:answers:nli` re-measures it (~10 minutes).');
+  } else {
+    entailment = { skipped: true, reason: 'never run; pass --nli (needs a 70MB model)' };
+    console.log('');
+    console.log('STAGE 3  never run. Pass --nli to run it (needs a 70MB model).');
   }
 
   const live = await stageLive(kb, queries, store, rerankStore);
